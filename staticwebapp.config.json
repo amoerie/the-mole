@@ -5,12 +5,12 @@
   },
   "routes": [
     {
-      "route": "/api/*",
-      "allowedRoles": ["authenticated"]
-    },
-    {
       "route": "/api/games/by-invite/*",
       "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/.auth/login/google",
