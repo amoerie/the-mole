@@ -8,18 +8,21 @@ namespace Api.Functions;
 public class AuthFunctions
 {
     [Function("GetMe")]
-    public IActionResult GetMe(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "me")] HttpRequest req)
+    public static IActionResult GetMe(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "me")] HttpRequest req
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
             return new UnauthorizedResult();
 
-        return new OkObjectResult(new
-        {
-            user.UserId,
-            user.DisplayName,
-            user.Roles
-        });
+        return new OkObjectResult(
+            new
+            {
+                user.UserId,
+                user.DisplayName,
+                user.Roles,
+            }
+        );
     }
 }

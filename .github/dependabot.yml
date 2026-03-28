@@ -1,0 +1,56 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "dotnet"
+    groups:
+      azure-functions:
+        patterns:
+          - "Microsoft.Azure.Functions.*"
+      azure-cosmos:
+        patterns:
+          - "Microsoft.Azure.Cosmos"
+      testing:
+        patterns:
+          - "xunit*"
+          - "coverlet*"
+          - "Microsoft.NET.Test.Sdk"
+          - "Testcontainers*"
+
+  - package-ecosystem: "npm"
+    directory: "/client"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "javascript"
+    groups:
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "typescript-eslint"
+      vite:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+      testing:
+        patterns:
+          - "vitest"
+          - "@testing-library/*"

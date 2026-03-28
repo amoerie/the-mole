@@ -14,7 +14,7 @@ public class EpisodeFunctions
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
     };
 
     public EpisodeFunctions(CosmosDbService cosmos)
@@ -24,8 +24,10 @@ public class EpisodeFunctions
 
     [Function("CreateEpisode")]
     public async Task<IActionResult> CreateEpisode(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/episodes")] HttpRequest req,
-        string gameId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/episodes")]
+            HttpRequest req,
+        string gameId
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -38,25 +40,28 @@ public class EpisodeFunctions
         if (game.AdminUserId != user.UserId)
             return new UnauthorizedResult();
 
-        var body = await JsonSerializer.DeserializeAsync<CreateEpisodeRequest>(req.Body, JsonOptions);
+        var body = await JsonSerializer.DeserializeAsync<CreateEpisodeRequest>(
+            req.Body,
+            JsonOptions
+        );
         if (body == null)
             return new BadRequestObjectResult(new { error = "Request body is required." });
 
-        int nextNumber = game.Episodes.Count > 0
-            ? game.Episodes.Max(e => e.Number) + 1
-            : 1;
+        int nextNumber = game.Episodes.Count > 0 ? game.Episodes.Max(e => e.Number) + 1 : 1;
 
         var episode = new Episode
         {
             Number = nextNumber,
             Deadline = body.Deadline,
-            EliminatedContestantId = body.EliminatedContestantId
+            EliminatedContestantId = body.EliminatedContestantId,
         };
 
         // Mark contestant as eliminated if provided
         if (!string.IsNullOrEmpty(body.EliminatedContestantId))
         {
-            var contestant = game.Contestants.FirstOrDefault(c => c.Id == body.EliminatedContestantId);
+            var contestant = game.Contestants.FirstOrDefault(c =>
+                c.Id == body.EliminatedContestantId
+            );
             if (contestant != null)
                 contestant.EliminatedInEpisode = nextNumber;
         }
@@ -69,9 +74,15 @@ public class EpisodeFunctions
 
     [Function("UpdateEpisode")]
     public async Task<IActionResult> UpdateEpisode(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "games/{gameId}/episodes/{episodeNumber:int}")] HttpRequest req,
+        [HttpTrigger(
+            AuthorizationLevel.Anonymous,
+            "put",
+            Route = "games/{gameId}/episodes/{episodeNumber:int}"
+        )]
+            HttpRequest req,
         string gameId,
-        int episodeNumber)
+        int episodeNumber
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -88,7 +99,10 @@ public class EpisodeFunctions
         if (episode == null)
             return new NotFoundObjectResult(new { error = "Episode not found." });
 
-        var body = await JsonSerializer.DeserializeAsync<UpdateEpisodeRequest>(req.Body, JsonOptions);
+        var body = await JsonSerializer.DeserializeAsync<UpdateEpisodeRequest>(
+            req.Body,
+            JsonOptions
+        );
         if (body == null)
             return new BadRequestObjectResult(new { error = "Request body is required." });
 
@@ -98,7 +112,9 @@ public class EpisodeFunctions
         if (body.EliminatedContestantId != null)
         {
             // Clear previous elimination for this episode
-            var prevEliminated = game.Contestants.FirstOrDefault(c => c.EliminatedInEpisode == episodeNumber);
+            var prevEliminated = game.Contestants.FirstOrDefault(c =>
+                c.EliminatedInEpisode == episodeNumber
+            );
             if (prevEliminated != null)
                 prevEliminated.EliminatedInEpisode = null;
 
@@ -106,7 +122,9 @@ public class EpisodeFunctions
 
             if (!string.IsNullOrEmpty(body.EliminatedContestantId))
             {
-                var contestant = game.Contestants.FirstOrDefault(c => c.Id == body.EliminatedContestantId);
+                var contestant = game.Contestants.FirstOrDefault(c =>
+                    c.Id == body.EliminatedContestantId
+                );
                 if (contestant != null)
                     contestant.EliminatedInEpisode = episodeNumber;
             }
@@ -119,8 +137,10 @@ public class EpisodeFunctions
 
     [Function("RevealMole")]
     public async Task<IActionResult> RevealMole(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/reveal-mole")] HttpRequest req,
-        string gameId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/reveal-mole")]
+            HttpRequest req,
+        string gameId
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -147,19 +167,19 @@ public class EpisodeFunctions
         return new OkObjectResult(new { message = "Mole revealed.", game.MoleContestantId });
     }
 
-    private class CreateEpisodeRequest
+    private sealed class CreateEpisodeRequest
     {
         public DateTimeOffset Deadline { get; set; }
         public string? EliminatedContestantId { get; set; }
     }
 
-    private class UpdateEpisodeRequest
+    private sealed class UpdateEpisodeRequest
     {
         public DateTimeOffset? Deadline { get; set; }
         public string? EliminatedContestantId { get; set; }
     }
 
-    private class RevealMoleRequest
+    private sealed class RevealMoleRequest
     {
         public string? MoleContestantId { get; set; }
     }

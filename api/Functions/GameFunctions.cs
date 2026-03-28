@@ -14,7 +14,7 @@ public class GameFunctions
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
     };
 
     public GameFunctions(CosmosDbService cosmos)
@@ -24,7 +24,8 @@ public class GameFunctions
 
     [Function("CreateGame")]
     public async Task<IActionResult> CreateGame(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games")] HttpRequest req
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -38,7 +39,7 @@ public class GameFunctions
         {
             Name = body.Name,
             AdminUserId = user.UserId,
-            Contestants = body.Contestants ?? new()
+            Contestants = body.Contestants ?? new(),
         };
 
         await _cosmos.UpsertAsync(game, game.PartitionKey, "games");
@@ -48,7 +49,7 @@ public class GameFunctions
         {
             GameId = game.Id,
             UserId = user.UserId,
-            DisplayName = user.DisplayName
+            DisplayName = user.DisplayName,
         };
         await _cosmos.UpsertAsync(player, player.PartitionKey, "players");
 
@@ -57,8 +58,10 @@ public class GameFunctions
 
     [Function("GetGame")]
     public async Task<IActionResult> GetGame(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/{gameId}")] HttpRequest req,
-        string gameId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/{gameId}")]
+            HttpRequest req,
+        string gameId
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -81,8 +84,10 @@ public class GameFunctions
 
     [Function("JoinGame")]
     public async Task<IActionResult> JoinGame(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/join")] HttpRequest req,
-        string gameId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/join")]
+            HttpRequest req,
+        string gameId
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -108,7 +113,7 @@ public class GameFunctions
         {
             GameId = gameId,
             UserId = user.UserId,
-            DisplayName = user.DisplayName
+            DisplayName = user.DisplayName,
         };
         await _cosmos.UpsertAsync(player, player.PartitionKey, "players");
 
@@ -117,31 +122,37 @@ public class GameFunctions
 
     [Function("GetGameByInviteCode")]
     public async Task<IActionResult> GetGameByInviteCode(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/by-invite/{inviteCode}")] HttpRequest req,
-        string inviteCode)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/by-invite/{inviteCode}")]
+            HttpRequest req,
+        string inviteCode
+    )
     {
         var games = await _cosmos.QueryAsync<Game>(
             "SELECT * FROM c WHERE c.inviteCode = @code",
             "games",
-            new Dictionary<string, object> { ["@code"] = inviteCode });
+            new Dictionary<string, object> { ["@code"] = inviteCode }
+        );
 
         var game = games.FirstOrDefault();
         if (game == null)
             return new NotFoundResult();
 
         // Return limited info (don't expose admin details to unauthenticated users)
-        return new OkObjectResult(new
-        {
-            game.Id,
-            game.Name,
-            ContestantCount = game.Contestants.Count,
-            EpisodeCount = game.Episodes.Count
-        });
+        return new OkObjectResult(
+            new
+            {
+                game.Id,
+                game.Name,
+                ContestantCount = game.Contestants.Count,
+                EpisodeCount = game.Episodes.Count,
+            }
+        );
     }
 
     [Function("GetMyGames")]
     public async Task<IActionResult> GetMyGames(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "my-games")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "my-games")] HttpRequest req
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -151,7 +162,8 @@ public class GameFunctions
         var allPlayers = await _cosmos.QueryAsync<Player>(
             "SELECT * FROM c WHERE c.userId = @userId",
             "players",
-            new Dictionary<string, object> { ["@userId"] = user.UserId });
+            new Dictionary<string, object> { ["@userId"] = user.UserId }
+        );
 
         var games = new List<Game>();
         foreach (var player in allPlayers)
@@ -166,8 +178,10 @@ public class GameFunctions
 
     [Function("AddContestants")]
     public async Task<IActionResult> AddContestants(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/contestants")] HttpRequest req,
-        string gameId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/contestants")]
+            HttpRequest req,
+        string gameId
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -180,15 +194,20 @@ public class GameFunctions
         if (game.AdminUserId != user.UserId)
             return new UnauthorizedResult();
 
-        var body = await JsonSerializer.DeserializeAsync<AddContestantsRequest>(req.Body, JsonOptions);
+        var body = await JsonSerializer.DeserializeAsync<AddContestantsRequest>(
+            req.Body,
+            JsonOptions
+        );
         if (body?.Contestants == null || body.Contestants.Count == 0)
-            return new BadRequestObjectResult(new { error = "At least one contestant is required." });
+            return new BadRequestObjectResult(
+                new { error = "At least one contestant is required." }
+            );
 
         foreach (var c in body.Contestants)
         {
             if (string.IsNullOrWhiteSpace(c.Name))
                 return new BadRequestObjectResult(new { error = "Contestant name is required." });
-            
+
             if (string.IsNullOrWhiteSpace(c.Id))
                 c.Id = Guid.NewGuid().ToString();
         }
@@ -199,18 +218,18 @@ public class GameFunctions
         return new OkObjectResult(game);
     }
 
-    private class CreateGameRequest
+    private sealed class CreateGameRequest
     {
         public string? Name { get; set; }
         public List<Contestant>? Contestants { get; set; }
     }
 
-    private class JoinGameRequest
+    private sealed class JoinGameRequest
     {
         public string? InviteCode { get; set; }
     }
 
-    private class AddContestantsRequest
+    private sealed class AddContestantsRequest
     {
         public List<Contestant>? Contestants { get; set; }
     }

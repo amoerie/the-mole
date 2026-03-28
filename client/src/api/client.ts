@@ -1,6 +1,6 @@
-import type { Game, Ranking, LeaderboardEntry, UserInfo } from '../types';
+import type { Game, Ranking, LeaderboardEntry, UserInfo } from '../types'
 
-const API_BASE = '/api';
+const API_BASE = '/api'
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
@@ -9,12 +9,12 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
       'Content-Type': 'application/json',
       ...options?.headers,
     },
-  });
+  })
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API error ${response.status}: ${errorText}`);
+    const errorText = await response.text()
+    throw new Error(`API error ${response.status}: ${errorText}`)
   }
-  return response.json();
+  return response.json()
 }
 
 export const api = {
@@ -40,7 +40,10 @@ export const api = {
       body: JSON.stringify({ inviteCode }),
     }),
 
-  addContestants: (gameId: string, contestants: { name: string; age: number; photoUrl: string }[]) =>
+  addContestants: (
+    gameId: string,
+    contestants: { name: string; age: number; photoUrl: string }[],
+  ) =>
     fetchJson<Game>(`/games/${gameId}/contestants`, {
       method: 'POST',
       body: JSON.stringify({ contestants }),
@@ -76,4 +79,4 @@ export const api = {
 
   getWhatIfLeaderboard: (gameId: string, contestantId: string) =>
     fetchJson<LeaderboardEntry[]>(`/games/${gameId}/leaderboard/what-if/${contestantId}`),
-};
+}

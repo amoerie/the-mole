@@ -14,7 +14,7 @@ public class RankingFunctions
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
     };
 
     public RankingFunctions(CosmosDbService cosmos)
@@ -24,9 +24,15 @@ public class RankingFunctions
 
     [Function("SubmitRanking")]
     public async Task<IActionResult> SubmitRanking(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/episodes/{episodeNumber:int}/rankings")] HttpRequest req,
+        [HttpTrigger(
+            AuthorizationLevel.Anonymous,
+            "post",
+            Route = "games/{gameId}/episodes/{episodeNumber:int}/rankings"
+        )]
+            HttpRequest req,
         string gameId,
-        int episodeNumber)
+        int episodeNumber
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -47,9 +53,14 @@ public class RankingFunctions
 
         // Deadline enforcement
         if (DateTimeOffset.UtcNow > episode.Deadline)
-            return new BadRequestObjectResult(new { error = "Deadline has passed for this episode." });
+            return new BadRequestObjectResult(
+                new { error = "Deadline has passed for this episode." }
+            );
 
-        var body = await JsonSerializer.DeserializeAsync<SubmitRankingRequest>(req.Body, JsonOptions);
+        var body = await JsonSerializer.DeserializeAsync<SubmitRankingRequest>(
+            req.Body,
+            JsonOptions
+        );
         if (body == null || body.ContestantIds == null || body.ContestantIds.Count == 0)
             return new BadRequestObjectResult(new { error = "ContestantIds are required." });
 
@@ -61,8 +72,9 @@ public class RankingFunctions
             {
                 ["@gameId"] = gameId,
                 ["@ep"] = episodeNumber,
-                ["@userId"] = user.UserId
-            });
+                ["@userId"] = user.UserId,
+            }
+        );
 
         var ranking = existingRankings.FirstOrDefault() ?? new Ranking();
         ranking.GameId = gameId;
@@ -78,9 +90,15 @@ public class RankingFunctions
 
     [Function("GetMyRanking")]
     public async Task<IActionResult> GetMyRanking(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/{gameId}/episodes/{episodeNumber:int}/rankings/mine")] HttpRequest req,
+        [HttpTrigger(
+            AuthorizationLevel.Anonymous,
+            "get",
+            Route = "games/{gameId}/episodes/{episodeNumber:int}/rankings/mine"
+        )]
+            HttpRequest req,
         string gameId,
-        int episodeNumber)
+        int episodeNumber
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -93,8 +111,9 @@ public class RankingFunctions
             {
                 ["@gameId"] = gameId,
                 ["@ep"] = episodeNumber,
-                ["@userId"] = user.UserId
-            });
+                ["@userId"] = user.UserId,
+            }
+        );
 
         var ranking = rankings.FirstOrDefault();
         if (ranking == null)
@@ -105,8 +124,10 @@ public class RankingFunctions
 
     [Function("GetMyRankingsForGame")]
     public async Task<IActionResult> GetMyRankingsForGame(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/{gameId}/rankings")] HttpRequest req,
-        string gameId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/{gameId}/rankings")]
+            HttpRequest req,
+        string gameId
+    )
     {
         var user = AuthHelper.GetUserInfo(req);
         if (user == null)
@@ -115,16 +136,13 @@ public class RankingFunctions
         var rankings = await _cosmos.QueryAsync<Ranking>(
             "SELECT * FROM c WHERE c.gameId = @gameId AND c.userId = @userId ORDER BY c.episodeNumber",
             "rankings",
-            new Dictionary<string, object>
-            {
-                ["@gameId"] = gameId,
-                ["@userId"] = user.UserId
-            });
+            new Dictionary<string, object> { ["@gameId"] = gameId, ["@userId"] = user.UserId }
+        );
 
         return new OkObjectResult(rankings);
     }
 
-    private class SubmitRankingRequest
+    private sealed class SubmitRankingRequest
     {
         public List<string>? ContestantIds { get; set; }
     }
