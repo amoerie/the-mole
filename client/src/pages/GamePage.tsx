@@ -120,66 +120,16 @@ export default function GamePage() {
   }
 
   const season14Contestants = [
-    {
-      name: 'Abigail',
-      age: 33,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500abigail-tcb0dt.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=346a11041038be8f1580d31014f9e5bbdac79ff232f15645ad306554f48ee987',
-    },
-    {
-      name: 'Dries',
-      age: 30,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500dries-tcb0qr.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=6c47133281658861767b356f7ce19a4293dc4d4d97bd053563d6d693a400898f',
-    },
-    {
-      name: 'Isabel',
-      age: 51,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500isabel-tcb11c.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=6509e7b326e32bdb996c8952ab0e76b7b6f8669271714a059053519fa15499ed',
-    },
-    {
-      name: 'Karla',
-      age: 52,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500karla-tcb19o.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=e3a703d2a9f7d47797fc5575afd09f84e5951eb22f996e1ee12c90821d68c729',
-    },
-    {
-      name: 'Maïté',
-      age: 26,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500maite-tcb1h1.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=62dc338146d3a1755612f3fd806d36b212a09a2c38852f98e6bc48aeff8d4d0e',
-    },
-    {
-      name: 'Vincent',
-      age: 51,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500vincent-tcb1mj.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=b35ffdcb0d89954382acb063348173c8d9c89cf4249c2fbaeb81e195344b9061',
-    },
-    {
-      name: 'Wout',
-      age: 33,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500wout-tcb1pm.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=a9427b6f2b9a54a457f266b59c6179b47f1eeec2e079eac353cce5f68e1c9b69',
-    },
-    {
-      name: 'Maxim',
-      age: 26,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500maxim-tcb1k7.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=081ffab64cadff048ca1e218233f40fb5ad4c223b0eaac22abccf9ad2a96f3e8',
-    },
-    {
-      name: 'Julie',
-      age: 26,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500julie-tcb14l.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=ec0909f5fb07b057f6edae24717b8f18e8d59ec1df4a14a7eb14565c826119ed',
-    },
-    {
-      name: 'Kristof',
-      age: 40,
-      photoUrl:
-        'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500kristof-tcb1ct.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=8ad452b559f7388c0dfb9d5ad164aca27aae6f265dce858c5597234277063b1d',
-    },
+    { name: 'Abigail', age: 33, photoUrl: '/contestants/abigail.png' },
+    { name: 'Dries', age: 30, photoUrl: '/contestants/dries.png' },
+    { name: 'Isabel', age: 51, photoUrl: '/contestants/isabel.png' },
+    { name: 'Karla', age: 52, photoUrl: '/contestants/karla.png' },
+    { name: 'Maïté', age: 26, photoUrl: '/contestants/maite.png' },
+    { name: 'Vincent', age: 51, photoUrl: '/contestants/vincent.png' },
+    { name: 'Wout', age: 33, photoUrl: '/contestants/wout.png' },
+    { name: 'Maxim', age: 26, photoUrl: '/contestants/maxim.png' },
+    { name: 'Julie', age: 26, photoUrl: '/contestants/julie.png' },
+    { name: 'Kristof', age: 40, photoUrl: '/contestants/kristof.png' },
   ]
 
   async function handleLoadSeason14() {
