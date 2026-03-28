@@ -102,6 +102,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
+      - name: Publish API
+        run: dotnet publish api/Api.csproj --configuration Release --output api_publish
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -109,5 +112,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "client"
-          api_location: "api"
+          api_location: "api_publish"
           output_location: "dist"
+          skip_api_build: true
