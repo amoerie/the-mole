@@ -17,34 +17,26 @@ need every player to manually share rankings (defeats the purpose). You **need a
 - Deadline enforcement (lock submissions before episodes air)
 - Leaderboard calculation
 
-### Q2: Recommended Architecture (100% free)
+### Q2: Recommended Architecture
 
-**Azure Static Web Apps (free tier)** is the sweet spot for a .NET developer:
+**ASP.NET Core Minimal API + SQLite + Docker** deployed on **Fly.io** (free tier).
+
+> Azure SWA managed .NET functions were tried but abandoned — broken at the infrastructure
+> level since Sep 2025 (9+ unresolved GitHub issues). Cosmos DB was overengineered for ~20 players.
 
 | Component | Service | Cost |
 |-----------|---------|------|
-| Frontend | React + TypeScript SPA | Free (hosted by SWA) |
-| Backend API | Azure Functions (C# / .NET 8) | Free (integrated with SWA) |
-| Database | Azure Cosmos DB (NoSQL API, free tier) | Free (1000 RU/s, 25 GB forever) |
-| Hosting | Azure Static Web Apps (free tier) | Free (100 GB bandwidth/mo) |
-| Auth | SWA built-in auth | Free (GitHub + Microsoft login) |
-| CI/CD | GitHub Actions | Free (auto-configured by SWA) |
-
-**Total monthly cost: $0**
+| Frontend + API | .NET 10 ASP.NET Core (serves both) | ~$0 on Fly.io free tier |
+| Database | SQLite on persistent Fly.io volume | $0 |
+| Auth | GitHub OAuth (AspNet.Security.OAuth.GitHub) | $0 |
+| Hosting | Fly.io free tier (3 shared VMs, 3 GB volume) | $0 |
+| CI/CD | GitHub Actions → GHCR → flyctl deploy | $0 |
+| Custom domain | Any registrar (~€10/yr) + free SSL via Fly.io | ~€10/year |
 
 ### Q3: Authentication
 
-The SWA free tier includes **built-in authentication** with:
-- **GitHub login** ✅ (no config needed)
-- **Microsoft account login** ✅ (no config needed)
-- Google/Facebook/custom OAuth ❌ (requires Standard plan, ~$9/month)
-
-Since this is for friends/colleagues, GitHub or Microsoft login should work fine. If you
-really need Google login, the Standard plan is the only option.
-
-**Simpler alternative:** Skip social login entirely. Use an invite-link system where each
-player gets a unique URL token (e.g., `?token=abc123`). Stored in localStorage. No passwords,
-no OAuth. Works on GitHub Pages too. Less secure but perfectly fine for a friend group.
+GitHub OAuth via `AspNet.Security.OAuth.GitHub`. Cookie-based sessions. GitHub login only
+(sufficient for colleagues/friends). Callback URL: `/signin-github`.
 
 ### Q4: Could I also use GitHub Pages (no Azure at all)?
 
@@ -129,7 +121,7 @@ This actually adds to the fun — players can speculate about standings!
 
 1. **Setup (admin):** Create the game, configure season with 10 contestants
 2. **Invite:** Share a join link with friends/colleagues
-3. **Join:** Players authenticate (GitHub/Microsoft) and join the game
+3. **Join:** Players authenticate with GitHub and join the game
 4. **Weekly cycle (per episode):**
    a. Admin opens a new episode round (marks eliminated contestant from last episode)
    b. Players drag-and-drop rank the remaining contestants before the next episode airs
@@ -139,34 +131,36 @@ This actually adds to the fun — players can speculate about standings!
 
 ---
 
-## Data Model (Cosmos DB)
+## Data Model (SQLite / EF Core)
 
 ```
 Game {
-  id: string
-  name: string ("De Mol 2026")
+  id: string (PK)
+  name: string
   adminUserId: string
-  contestants: [{ id, name, age, photoUrl, eliminatedInEpisode? }]
-  episodes: [{ number, deadline, eliminatedContestantId? }]
+  contestants: JSON → [{ id, name, age, photoUrl, eliminatedInEpisode? }]
+  episodes: JSON → [{ number, deadline, eliminatedContestantId? }]
   moleContestantId?: string  // set after finale
-  inviteCode: string
+  inviteCode: string (unique index)
 }
 
 Player {
-  id: string
+  id: string (PK)
   gameId: string
   userId: string
   displayName: string
   joinedAt: datetime
+  (unique index: gameId + userId)
 }
 
 Ranking {
-  id: string
+  id: string (PK)
   gameId: string
-  episodeNumber: number
+  episodeNumber: int
   userId: string
-  rankings: [contestantId, contestantId, ...]  // ordered most→least suspect
+  contestantIds: JSON → [contestantId, ...]  // ordered most→least suspect
   submittedAt: datetime
+  (unique index: gameId + episodeNumber + userId)
 }
 ```
 
@@ -175,34 +169,31 @@ Ranking {
 ## Progress
 
 ### ✅ Phase 1: Project Foundation (COMPLETE)
-- React + TypeScript SPA (Vite, React 19)
-- Azure Functions .NET 8 isolated worker backend
-- Cosmos DB service, scoring engine, auth helper
-- 47 tests (20 xUnit + 27 Vitest) — all passing
-- GitHub Actions CI: build + test on push to main & PRs
-- SWA CLI config for local dev
-- Docker Compose for Cosmos DB emulator (Podman-compatible)
-- Azure deployment guide (AZURE_DEPLOYMENT.md)
+- React + TypeScript SPA (Vite, React 19), xUnit + Vitest tests
+- Strict .NET analysis (TreatWarningsAsErrors, AnalysisMode=Recommended), CSharpier, ESLint/Prettier
+- Dependabot for GitHub Actions, NuGet, npm
+- Contestant photos downloaded as local assets (`client/public/contestants/`)
 
-### ⬜ Phase 2: Azure Resources (MANUAL — see AZURE_DEPLOYMENT.md)
-### ⬜ Phase 3–6: Remaining work in todo.md
+### ✅ Phase 2: Architecture Migration (COMPLETE — branch `feat/migrate-to-aspnetcore-sqlite`)
+- ASP.NET Core 10 Minimal API + SQLite/EF Core 9 (JSON columns, migrations)
+- GitHub OAuth replacing Azure SWA built-in auth
+- Multi-stage Dockerfile + `fly.toml` (Amsterdam, 1 GB SQLite volume)
+- CI: Docker build → GHCR → flyctl deploy
+- Simplified `start-local.cmd`: `dotnet watch run` + `npm run dev`
+- Tests: 17 .NET + 27 frontend, all green
+
+### ⬜ Pending (one-time manual setup before first deploy)
+1. Create GitHub OAuth App → callback `https://the-mole.fly.dev/signin-github`
+2. `flyctl apps create the-mole && flyctl volumes create the_mole_data --region ams --size 1`
+3. `flyctl secrets set GitHub__ClientId=... GitHub__ClientSecret=...`
+4. Add `FLY_API_TOKEN` to GitHub repo secrets → merge PR → CI deploys
+
+### ⬜ Phase 3: Polish
+- Responsive design + De Mol theming (dark theme, green accents)
 
 ## Local Development
 
-- **Cosmos DB Emulator**: Runs via Podman/Docker container (`docker-compose.yml`)
-- **SWA CLI**: Proxies frontend + backend, simulates auth (`swa-cli.config.json`)
-- **Testcontainers**: Integration tests spin up Cosmos DB emulator automatically
-- **Frontend**: Vite dev server with hot reload + Vitest for tests
-- **Backend**: Azure Functions Core Tools (`func start`) + xUnit tests
-
-## Implementation Todos
-
-1. **Scaffold project** — Create React + TypeScript SPA with Azure Functions (.NET 8) backend
-2. **Set up Azure resources** — Static Web App + Cosmos DB (free tier)
-3. **Implement auth** — SWA built-in auth (GitHub/Microsoft), get user identity in API
-4. **Game management API** — CRUD for games, episodes, contestants (admin only)
-5. **Ranking submission UI** — Drag-and-drop ranking interface (mobile-friendly!)
-6. **Ranking API** — Submit/update rankings, enforce deadlines
-7. **Leaderboard/results** — "What-if" view during season, final results after reveal
-8. **Admin panel** — Mark eliminations, set deadlines, reveal mole
-9. **Polish** — Contestant photos, responsive design, De Mol theming
+- `start-local.cmd`: opens two windows — `dotnet watch run` (port 5000) + `npm run dev` (port 5173)
+- Vite proxies `/api` and `/auth` to `localhost:5000` automatically
+- GitHub OAuth credentials go in `api/appsettings.Development.json` or .NET user secrets
+- SQLite DB created at `api/themole.db` on first run (migrations applied automatically)
