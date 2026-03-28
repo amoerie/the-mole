@@ -12,46 +12,27 @@
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 1 | Scaffold React + TypeScript SPA | ✅ | Vite, React 19, TypeScript |
-| 2 | Scaffold Azure Functions (.NET 8) backend | ✅ | C# isolated worker, Cosmos DB |
-| 3 | Configure Azure Static Web Apps config | ✅ | staticwebapp.config.json, auth routes |
-| 4 | Set up GitHub Actions CI/CD | ✅ | Build + test + deploy pipeline |
-| 5 | Set up unit test frameworks | ✅ | Vitest (27 tests), xUnit (20 tests) |
+| 2 | Scaffold backend | ✅ | ASP.NET Core Minimal API (migrated from Azure Functions) |
+| 3 | Set up GitHub Actions CI/CD | ✅ | Build + test + deploy pipeline |
+| 4 | Set up unit test frameworks | ✅ | Vitest (27 tests), xUnit (20 tests) |
+| 5 | Configure Dependabot | ✅ | GitHub Actions, NuGet, npm — weekly |
+| 6 | Strict .NET analysis + CSharpier + Prettier | ✅ | TreatWarningsAsErrors, AnalysisMode=Recommended |
 
-## Phase 2: Azure Resources
+## Phase 2: Architecture Migration (Azure Functions → ASP.NET Core + SQLite)
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 6 | Create Azure Static Web App | ⬜ | Free tier |
-| 7 | Create Azure Cosmos DB account | ⬜ | Free tier, NoSQL API |
-| 8 | Configure connection strings / secrets | ⬜ | GitHub secrets + SWA env vars |
+| 7 | Rewrite API as ASP.NET Core Minimal API + SQLite/EF Core | 🔨 | Replaces Azure Functions + Cosmos DB |
+| 8 | Add GitHub OAuth authentication | ⬜ | AspNet.Security.OAuth.GitHub |
+| 9 | Update api.tests to WebApplicationFactory | ⬜ | |
+| 10 | Update frontend: Vite proxy + auth URLs | ⬜ | /.auth/* → /auth/* |
+| 11 | Create multi-stage Dockerfile | ⬜ | node build → dotnet publish → aspnet runtime |
+| 12 | Create fly.toml + DEPLOYMENT.md | ⬜ | Fly.io, Amsterdam region |
+| 13 | Update CI: Docker build + Fly.io deploy | ⬜ | ghcr.io → flyctl deploy |
+| 14 | Rewrite start-local.cmd | ⬜ | dotnet watch + npm dev (no SWA/Functions tools) |
+| 15 | Remove Azure-specific files | ⬜ | staticwebapp.config.json, swa-cli.config.json etc. |
 
-## Phase 3: Authentication
+## Phase 3: Polish
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 9 | Wire up SWA built-in auth (GitHub + Microsoft) | ⬜ | /.auth/login routes |
-| 10 | Create auth context in React | ⬜ | useAuth hook, user state |
-| 11 | Get user identity in Azure Functions | ⬜ | Parse x-ms-client-principal header |
+| 16 | Responsive design + De Mol theming | ⬜ | |
 
-## Phase 4: Core API
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 12 | Cosmos DB repository layer | ⬜ | Generic CRUD, partition keys |
-| 13 | Game management endpoints | ⬜ | Create, get, join game |
-| 14 | Episode management endpoints | ⬜ | Open episode, mark elimination |
-| 15 | Ranking submission endpoint | ⬜ | Submit/update, deadline enforcement |
-| 16 | Leaderboard/scoring endpoint | ⬜ | What-if + final scoring |
-
-## Phase 5: Frontend UI
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 17 | Home / game lobby page | ⬜ | Create or join a game |
-| 18 | Drag-and-drop ranking interface | ⬜ | Mobile-friendly, contestant photos |
-| 19 | Leaderboard / what-if view | ⬜ | During season + final results |
-| 20 | Admin panel | ⬜ | Manage episodes, reveal mole |
-
-## Phase 6: Polish
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 21 | De Mol visual theming | ⬜ | Dark theme, green accents |
-| 22 | Responsive design (mobile-first) | ⬜ | |
-| 23 | Contestant photos integration | ⬜ | From play.tv |
-| 24 | Error handling & loading states | ⬜ | |

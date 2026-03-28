@@ -45,18 +45,16 @@ describe('HomePage', () => {
     expect(screen.getByText('Laden...')).toBeInTheDocument()
   })
 
-  it('shows login buttons when not authenticated', () => {
+  it('shows login button when not authenticated', () => {
     renderWithAuth(null)
     expect(screen.getByText('Inloggen met GitHub')).toBeInTheDocument()
-    expect(screen.getByText('Inloggen met Microsoft')).toBeInTheDocument()
+    expect(screen.queryByText('Inloggen met Microsoft')).not.toBeInTheDocument()
   })
 
-  it('login links point to SWA auth endpoints', () => {
+  it('login link points to GitHub auth endpoint', () => {
     renderWithAuth(null)
     const githubLink = screen.getByText('Inloggen met GitHub') as HTMLAnchorElement
-    const msLink = screen.getByText('Inloggen met Microsoft') as HTMLAnchorElement
-    expect(githubLink.href).toContain('/.auth/login/github')
-    expect(msLink.href).toContain('/.auth/login/aad')
+    expect(githubLink.href).toContain('/auth/login/github')
   })
 
   it('shows create and join sections when authenticated', () => {

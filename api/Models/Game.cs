@@ -9,7 +9,6 @@ public class Game
     public List<Episode> Episodes { get; set; } = new();
     public string? MoleContestantId { get; set; }
     public string InviteCode { get; set; } = Guid.NewGuid().ToString("N")[..8];
-    public string PartitionKey => Id;
 }
 
 public class Contestant

@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 
 namespace Api.Auth;
@@ -9,46 +7,21 @@ public record UserInfo(string UserId, string DisplayName, string[] Roles);
 
 public static class AuthHelper
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    public static UserInfo? GetUserInfo(HttpContext context)
     {
-        PropertyNameCaseInsensitive = true,
-    };
-
-    public static UserInfo? GetUserInfo(HttpRequest request)
-    {
-        if (!request.Headers.TryGetValue("x-ms-client-principal", out var headerValue))
+        var user = context.User;
+        if (user.Identity?.IsAuthenticated != true)
             return null;
 
-        var header = headerValue.FirstOrDefault();
-        if (string.IsNullOrEmpty(header))
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
             return null;
 
-        try
-        {
-            var decoded = Convert.FromBase64String(header);
-            var json = Encoding.UTF8.GetString(decoded);
-            var principal = JsonSerializer.Deserialize<ClientPrincipal>(json, JsonOptions);
+        var displayName =
+            user.FindFirstValue("urn:github:name")
+            ?? user.FindFirstValue(ClaimTypes.Name)
+            ?? userId;
 
-            if (principal == null || string.IsNullOrEmpty(principal.UserId))
-                return null;
-
-            return new UserInfo(
-                principal.UserId,
-                principal.UserDetails ?? principal.UserId,
-                principal.UserRoles ?? []
-            );
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private sealed class ClientPrincipal
-    {
-        public string? IdentityProvider { get; set; }
-        public string? UserId { get; set; }
-        public string? UserDetails { get; set; }
-        public string[]? UserRoles { get; set; }
+        return new UserInfo(userId, displayName, ["authenticated"]);
     }
 }
