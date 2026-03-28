@@ -1,5 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Azure Functions v4 does not support .NET 10 on Linux Consumption plan (used by SWA free tier) -->
+    <TargetFramework>net8.0</TargetFramework>
     <AzureFunctionsVersion>V4</AzureFunctionsVersion>
     <OutputType>Exe</OutputType>
     <AzureCosmosDisableNewtonsoftJsonCheck>true</AzureCosmosDisableNewtonsoftJsonCheck>

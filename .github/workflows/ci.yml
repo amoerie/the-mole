@@ -102,14 +102,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
-      - name: Publish API
-        run: dotnet publish api/Api.csproj --configuration Release --output api_publish
-
-      - name: Write function language hints for SWA deploy
-        run: |
-          printf 'PlatformName="dotnet"\nPlatformVersion="10.0.103"\n' > api_publish/oryx-manifest.toml
-          printf '{"IsEncrypted":false,"Values":{"FUNCTIONS_WORKER_RUNTIME":"dotnet-isolated","AzureWebJobsStorage":"UseDevelopmentStorage=true"}}' > api_publish/local.settings.json
-
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -117,6 +109,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "client"
-          api_location: "api_publish"
+          api_location: "api"
           output_location: "dist"
-          skip_api_build: true
