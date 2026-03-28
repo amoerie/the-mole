@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+bin/
+obj/
+.vs/
+*.user
+
+# Build output
+client/dist/
+api/publish/
+
+# Environment / secrets
+local.settings.json
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Azure
+.azure/
+
+# Test results
+TestResults/
+coverage/
+
+# Cosmos DB emulator certs
+cosmosdb-cert/
