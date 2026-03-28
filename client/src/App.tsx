@@ -1,12 +1,12 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthContext, useAuthProvider } from './hooks/useAuth';
-import HomePage from './pages/HomePage';
-import GamePage from './pages/GamePage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AuthContext, useAuthProvider } from './hooks/useAuth'
+import HomePage from './pages/HomePage'
+import GamePage from './pages/GamePage'
+import LeaderboardPage from './pages/LeaderboardPage'
+import './App.css'
 
 function App() {
-  const auth = useAuthProvider();
+  const auth = useAuthProvider()
 
   return (
     <AuthContext.Provider value={auth}>
@@ -32,7 +32,7 @@ function App() {
         </div>
       </BrowserRouter>
     </AuthContext.Provider>
-  );
+  )
 }
 
-export default App;
+export default App

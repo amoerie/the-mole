@@ -24,7 +24,8 @@ public class CosmosDbService
         foreach (var containerName in ContainerNames)
         {
             await database.CreateContainerIfNotExistsAsync(
-                new ContainerProperties(containerName, "/partitionKey"));
+                new ContainerProperties(containerName, "/partitionKey")
+            );
         }
     }
 
@@ -47,7 +48,11 @@ public class CosmosDbService
         var container = GetContainer(containerName);
         var query = container.GetItemQueryIterator<T>(
             new QueryDefinition("SELECT * FROM c"),
-            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(partitionKey) });
+            requestOptions: new QueryRequestOptions
+            {
+                PartitionKey = new PartitionKey(partitionKey),
+            }
+        );
 
         var results = new List<T>();
         while (query.HasMoreResults)
@@ -58,7 +63,11 @@ public class CosmosDbService
         return results;
     }
 
-    public async Task<List<T>> QueryAsync<T>(string sql, string containerName, Dictionary<string, object>? parameters = null)
+    public async Task<List<T>> QueryAsync<T>(
+        string sql,
+        string containerName,
+        Dictionary<string, object>? parameters = null
+    )
     {
         var queryDefinition = new QueryDefinition(sql);
         if (parameters != null)

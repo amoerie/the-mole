@@ -26,7 +26,7 @@ public class AuthHelperTests
             identityProvider = "github",
             userId = "test-user-123",
             userDetails = "testuser",
-            userRoles = new[] { "authenticated", "anonymous" }
+            userRoles = new[] { "authenticated", "anonymous" },
         };
         var request = CreateRequestWithHeader(EncodeClientPrincipal(principal));
 
@@ -47,7 +47,7 @@ public class AuthHelperTests
             identityProvider = "aad",
             userId = "aad-user-456",
             userDetails = "aaduser@example.com",
-            userRoles = new[] { "authenticated" }
+            userRoles = new[] { "authenticated" },
         };
         var request = CreateRequestWithHeader(EncodeClientPrincipal(principal));
 

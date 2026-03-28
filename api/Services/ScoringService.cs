@@ -4,7 +4,11 @@ namespace Api.Services;
 
 public class ScoringService
 {
-    public List<LeaderboardEntry> CalculateLeaderboard(Game game, List<Player> players, List<Ranking> rankings)
+    public static List<LeaderboardEntry> CalculateLeaderboard(
+        Game game,
+        List<Player> players,
+        List<Ranking> rankings
+    )
     {
         if (string.IsNullOrEmpty(game.MoleContestantId))
             return [];
@@ -12,18 +16,24 @@ public class ScoringService
         return CalculateLeaderboardInternal(game, players, rankings, game.MoleContestantId);
     }
 
-    public List<LeaderboardEntry> CalculateWhatIfLeaderboard(
-        Game game, List<Player> players, List<Ranking> rankings, string hypotheticalMoleId)
+    public static List<LeaderboardEntry> CalculateWhatIfLeaderboard(
+        Game game,
+        List<Player> players,
+        List<Ranking> rankings,
+        string hypotheticalMoleId
+    )
     {
         return CalculateLeaderboardInternal(game, players, rankings, hypotheticalMoleId);
     }
 
     private static List<LeaderboardEntry> CalculateLeaderboardInternal(
-        Game game, List<Player> players, List<Ranking> rankings, string moleContestantId)
+        Game game,
+        List<Player> players,
+        List<Ranking> rankings,
+        string moleContestantId
+    )
     {
-        var episodesByNumber = game.Episodes
-            .OrderBy(e => e.Number)
-            .ToDictionary(e => e.Number);
+        var episodesByNumber = game.Episodes.OrderBy(e => e.Number).ToDictionary(e => e.Number);
 
         var eliminatedBefore = new Dictionary<int, HashSet<string>>();
         var eliminatedSoFar = new HashSet<string>();
@@ -50,62 +60,72 @@ public class ScoringService
                     continue;
 
                 var eliminated = eliminatedBefore.GetValueOrDefault(episode.Number) ?? [];
-                var remainingContestants = game.Contestants
-                    .Where(c => !eliminated.Contains(c.Id))
+                var remainingContestants = game
+                    .Contestants.Where(c => !eliminated.Contains(c.Id))
                     .ToList();
 
                 int n = remainingContestants.Count;
-                if (n <= 1) continue;
+                if (n <= 1)
+                    continue;
 
                 // Find the rank given to the mole (1-based position in the contestant list)
                 int moleIndex = ranking.ContestantIds.IndexOf(moleContestantId);
-                if (moleIndex < 0) continue;
+                if (moleIndex < 0)
+                    continue;
 
                 int r = moleIndex + 1; // 1-based rank
 
                 double score = Math.Round(((n - r) / (double)(n - 1)) * 100, 2);
 
-                episodeScores.Add(new EpisodeScore
-                {
-                    EpisodeNumber = episode.Number,
-                    Score = score,
-                    RankGiven = r,
-                    TotalContestants = n
-                });
+                episodeScores.Add(
+                    new EpisodeScore
+                    {
+                        EpisodeNumber = episode.Number,
+                        Score = score,
+                        RankGiven = r,
+                        TotalContestants = n,
+                    }
+                );
             }
 
-            entries.Add(new LeaderboardEntry
-            {
-                UserId = player.UserId,
-                DisplayName = player.DisplayName,
-                TotalScore = Math.Round(episodeScores.Sum(s => s.Score), 2),
-                EpisodeScores = episodeScores
-            });
+            entries.Add(
+                new LeaderboardEntry
+                {
+                    UserId = player.UserId,
+                    DisplayName = player.DisplayName,
+                    TotalScore = Math.Round(episodeScores.Sum(s => s.Score), 2),
+                    EpisodeScores = episodeScores,
+                }
+            );
         }
 
         // Sort descending by total score, tiebreak: higher rank for mole in later episodes wins
-        entries.Sort((a, b) =>
-        {
-            int cmp = b.TotalScore.CompareTo(a.TotalScore);
-            if (cmp != 0) return cmp;
-
-            // Tiebreaker: compare episode scores from latest to earliest
-            // The player who ranked the mole higher (lower RankGiven) in later episodes wins
-            var aScores = a.EpisodeScores.OrderByDescending(s => s.EpisodeNumber).ToList();
-            var bScores = b.EpisodeScores.OrderByDescending(s => s.EpisodeNumber).ToList();
-
-            int maxEpisodes = Math.Max(aScores.Count, bScores.Count);
-            for (int i = 0; i < maxEpisodes; i++)
+        entries.Sort(
+            (a, b) =>
             {
-                int aRank = i < aScores.Count ? aScores[i].RankGiven : int.MaxValue;
-                int bRank = i < bScores.Count ? bScores[i].RankGiven : int.MaxValue;
-                // Lower rank (closer to 1) is better
-                cmp = aRank.CompareTo(bRank);
-                if (cmp != 0) return cmp;
-            }
+                int cmp = b.TotalScore.CompareTo(a.TotalScore);
+                if (cmp != 0)
+                    return cmp;
 
-            return 0;
-        });
+                // Tiebreaker: compare episode scores from latest to earliest
+                // The player who ranked the mole higher (lower RankGiven) in later episodes wins
+                var aScores = a.EpisodeScores.OrderByDescending(s => s.EpisodeNumber).ToList();
+                var bScores = b.EpisodeScores.OrderByDescending(s => s.EpisodeNumber).ToList();
+
+                int maxEpisodes = Math.Max(aScores.Count, bScores.Count);
+                for (int i = 0; i < maxEpisodes; i++)
+                {
+                    int aRank = i < aScores.Count ? aScores[i].RankGiven : int.MaxValue;
+                    int bRank = i < bScores.Count ? bScores[i].RankGiven : int.MaxValue;
+                    // Lower rank (closer to 1) is better
+                    cmp = aRank.CompareTo(bRank);
+                    if (cmp != 0)
+                        return cmp;
+                }
+
+                return 0;
+            }
+        );
 
         return entries;
     }

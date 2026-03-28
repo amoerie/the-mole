@@ -1,75 +1,81 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { api } from '../api/client';
-import type { Game } from '../types';
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { api } from '../api/client'
+import type { Game } from '../types'
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const { inviteCode: routeInviteCode } = useParams<{ inviteCode?: string }>();
+  const { user, loading } = useAuth()
+  const navigate = useNavigate()
+  const { inviteCode: routeInviteCode } = useParams<{ inviteCode?: string }>()
 
-  const [games, setGames] = useState<Game[]>([]);
-  const [gameName, setGameName] = useState('');
-  const [inviteCode, setInviteCode] = useState(routeInviteCode ?? '');
-  const [error, setError] = useState('');
-  const [joining, setJoining] = useState(false);
+  const [games, setGames] = useState<Game[]>([])
+  const [gameName, setGameName] = useState('')
+  const [inviteCode, setInviteCode] = useState(routeInviteCode ?? '')
+  const [error, setError] = useState('')
+  const [joining, setJoining] = useState(false)
+
+  const handleJoinByInvite = useCallback(
+    async (code: string) => {
+      if (!code.trim() || joining) return
+      setJoining(true)
+      setError('')
+      try {
+        const game = await api.getGameByInvite(code)
+        await api.joinGame(game.id, code)
+        saveGameId(game.id)
+        navigate(`/game/${game.id}`)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ongeldige uitnodigingscode')
+      } finally {
+        setJoining(false)
+      }
+    },
+    [joining, navigate],
+  )
 
   useEffect(() => {
     if (routeInviteCode && user) {
-      handleJoinByInvite(routeInviteCode);
+      handleJoinByInvite(routeInviteCode)
     }
-  }, [routeInviteCode, user]);
+  }, [routeInviteCode, user, handleJoinByInvite])
 
   useEffect(() => {
-    if (!user) return;
-    api.getMyGames()
+    if (!user) return
+    api
+      .getMyGames()
       .then(setGames)
       .catch(() => {
         // Fallback to localStorage if API not available
-        const savedGameIds = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[];
-        Promise.all(savedGameIds.map(id => api.getGame(id).catch(() => null)))
-          .then(results => setGames(results.filter((g): g is Game => g !== null)));
-      });
-  }, [user]);
+        const savedGameIds = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[]
+        Promise.all(savedGameIds.map((id) => api.getGame(id).catch(() => null))).then((results) =>
+          setGames(results.filter((g): g is Game => g !== null)),
+        )
+      })
+  }, [user])
 
   async function handleCreateGame() {
-    if (!gameName.trim()) return;
-    setError('');
+    if (!gameName.trim()) return
+    setError('')
     try {
-      const game = await api.createGame(gameName, []);
-      saveGameId(game.id);
-      navigate(`/game/${game.id}`);
+      const game = await api.createGame(gameName, [])
+      saveGameId(game.id)
+      navigate(`/game/${game.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fout bij aanmaken');
-    }
-  }
-
-  async function handleJoinByInvite(code: string) {
-    setError('');
-    setJoining(true);
-    try {
-      const game = await api.getGameByInvite(code);
-      await api.joinGame(game.id, code);
-      saveGameId(game.id);
-      navigate(`/game/${game.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ongeldige uitnodigingscode');
-    } finally {
-      setJoining(false);
+      setError(err instanceof Error ? err.message : 'Fout bij aanmaken')
     }
   }
 
   function saveGameId(gameId: string) {
-    const ids = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[];
+    const ids = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[]
     if (!ids.includes(gameId)) {
-      ids.push(gameId);
-      localStorage.setItem('myGameIds', JSON.stringify(ids));
+      ids.push(gameId)
+      localStorage.setItem('myGameIds', JSON.stringify(ids))
     }
   }
 
   if (loading) {
-    return <div className="loading">Laden...</div>;
+    return <div className="loading">Laden...</div>
   }
 
   if (!user) {
@@ -88,7 +94,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -100,8 +106,8 @@ export default function HomePage() {
             type="text"
             placeholder="Spelnaam"
             value={gameName}
-            onChange={e => setGameName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreateGame()}
+            onChange={(e) => setGameName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateGame()}
           />
           <button className="btn btn-primary" onClick={handleCreateGame}>
             Aanmaken
@@ -116,8 +122,8 @@ export default function HomePage() {
             type="text"
             placeholder="Uitnodigingscode"
             value={inviteCode}
-            onChange={e => setInviteCode(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleJoinByInvite(inviteCode)}
+            onChange={(e) => setInviteCode(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoinByInvite(inviteCode)}
           />
           <button
             className="btn btn-primary"
@@ -135,7 +141,7 @@ export default function HomePage() {
         <section className="my-games">
           <h2>Mijn spellen</h2>
           <ul className="game-list">
-            {games.map(game => (
+            {games.map((game) => (
               <li key={game.id}>
                 <button className="btn btn-game" onClick={() => navigate(`/game/${game.id}`)}>
                   {game.name}
@@ -149,5 +155,5 @@ export default function HomePage() {
         </section>
       )}
     </div>
-  );
+  )
 }

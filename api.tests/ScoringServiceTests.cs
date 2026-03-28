@@ -5,53 +5,74 @@ namespace Api.Tests;
 
 public class ScoringServiceTests
 {
-    private readonly ScoringService _sut = new();
-
     /// <summary>
     /// Creates a game with N contestants (including the mole) and the specified episodes.
     /// Contestants eliminated before each episode are tracked via Episode.EliminatedContestantId.
     /// </summary>
-    private static Game CreateGame(string moleId, List<string> allContestantIds, List<(int number, string? eliminatedId)> episodes)
+    private static Game CreateGame(
+        string moleId,
+        List<string> allContestantIds,
+        List<(int number, string? eliminatedId)> episodes
+    )
     {
         var game = new Game
         {
             Id = "game-1",
             MoleContestantId = moleId,
-            Contestants = allContestantIds.Select(id => new Contestant { Id = id, Name = id }).ToList(),
-            Episodes = episodes.Select(e => new Episode
-            {
-                Number = e.number,
-                EliminatedContestantId = e.eliminatedId
-            }).ToList()
+            Contestants = allContestantIds
+                .Select(id => new Contestant { Id = id, Name = id })
+                .ToList(),
+            Episodes = episodes
+                .Select(e => new Episode
+                {
+                    Number = e.number,
+                    EliminatedContestantId = e.eliminatedId,
+                })
+                .ToList(),
         };
         return game;
     }
 
-    private static Game CreateSimpleGame(string moleId, int contestantCount, int episodeCount = 1) =>
+    private static Game CreateSimpleGame(
+        string moleId,
+        int contestantCount,
+        int episodeCount = 1
+    ) =>
         CreateGame(
             moleId,
             Enumerable.Range(1, contestantCount - 1).Select(i => $"c{i}").Prepend(moleId).ToList(),
-            Enumerable.Range(1, episodeCount).Select(i => (i, (string?)null)).ToList());
+            Enumerable.Range(1, episodeCount).Select(i => (i, (string?)null)).ToList()
+        );
 
-    private static Player CreatePlayer(string userId, string displayName = "Player") => new()
-    {
-        Id = Guid.NewGuid().ToString(),
-        UserId = userId,
-        DisplayName = displayName
-    };
+    private static Player CreatePlayer(string userId, string displayName = "Player") =>
+        new()
+        {
+            Id = Guid.NewGuid().ToString(),
+            UserId = userId,
+            DisplayName = displayName,
+        };
 
-    private static Ranking CreateRanking(string userId, int episodeNumber, List<string> contestantIds) => new()
-    {
-        UserId = userId,
-        EpisodeNumber = episodeNumber,
-        ContestantIds = contestantIds
-    };
+    private static Ranking CreateRanking(
+        string userId,
+        int episodeNumber,
+        List<string> contestantIds
+    ) =>
+        new()
+        {
+            UserId = userId,
+            EpisodeNumber = episodeNumber,
+            ContestantIds = contestantIds,
+        };
 
     /// <summary>
     /// Builds a ranking list with the mole at the given 1-based rank position,
     /// filling remaining slots with filler contestant IDs.
     /// </summary>
-    private static List<string> BuildRankingWithMoleAt(string moleId, int moleRank, int totalContestants)
+    private static List<string> BuildRankingWithMoleAt(
+        string moleId,
+        int moleRank,
+        int totalContestants
+    )
     {
         var ranked = new List<string>();
         int filler = 1;
@@ -78,7 +99,7 @@ public class ScoringServiceTests
         var player = CreatePlayer("user1");
         var ranking = CreateRanking("user1", 1, BuildRankingWithMoleAt("mole", rank, n));
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [player], [ranking]);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [player], [ranking]);
 
         Assert.Equal(expected, Assert.Single(leaderboard).TotalScore);
     }
@@ -93,7 +114,7 @@ public class ScoringServiceTests
         var player = CreatePlayer("user1");
         var ranking = CreateRanking("user1", 1, BuildRankingWithMoleAt("mole", rank, n));
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [player], [ranking]);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [player], [ranking]);
 
         Assert.Equal(expected, Assert.Single(leaderboard).TotalScore);
     }
@@ -108,7 +129,7 @@ public class ScoringServiceTests
         var player = CreatePlayer("user1");
         var ranking = CreateRanking("user1", 1, BuildRankingWithMoleAt("mole", rank, n));
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [player], [ranking]);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [player], [ranking]);
 
         Assert.Equal(expected, Assert.Single(leaderboard).TotalScore);
     }
@@ -121,11 +142,17 @@ public class ScoringServiceTests
 
         // Rank mole #1 → 100
         var r1 = CreateRanking("user1", 1, BuildRankingWithMoleAt("mole", 1, 2));
-        Assert.Equal(100.0, Assert.Single(_sut.CalculateLeaderboard(game, [player], [r1])).TotalScore);
+        Assert.Equal(
+            100.0,
+            Assert.Single(ScoringService.CalculateLeaderboard(game, [player], [r1])).TotalScore
+        );
 
         // Rank mole #2 → 0
         var r2 = CreateRanking("user1", 1, BuildRankingWithMoleAt("mole", 2, 2));
-        Assert.Equal(0.0, Assert.Single(_sut.CalculateLeaderboard(game, [player], [r2])).TotalScore);
+        Assert.Equal(
+            0.0,
+            Assert.Single(ScoringService.CalculateLeaderboard(game, [player], [r2])).TotalScore
+        );
     }
 
     // ────────────────────────────────────────────
@@ -138,10 +165,7 @@ public class ScoringServiceTests
         // 5 contestants: mole, c1, c2, c3, c4
         // Episode 1: all 5 present, then c4 eliminated
         // Episode 2: 4 remaining (mole, c1, c2, c3)
-        var game = CreateGame(
-            "mole",
-            ["mole", "c1", "c2", "c3", "c4"],
-            [(1, "c4"), (2, null)]);
+        var game = CreateGame("mole", ["mole", "c1", "c2", "c3", "c4"], [(1, "c4"), (2, null)]);
 
         var alice = CreatePlayer("alice", "Alice");
         var bob = CreatePlayer("bob", "Bob");
@@ -156,7 +180,7 @@ public class ScoringServiceTests
             CreateRanking("bob", 2, BuildRankingWithMoleAt("mole", 1, 4)),
         };
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [alice, bob], rankings);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [alice, bob], rankings);
 
         Assert.Equal(2, leaderboard.Count);
 
@@ -180,10 +204,7 @@ public class ScoringServiceTests
     public void CalculateLeaderboard_Tiebreaker_PlayerWhoRankedMoleHigherInLaterEpisodeWins()
     {
         // 5 contestants, 2 episodes, no eliminations
-        var game = CreateGame(
-            "mole",
-            ["mole", "c1", "c2", "c3", "c4"],
-            [(1, null), (2, null)]);
+        var game = CreateGame("mole", ["mole", "c1", "c2", "c3", "c4"], [(1, null), (2, null)]);
 
         var alice = CreatePlayer("alice", "Alice");
         var bob = CreatePlayer("bob", "Bob");
@@ -198,7 +219,7 @@ public class ScoringServiceTests
             CreateRanking("bob", 2, BuildRankingWithMoleAt("mole", 1, 5)),
         };
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [alice, bob], rankings);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [alice, bob], rankings);
 
         Assert.Equal(2, leaderboard.Count);
         Assert.Equal(leaderboard[0].TotalScore, leaderboard[1].TotalScore); // tied
@@ -219,15 +240,15 @@ public class ScoringServiceTests
         var ranking = CreateRanking("alice", 1, ["mole", "c1", "c2", "c3", "c4"]);
 
         // What-if mole is "mole" (rank 1) → 100
-        var lb1 = _sut.CalculateWhatIfLeaderboard(game, [alice], [ranking], "mole");
+        var lb1 = ScoringService.CalculateWhatIfLeaderboard(game, [alice], [ranking], "mole");
         Assert.Equal(100.0, Assert.Single(lb1).TotalScore);
 
         // What-if mole is "c4" (rank 5) → 0
-        var lb2 = _sut.CalculateWhatIfLeaderboard(game, [alice], [ranking], "c4");
+        var lb2 = ScoringService.CalculateWhatIfLeaderboard(game, [alice], [ranking], "c4");
         Assert.Equal(0.0, Assert.Single(lb2).TotalScore);
 
         // What-if mole is "c2" (rank 3) → 50
-        var lb3 = _sut.CalculateWhatIfLeaderboard(game, [alice], [ranking], "c2");
+        var lb3 = ScoringService.CalculateWhatIfLeaderboard(game, [alice], [ranking], "c2");
         Assert.Equal(50.0, Assert.Single(lb3).TotalScore);
     }
 
@@ -238,10 +259,7 @@ public class ScoringServiceTests
     [Fact]
     public void CalculateLeaderboard_MissingRankingForEpisode_GetsZeroForThatEpisode()
     {
-        var game = CreateGame(
-            "mole",
-            ["mole", "c1", "c2", "c3", "c4"],
-            [(1, "c4"), (2, null)]);
+        var game = CreateGame("mole", ["mole", "c1", "c2", "c3", "c4"], [(1, "c4"), (2, null)]);
 
         var player = CreatePlayer("user1", "Alice");
 
@@ -252,7 +270,7 @@ public class ScoringServiceTests
             // No ranking for episode 2 → 0 points
         };
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [player], rankings);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [player], rankings);
 
         var entry = Assert.Single(leaderboard);
         Assert.Equal(100.0, entry.TotalScore); // 100 + 0
@@ -272,7 +290,7 @@ public class ScoringServiceTests
         var player = CreatePlayer("user1");
         var ranking = CreateRanking("user1", 1, BuildRankingWithMoleAt("mole", 1, 5));
 
-        var leaderboard = _sut.CalculateLeaderboard(game, [player], [ranking]);
+        var leaderboard = ScoringService.CalculateLeaderboard(game, [player], [ranking]);
 
         Assert.Empty(leaderboard);
     }

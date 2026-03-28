@@ -11,7 +11,7 @@ public static class AuthHelper
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
     };
 
     public static UserInfo? GetUserInfo(HttpRequest request)
@@ -35,7 +35,8 @@ public static class AuthHelper
             return new UserInfo(
                 principal.UserId,
                 principal.UserDetails ?? principal.UserId,
-                principal.UserRoles ?? []);
+                principal.UserRoles ?? []
+            );
         }
         catch
         {
@@ -43,7 +44,7 @@ public static class AuthHelper
         }
     }
 
-    private class ClientPrincipal
+    private sealed class ClientPrincipal
     {
         public string? IdentityProvider { get; set; }
         public string? UserId { get; set; }
