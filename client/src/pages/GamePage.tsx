@@ -21,6 +21,9 @@ export default function GamePage() {
   const [newDeadline, setNewDeadline] = useState('');
   const [eliminatedId, setEliminatedId] = useState('');
   const [moleId, setMoleId] = useState('');
+  const [newContestantName, setNewContestantName] = useState('');
+  const [newContestantAge, setNewContestantAge] = useState('');
+  const [newContestantPhoto, setNewContestantPhoto] = useState('');
 
   useEffect(() => {
     if (!gameId) return;
@@ -99,6 +102,46 @@ export default function GamePage() {
     }
   }
 
+  async function handleAddContestant() {
+    if (!gameId || !newContestantName.trim()) return;
+    try {
+      const updated = await api.addContestants(gameId, [{
+        name: newContestantName.trim(),
+        age: parseInt(newContestantAge) || 0,
+        photoUrl: newContestantPhoto.trim(),
+      }]);
+      setGame(updated);
+      setNewContestantName('');
+      setNewContestantAge('');
+      setNewContestantPhoto('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fout bij toevoegen kandidaat');
+    }
+  }
+
+  const season14Contestants = [
+    { name: 'Abigail', age: 33, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500abigail-tcb0dt.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=346a11041038be8f1580d31014f9e5bbdac79ff232f15645ad306554f48ee987' },
+    { name: 'Dries', age: 30, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500dries-tcb0qr.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=6c47133281658861767b356f7ce19a4293dc4d4d97bd053563d6d693a400898f' },
+    { name: 'Isabel', age: 51, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500isabel-tcb11c.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=6509e7b326e32bdb996c8952ab0e76b7b6f8669271714a059053519fa15499ed' },
+    { name: 'Karla', age: 52, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500karla-tcb19o.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=e3a703d2a9f7d47797fc5575afd09f84e5951eb22f996e1ee12c90821d68c729' },
+    { name: 'Maïté', age: 26, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500maite-tcb1h1.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=62dc338146d3a1755612f3fd806d36b212a09a2c38852f98e6bc48aeff8d4d0e' },
+    { name: 'Vincent', age: 51, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500vincent-tcb1mj.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=b35ffdcb0d89954382acb063348173c8d9c89cf4249c2fbaeb81e195344b9061' },
+    { name: 'Wout', age: 33, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500wout-tcb1pm.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=a9427b6f2b9a54a457f266b59c6179b47f1eeec2e079eac353cce5f68e1c9b69' },
+    { name: 'Maxim', age: 26, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500maxim-tcb1k7.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=081ffab64cadff048ca1e218233f40fb5ad4c223b0eaac22abccf9ad2a96f3e8' },
+    { name: 'Julie', age: 26, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500julie-tcb14l.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=ec0909f5fb07b057f6edae24717b8f18e8d59ec1df4a14a7eb14565c826119ed' },
+    { name: 'Kristof', age: 40, photoUrl: 'https://images.play.tv/styles/037bb38d74600255a0c9e7fa60cc8a6224818ff02baf79e1604ce8d8220cfa85/meta/demols14500x500kristof-tcb1ct.png?style=W3sicmVzaXplIjp7IndpZHRoIjoxMDAsImhlaWdodCI6MTAwfX1d&sign=8ad452b559f7388c0dfb9d5ad164aca27aae6f265dce858c5597234277063b1d' },
+  ];
+
+  async function handleLoadSeason14() {
+    if (!gameId) return;
+    try {
+      const updated = await api.addContestants(gameId, season14Contestants);
+      setGame(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fout bij laden seizoen 14');
+    }
+  }
+
   return (
     <div className="game-page">
       <div className="game-header">
@@ -163,6 +206,44 @@ export default function GamePage() {
       {isAdmin && (
         <section className="admin-section">
           <h3>Beheer</h3>
+
+          {game.contestants.length === 0 && (
+            <div className="admin-card">
+              <h4>Kandidaten toevoegen</h4>
+              <p>Je spel heeft nog geen kandidaten. Voeg ze één voor één toe, of laad het huidige seizoen.</p>
+              <button className="btn btn-primary" onClick={handleLoadSeason14}>
+                🇧🇪 Seizoen 14 laden (2026)
+              </button>
+            </div>
+          )}
+
+          <div className="admin-card">
+            <h4>Kandidaat toevoegen</h4>
+            <div className="form-row">
+              <input
+                type="text"
+                placeholder="Naam"
+                value={newContestantName}
+                onChange={e => setNewContestantName(e.target.value)}
+              />
+              <input
+                type="number"
+                placeholder="Leeftijd"
+                value={newContestantAge}
+                onChange={e => setNewContestantAge(e.target.value)}
+                style={{ width: '100px' }}
+              />
+              <input
+                type="text"
+                placeholder="Foto URL (optioneel)"
+                value={newContestantPhoto}
+                onChange={e => setNewContestantPhoto(e.target.value)}
+              />
+              <button className="btn btn-primary" onClick={handleAddContestant}>
+                Toevoegen
+              </button>
+            </div>
+          </div>
 
           <div className="admin-card">
             <h4>Nieuwe aflevering</h4>

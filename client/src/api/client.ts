@@ -28,6 +28,8 @@ export const api = {
       body: JSON.stringify({ name, contestants }),
     }),
 
+  getMyGames: () => fetchJson<Game[]>('/my-games'),
+
   getGame: (gameId: string) => fetchJson<Game>(`/games/${gameId}`),
 
   getGameByInvite: (inviteCode: string) => fetchJson<Game>(`/games/by-invite/${inviteCode}`),
@@ -36,6 +38,12 @@ export const api = {
     fetchJson<void>(`/games/${gameId}/join`, {
       method: 'POST',
       body: JSON.stringify({ inviteCode }),
+    }),
+
+  addContestants: (gameId: string, contestants: { name: string; age: number; photoUrl: string }[]) =>
+    fetchJson<Game>(`/games/${gameId}/contestants`, {
+      method: 'POST',
+      body: JSON.stringify({ contestants }),
     }),
 
   // Episodes

@@ -23,11 +23,14 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!user) return;
-    // Load user's games - for now we don't have a list endpoint,
-    // so we'll show games from local storage
-    const savedGameIds = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[];
-    Promise.all(savedGameIds.map(id => api.getGame(id).catch(() => null)))
-      .then(results => setGames(results.filter((g): g is Game => g !== null)));
+    api.getMyGames()
+      .then(setGames)
+      .catch(() => {
+        // Fallback to localStorage if API not available
+        const savedGameIds = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[];
+        Promise.all(savedGameIds.map(id => api.getGame(id).catch(() => null)))
+          .then(results => setGames(results.filter((g): g is Game => g !== null)));
+      });
   }, [user]);
 
   async function handleCreateGame() {

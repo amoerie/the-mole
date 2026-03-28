@@ -139,6 +139,66 @@ public class GameFunctions
         });
     }
 
+    [Function("GetMyGames")]
+    public async Task<IActionResult> GetMyGames(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "my-games")] HttpRequest req)
+    {
+        var user = AuthHelper.GetUserInfo(req);
+        if (user == null)
+            return new UnauthorizedResult();
+
+        // Find games where user is a player
+        var allPlayers = await _cosmos.QueryAsync<Player>(
+            "SELECT * FROM c WHERE c.userId = @userId",
+            "players",
+            new Dictionary<string, object> { ["@userId"] = user.UserId });
+
+        var games = new List<Game>();
+        foreach (var player in allPlayers)
+        {
+            var game = await _cosmos.GetAsync<Game>(player.GameId, player.GameId, "games");
+            if (game != null)
+                games.Add(game);
+        }
+
+        return new OkObjectResult(games);
+    }
+
+    [Function("AddContestants")]
+    public async Task<IActionResult> AddContestants(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games/{gameId}/contestants")] HttpRequest req,
+        string gameId)
+    {
+        var user = AuthHelper.GetUserInfo(req);
+        if (user == null)
+            return new UnauthorizedResult();
+
+        var game = await _cosmos.GetAsync<Game>(gameId, gameId, "games");
+        if (game == null)
+            return new NotFoundResult();
+
+        if (game.AdminUserId != user.UserId)
+            return new UnauthorizedResult();
+
+        var body = await JsonSerializer.DeserializeAsync<AddContestantsRequest>(req.Body, JsonOptions);
+        if (body?.Contestants == null || body.Contestants.Count == 0)
+            return new BadRequestObjectResult(new { error = "At least one contestant is required." });
+
+        foreach (var c in body.Contestants)
+        {
+            if (string.IsNullOrWhiteSpace(c.Name))
+                return new BadRequestObjectResult(new { error = "Contestant name is required." });
+            
+            if (string.IsNullOrWhiteSpace(c.Id))
+                c.Id = Guid.NewGuid().ToString();
+        }
+
+        game.Contestants.AddRange(body.Contestants);
+        await _cosmos.UpsertAsync(game, game.PartitionKey, "games");
+
+        return new OkObjectResult(game);
+    }
+
     private class CreateGameRequest
     {
         public string? Name { get; set; }
@@ -148,5 +208,10 @@ public class GameFunctions
     private class JoinGameRequest
     {
         public string? InviteCode { get; set; }
+    }
+
+    private class AddContestantsRequest
+    {
+        public List<Contestant>? Contestants { get; set; }
     }
 }

@@ -172,6 +172,21 @@ Ranking {
 
 ---
 
+## Progress
+
+### ✅ Phase 1: Project Foundation (COMPLETE)
+- React + TypeScript SPA (Vite, React 19)
+- Azure Functions .NET 8 isolated worker backend
+- Cosmos DB service, scoring engine, auth helper
+- 47 tests (20 xUnit + 27 Vitest) — all passing
+- GitHub Actions CI: build + test on push to main & PRs
+- SWA CLI config for local dev
+- Docker Compose for Cosmos DB emulator (Podman-compatible)
+- Azure deployment guide (AZURE_DEPLOYMENT.md)
+
+### ⬜ Phase 2: Azure Resources (MANUAL — see AZURE_DEPLOYMENT.md)
+### ⬜ Phase 3–6: Remaining work in todo.md
+
 ## Local Development
 
 - **Cosmos DB Emulator**: Runs via Podman/Docker container (`docker-compose.yml`)

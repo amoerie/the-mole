@@ -20,6 +20,7 @@ builder.Services.AddSingleton(new CosmosClient(cosmosConnectionString, new Cosmo
 }));
 builder.Services.AddSingleton<CosmosDbService>();
 builder.Services.AddSingleton<ScoringService>();
+builder.Services.AddHostedService<CosmosDbInitializer>();
 
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
