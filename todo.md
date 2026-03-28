@@ -11,11 +11,11 @@
 ## Phase 1: Project Foundation
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | Scaffold React + TypeScript SPA | ⬜ | Vite, React 18, TypeScript |
-| 2 | Scaffold Azure Functions (.NET 8) backend | ⬜ | C# isolated worker |
-| 3 | Configure Azure Static Web Apps config | ⬜ | staticwebapp.config.json, auth routes |
-| 4 | Set up GitHub Actions CI/CD | ⬜ | Build + test + deploy |
-| 5 | Set up unit test frameworks | ⬜ | Vitest (frontend), xUnit (backend) |
+| 1 | Scaffold React + TypeScript SPA | ✅ | Vite, React 19, TypeScript |
+| 2 | Scaffold Azure Functions (.NET 8) backend | ✅ | C# isolated worker, Cosmos DB |
+| 3 | Configure Azure Static Web Apps config | ✅ | staticwebapp.config.json, auth routes |
+| 4 | Set up GitHub Actions CI/CD | ✅ | Build + test + deploy pipeline |
+| 5 | Set up unit test frameworks | ✅ | Vitest (27 tests), xUnit (20 tests) |
 
 ## Phase 2: Azure Resources
 | # | Task | Status | Notes |

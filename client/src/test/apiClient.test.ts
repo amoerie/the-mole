@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { api } from '../api/client';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
-// Import after mock setup
-import { api } from '../api/client';
+vi.stubGlobal('fetch', mockFetch);
 
 describe('API client', () => {
   beforeEach(() => {
