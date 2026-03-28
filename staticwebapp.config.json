@@ -9,10 +9,6 @@
       "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/api/me",
-      "allowedRoles": ["authenticated"]
-    },
-    {
       "route": "/api/games/by-invite/*",
       "allowedRoles": ["anonymous", "authenticated"]
     },
