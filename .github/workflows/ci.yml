@@ -105,12 +105,10 @@ jobs:
       - name: Publish API
         run: dotnet publish api/Api.csproj --configuration Release --output api_publish
 
-      - name: Write Oryx manifest for .NET 10 detection
+      - name: Write function language hints for SWA deploy
         run: |
-          cat > api_publish/oryx-manifest.toml << 'EOF'
-          PlatformName="dotnet"
-          PlatformVersion="10.0.103"
-          EOF
+          printf 'PlatformName="dotnet"\nPlatformVersion="10.0.103"\n' > api_publish/oryx-manifest.toml
+          printf '{"IsEncrypted":false,"Values":{"FUNCTIONS_WORKER_RUNTIME":"dotnet-isolated","AzureWebJobsStorage":"UseDevelopmentStorage=true"}}' > api_publish/local.settings.json
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
