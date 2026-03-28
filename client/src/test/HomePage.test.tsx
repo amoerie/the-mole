@@ -9,6 +9,7 @@ import type { UserInfo } from '../types';
 vi.mock('../api/client', () => ({
   api: {
     getMe: vi.fn(),
+    getMyGames: vi.fn().mockRejectedValue(new Error('not available')),
     createGame: vi.fn(),
     getGame: vi.fn(),
     getGameByInvite: vi.fn(),
