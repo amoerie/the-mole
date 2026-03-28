@@ -25,6 +25,9 @@ public partial class CosmosDbInitializer(
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not ensure Cosmos DB containers on startup. Will retry on first use.")]
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Could not ensure Cosmos DB containers on startup. Will retry on first use."
+    )]
     private static partial void LogStartupWarning(ILogger logger, Exception ex);
 }
