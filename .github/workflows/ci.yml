@@ -105,6 +105,13 @@ jobs:
       - name: Publish API
         run: dotnet publish api/Api.csproj --configuration Release --output api_publish
 
+      - name: Write Oryx manifest for .NET 10 detection
+        run: |
+          cat > api_publish/oryx-manifest.toml << 'EOF'
+          PlatformName="dotnet"
+          PlatformVersion="10.0.103"
+          EOF
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
