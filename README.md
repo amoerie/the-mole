@@ -8,63 +8,73 @@ cumulative scores determine the winner.
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React + TypeScript (Vite) |
-| Backend | Azure Functions (.NET 8, C#) |
-| Database | Azure Cosmos DB (NoSQL) |
-| Hosting | Azure Static Web Apps (free tier) |
-| Auth | Built-in SWA auth (GitHub / Microsoft) |
-| CI/CD | GitHub Actions |
+| Frontend | React 19 + TypeScript (Vite) |
+| Backend | ASP.NET Core 10 Minimal API (C#) |
+| Database | SQLite + EF Core 9 |
+| Auth | Passwordless.dev passkeys (Bitwarden) |
+| Hosting | Fly.io (free tier, Amsterdam) |
+| CI/CD | GitHub Actions → GHCR → flyctl deploy |
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local) v4
-- [SWA CLI](https://azure.github.io/static-web-apps-cli/) (`npm install -g @azure/static-web-apps-cli`)
-- [Podman](https://podman.io/) or Docker (for Cosmos DB emulator)
+- [Node.js](https://nodejs.org/) 22+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- A [Passwordless.dev](https://admin.passwordless.dev) account (free) — needed for passkey auth
+
+### First-time setup
+
+```bash
+# 1. Install frontend dependencies
+cd client && npm install && cd ..
+
+# 2. Restore .NET tools (CSharpier formatter)
+dotnet tool restore
+
+# 3. Enable the pre-commit formatting hook
+git config core.hooksPath .githooks
+```
 
 ### Local Development
 
-1. **Start the Cosmos DB emulator:**
-   ```bash
-   docker-compose up -d   # or: podman-compose up -d
-   ```
+```bash
+start-local.cmd
+```
 
-2. **Install dependencies:**
-   ```bash
-   cd client && npm install
-   cd ../api && dotnet restore
-   ```
+This opens two terminals:
+- `dotnet watch run` — API on http://localhost:5000
+- `npm run dev` — Vite dev server on http://localhost:5173 (proxies `/api` and `/auth` to :5000)
 
-3. **Run with SWA CLI** (recommended — handles auth simulation + proxying):
-   ```bash
-   swa start
-   ```
-   This starts the Vite dev server, Azure Functions, and proxies everything through
-   `http://localhost:4280` with simulated authentication.
+#### Auth credentials
 
-4. **Or run individually:**
-   ```bash
-   # Terminal 1: Frontend
-   cd client && npm run dev
+Add your Passwordless.dev keys to `api/appsettings.Development.json` (or .NET user secrets):
 
-   # Terminal 2: Backend
-   cd api && func start
+```json
+{
+  "Passwordless": {
+    "ApiKey": "your-app:public:...",
+    "ApiSecret": "your-app:secret:..."
+  }
+}
+```
 
-   # Terminal 3: SWA proxy
-   swa start http://localhost:5173 --api-location http://localhost:7071
-   ```
+Add the public key to `client/.env.local`:
+
+```
+VITE_PASSWORDLESS_API_KEY=your-app:public:...
+```
+
+The SQLite database is created automatically at `api/themole.db` on first run.
 
 ### Running Tests
 
 ```bash
-# Frontend tests
-cd client && npm test
+# Backend
+dotnet test api.tests/Api.Tests.csproj
 
-# Backend tests
-cd api.tests && dotnet test
+# Frontend
+cd client && npm test
 
 # Watch mode
 cd client && npm run test:watch
@@ -95,24 +105,30 @@ the-mole/
 │   │   ├── api/         # API client
 │   │   ├── components/  # Reusable components
 │   │   ├── hooks/       # React hooks (auth, etc.)
+│   │   ├── lib/         # Shared libraries (passwordless client)
 │   │   ├── pages/       # Route pages
-│   │   ├── test/        # Test setup
+│   │   ├── test/        # Vitest tests
 │   │   └── types/       # TypeScript interfaces
 │   └── package.json
-├── api/                 # Azure Functions (.NET 8)
+├── api/                 # ASP.NET Core 10 Minimal API
 │   ├── Auth/            # Auth helpers
-│   ├── Functions/       # HTTP trigger functions
+│   ├── Data/            # EF Core DbContext + migrations
 │   ├── Models/          # Data models
-│   ├── Services/        # Business logic
+│   ├── Routes/          # Endpoint route handlers
+│   ├── Services/        # Business logic (scoring)
 │   └── Api.csproj
-├── api.tests/           # xUnit tests
-├── .github/workflows/   # CI/CD
-├── staticwebapp.config.json
-├── docker-compose.yml   # Cosmos DB emulator
-└── swa-cli.config.json  # SWA CLI config
+├── api.tests/           # xUnit integration tests
+├── .github/workflows/   # CI/CD (build → test → Docker → Fly.io)
+├── .githooks/           # Git hooks (pre-commit: CSharpier + Prettier)
+├── Dockerfile           # Multi-stage: node build → dotnet publish → aspnet runtime
+├── fly.toml             # Fly.io deployment config
+└── the-mole.slnx        # Solution file (JetBrains Rider)
 ```
 
 ## Deployment
 
-Pushes to `main` automatically deploy via GitHub Actions to Azure Static Web Apps.
-Set the `AZURE_STATIC_WEB_APPS_API_TOKEN` secret in your GitHub repository settings.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for full Fly.io setup instructions.
+
+Pushes to `main` automatically build a Docker image, push it to GHCR, and deploy to Fly.io.
+Required GitHub secret: `FLY_API_TOKEN`.
+
