@@ -1,13 +1,12 @@
 /**
  * API client — thin wrapper around the orval-generated functions.
  *
- * Each method calls the generated typed function and extracts `.data` so the
- * rest of the app keeps its simple `api.getMe()` call shape. TypeScript will
- * catch any mismatch between what the backend returns and what callers expect
- * the moment the spec changes and you re-run `npm run generate`.
+ * Each method calls the generated typed function, then passes the raw response
+ * through the anti-corruption layer (mappers.ts) to produce clean app-level
+ * types. TypeScript will fail to compile here if the API contract changes and
+ * the generated types no longer match what the mappers expect.
  *
- * Return types are cast to the app-level types from `../types` (which declare
- * fields as required, matching what the API always returns in practice).
+ * Re-run `npm run generate` after changing the API, then fix any mapper errors.
  */
 import {
   addContestants as _addContestants,
@@ -29,71 +28,120 @@ import {
   updateEpisode as _updateEpisode,
   verifyPasskey as _verifyPasskey,
 } from './generated'
-import type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo } from '../types'
+import { mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
+import type { Game, LeaderboardEntry, NewContestant, Ranking, UserInfo } from '../types'
 
-export type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo }
+export type { Game, LeaderboardEntry, NewContestant, Ranking, UserInfo }
 
 export const api = {
   // Auth
-  getMe: () => _getMe().then((r) => r.data as UserInfo),
+  async getMe(): Promise<UserInfo> {
+    const { data } = await _getMe()
+    return mapUserInfo(data!)
+  },
 
-  registerPasskey: (email: string, displayName: string) =>
-    _registerPasskey({ email, displayName }).then((r) => r.data),
+  async registerPasskey(email: string, displayName: string) {
+    const { data } = await _registerPasskey({ email, displayName })
+    return data
+  },
 
-  verifyPasskey: (token: string) => _verifyPasskey({ token }).then((r) => r.data as UserInfo),
+  async verifyPasskey(token: string): Promise<UserInfo> {
+    const { data } = await _verifyPasskey({ token })
+    return mapUserInfo(data!)
+  },
 
-  requestRecovery: (email: string) => _requestRecovery({ email }).then((r) => r.data),
+  async requestRecovery(email: string) {
+    const { data } = await _requestRecovery({ email })
+    return data
+  },
 
   // Games
-  createGame: (name: string, contestants: Contestant[]) =>
-    _createGame({ name, contestants }).then((r) => r.data as Game),
+  async createGame(name: string, contestants: NewContestant[]): Promise<Game> {
+    const { data } = await _createGame({ name, contestants })
+    return mapGame(data!)
+  },
 
-  getMyGames: () => _getMyGames().then((r) => r.data as Game[]),
+  async getMyGames(): Promise<Game[]> {
+    const { data } = await _getMyGames()
+    return (data ?? []).map(mapGame)
+  },
 
-  getGame: (gameId: string) => _getGame(gameId).then((r) => r.data as Game),
+  async getGame(gameId: string): Promise<Game> {
+    const { data } = await _getGame(gameId)
+    return mapGame(data!)
+  },
 
-  getGameByInvite: (inviteCode: string) => _getGameByInvite(inviteCode).then((r) => r.data),
+  async getGameByInvite(inviteCode: string) {
+    const { data } = await _getGameByInvite(inviteCode)
+    return data
+  },
 
-  joinGame: (gameId: string, inviteCode: string) =>
-    _joinGame(gameId, { inviteCode }).then((r) => r.data),
+  async joinGame(gameId: string, inviteCode: string) {
+    const { data } = await _joinGame(gameId, { inviteCode })
+    return data
+  },
 
-  addContestants: (gameId: string, contestants: Contestant[]) =>
-    _addContestants(gameId, { contestants }).then((r) => r.data as Game),
+  async addContestants(gameId: string, contestants: NewContestant[]): Promise<Game> {
+    const { data } = await _addContestants(gameId, { contestants })
+    return mapGame(data!)
+  },
 
-  // Episodes
-  createEpisode: (gameId: string, deadline: string, eliminatedContestantId?: string) =>
-    _createEpisode(gameId, {
+  // Episodes — these return Episode/RevealMoleResponse, not Game.
+  // Callers that need updated game state should call api.getGame() afterwards.
+  async createEpisode(gameId: string, deadline: string, eliminatedContestantId?: string) {
+    const { data } = await _createEpisode(gameId, {
       deadline,
       eliminatedContestantId: eliminatedContestantId ?? null,
-    }).then((r) => r.data),
+    })
+    return data
+  },
 
-  updateEpisode: (
+  async updateEpisode(
     gameId: string,
     episodeNumber: number,
     deadline?: string,
     eliminatedContestantId?: string,
-  ) =>
-    _updateEpisode(gameId, episodeNumber, {
+  ) {
+    const { data } = await _updateEpisode(gameId, episodeNumber, {
       deadline: deadline ?? null,
       eliminatedContestantId: eliminatedContestantId ?? null,
-    }).then((r) => r.data),
+    })
+    return data
+  },
 
-  revealMole: (gameId: string, moleContestantId: string) =>
-    _revealMole(gameId, { moleContestantId }).then((r) => r.data),
+  async revealMole(gameId: string, moleContestantId: string) {
+    const { data } = await _revealMole(gameId, { moleContestantId })
+    return data
+  },
 
   // Rankings
-  submitRanking: (gameId: string, episodeNumber: number, contestantIds: string[]) =>
-    _submitRanking(gameId, episodeNumber, { contestantIds }).then((r) => r.data as Ranking),
+  async submitRanking(
+    gameId: string,
+    episodeNumber: number,
+    contestantIds: string[],
+  ): Promise<Ranking> {
+    const { data } = await _submitRanking(gameId, episodeNumber, { contestantIds })
+    return mapRanking(data!)
+  },
 
-  getMyRanking: (gameId: string, episodeNumber: number) =>
-    _getMyRanking(gameId, episodeNumber).then((r) => r.data as Ranking),
+  async getMyRanking(gameId: string, episodeNumber: number): Promise<Ranking> {
+    const { data } = await _getMyRanking(gameId, episodeNumber)
+    return mapRanking(data!)
+  },
 
-  getMyRankings: (gameId: string) => _getMyRankings(gameId).then((r) => r.data as Ranking[]),
+  async getMyRankings(gameId: string): Promise<Ranking[]> {
+    const { data } = await _getMyRankings(gameId)
+    return (data ?? []).map(mapRanking)
+  },
 
   // Leaderboard
-  getLeaderboard: (gameId: string) =>
-    _getLeaderboard(gameId).then((r) => r.data as LeaderboardEntry[]),
+  async getLeaderboard(gameId: string): Promise<LeaderboardEntry[]> {
+    const { data } = await _getLeaderboard(gameId)
+    return (data ?? []).map(mapLeaderboardEntry)
+  },
 
-  getWhatIfLeaderboard: (gameId: string, contestantId: string) =>
-    _getWhatIfLeaderboard(gameId, contestantId).then((r) => r.data as LeaderboardEntry[]),
+  async getWhatIfLeaderboard(gameId: string, contestantId: string): Promise<LeaderboardEntry[]> {
+    const { data } = await _getWhatIfLeaderboard(gameId, contestantId)
+    return (data ?? []).map(mapLeaderboardEntry)
+  },
 }

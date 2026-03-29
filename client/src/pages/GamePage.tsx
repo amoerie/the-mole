@@ -81,8 +81,8 @@ export default function GamePage() {
   async function handleCreateEpisode() {
     if (!gameId || !newDeadline) return
     try {
-      const updated = await api.createEpisode(gameId, newDeadline, eliminatedId || undefined)
-      setGame(updated)
+      await api.createEpisode(gameId, newDeadline, eliminatedId || undefined)
+      await loadGame()
       setNewDeadline('')
       setEliminatedId('')
     } catch (err) {
@@ -93,8 +93,8 @@ export default function GamePage() {
   async function handleRevealMole() {
     if (!gameId || !moleId) return
     try {
-      const updated = await api.revealMole(gameId, moleId)
-      setGame(updated)
+      await api.revealMole(gameId, moleId)
+      await loadGame()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fout bij onthullen')
     }

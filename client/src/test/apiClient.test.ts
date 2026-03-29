@@ -21,7 +21,7 @@ describe('API client', () => {
   }
 
   it('getMe calls /api/me', async () => {
-    const user = { userId: '123', displayName: 'Test' }
+    const user = { userId: '123', displayName: 'Test', roles: ['authenticated'] }
     mockResponse(user)
 
     const result = await api.getMe()

@@ -36,7 +36,7 @@ jobs:
         run: dotnet restore api.tests/Api.Tests.csproj
 
       - name: Build Tests
-        run: dotnet build api.tests/Api.Tests.csproj --configuration Release --no-restore
+        run: dotnet build api.tests/Api.Tests.csproj --configuration Release --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
 
       - name: Run Unit Tests
         run: >
