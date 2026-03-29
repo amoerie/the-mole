@@ -1,97 +1,96 @@
-import type { Game, Ranking, LeaderboardEntry, UserInfo } from '../types'
+/**
+ * API client — thin wrapper around the orval-generated functions.
+ *
+ * Each method calls the generated typed function and extracts `.data` so the
+ * rest of the app keeps its simple `api.getMe()` call shape. TypeScript will
+ * catch any mismatch between what the backend returns and what callers expect
+ * the moment the spec changes and you re-run `npm run generate`.
+ */
+import {
+  addContestants as _addContestants,
+  createEpisode as _createEpisode,
+  createGame as _createGame,
+  getGame as _getGame,
+  getGameByInvite as _getGameByInvite,
+  getLeaderboard as _getLeaderboard,
+  getMe as _getMe,
+  getMyGames as _getMyGames,
+  getMyRanking as _getMyRanking,
+  getMyRankings as _getMyRankings,
+  getWhatIfLeaderboard as _getWhatIfLeaderboard,
+  joinGame as _joinGame,
+  registerPasskey as _registerPasskey,
+  requestRecovery as _requestRecovery,
+  revealMole as _revealMole,
+  submitRanking as _submitRanking,
+  updateEpisode as _updateEpisode,
+  verifyPasskey as _verifyPasskey,
+} from './generated'
+import type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo } from './generated'
 
-const API_BASE = '/api'
-
-async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`API error ${response.status}: ${errorText}`)
-  }
-  return response.json()
-}
+export type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo }
 
 export const api = {
   // Auth
-  getMe: () => fetchJson<UserInfo>('/me'),
+  getMe: () => _getMe().then((r) => r.data as UserInfo),
+
   registerPasskey: (email: string, displayName: string) =>
-    fetchJson<{ token: string }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, displayName }),
-    }),
-  verifyPasskey: (token: string) =>
-    fetchJson<UserInfo>('/auth/verify', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }),
-  requestRecovery: (email: string) =>
-    fetchJson<{ message: string }>('/auth/recover', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
+    _registerPasskey({ email, displayName }).then((r) => r.data),
+
+  verifyPasskey: (token: string) => _verifyPasskey({ token }).then((r) => r.data as UserInfo),
+
+  requestRecovery: (email: string) => _requestRecovery({ email }).then((r) => r.data),
 
   // Games
-  createGame: (name: string, contestants: { name: string; age: number; photoUrl: string }[]) =>
-    fetchJson<Game>('/games', {
-      method: 'POST',
-      body: JSON.stringify({ name, contestants }),
-    }),
+  createGame: (name: string, contestants: Contestant[]) =>
+    _createGame({ name, contestants }).then((r) => r.data as Game),
 
-  getMyGames: () => fetchJson<Game[]>('/my-games'),
+  getMyGames: () => _getMyGames().then((r) => r.data as Game[]),
 
-  getGame: (gameId: string) => fetchJson<Game>(`/games/${gameId}`),
+  getGame: (gameId: string) => _getGame(gameId).then((r) => r.data as Game),
 
-  getGameByInvite: (inviteCode: string) => fetchJson<Game>(`/games/by-invite/${inviteCode}`),
+  getGameByInvite: (inviteCode: string) => _getGameByInvite(inviteCode).then((r) => r.data),
 
   joinGame: (gameId: string, inviteCode: string) =>
-    fetchJson<void>(`/games/${gameId}/join`, {
-      method: 'POST',
-      body: JSON.stringify({ inviteCode }),
-    }),
+    _joinGame(gameId, { inviteCode }).then((r) => r.data),
 
-  addContestants: (
-    gameId: string,
-    contestants: { name: string; age: number; photoUrl: string }[],
-  ) =>
-    fetchJson<Game>(`/games/${gameId}/contestants`, {
-      method: 'POST',
-      body: JSON.stringify({ contestants }),
-    }),
+  addContestants: (gameId: string, contestants: Contestant[]) =>
+    _addContestants(gameId, { contestants }).then((r) => r.data as Game),
 
   // Episodes
   createEpisode: (gameId: string, deadline: string, eliminatedContestantId?: string) =>
-    fetchJson<Game>(`/games/${gameId}/episodes`, {
-      method: 'POST',
-      body: JSON.stringify({ deadline, eliminatedContestantId }),
-    }),
+    _createEpisode(gameId, {
+      deadline,
+      eliminatedContestantId: eliminatedContestantId ?? null,
+    }).then((r) => r.data),
+
+  updateEpisode: (
+    gameId: string,
+    episodeNumber: number,
+    deadline?: string,
+    eliminatedContestantId?: string,
+  ) =>
+    _updateEpisode(gameId, episodeNumber, {
+      deadline: deadline ?? null,
+      eliminatedContestantId: eliminatedContestantId ?? null,
+    }).then((r) => r.data),
 
   revealMole: (gameId: string, moleContestantId: string) =>
-    fetchJson<Game>(`/games/${gameId}/reveal-mole`, {
-      method: 'POST',
-      body: JSON.stringify({ moleContestantId }),
-    }),
+    _revealMole(gameId, { moleContestantId }).then((r) => r.data),
 
   // Rankings
   submitRanking: (gameId: string, episodeNumber: number, contestantIds: string[]) =>
-    fetchJson<Ranking>(`/games/${gameId}/episodes/${episodeNumber}/rankings`, {
-      method: 'POST',
-      body: JSON.stringify({ contestantIds }),
-    }),
+    _submitRanking(gameId, episodeNumber, { contestantIds }).then((r) => r.data as Ranking),
 
   getMyRanking: (gameId: string, episodeNumber: number) =>
-    fetchJson<Ranking>(`/games/${gameId}/episodes/${episodeNumber}/rankings/mine`),
+    _getMyRanking(gameId, episodeNumber).then((r) => r.data as Ranking),
 
-  getMyRankings: (gameId: string) => fetchJson<Ranking[]>(`/games/${gameId}/rankings`),
+  getMyRankings: (gameId: string) => _getMyRankings(gameId).then((r) => r.data as Ranking[]),
 
   // Leaderboard
-  getLeaderboard: (gameId: string) => fetchJson<LeaderboardEntry[]>(`/games/${gameId}/leaderboard`),
+  getLeaderboard: (gameId: string) =>
+    _getLeaderboard(gameId).then((r) => r.data as LeaderboardEntry[]),
 
   getWhatIfLeaderboard: (gameId: string, contestantId: string) =>
-    fetchJson<LeaderboardEntry[]>(`/games/${gameId}/leaderboard/what-if/${contestantId}`),
+    _getWhatIfLeaderboard(gameId, contestantId).then((r) => r.data as LeaderboardEntry[]),
 }

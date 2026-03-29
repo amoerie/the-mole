@@ -14,6 +14,7 @@ describe('API client', () => {
     mockFetch.mockResolvedValueOnce({
       ok,
       status,
+      headers: new Headers(),
       json: () => Promise.resolve(data),
       text: () => Promise.resolve(JSON.stringify(data)),
     })
@@ -175,7 +176,7 @@ describe('API client', () => {
         method: 'POST',
         body: JSON.stringify({
           deadline: '2025-01-01T00:00:00Z',
-          eliminatedContestantId: undefined,
+          eliminatedContestantId: null,
         }),
       }),
     )
