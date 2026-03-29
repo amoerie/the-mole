@@ -10,8 +10,10 @@ import RecoveryPage from './pages/RecoveryPage'
 import MagicLinkPage from './pages/MagicLinkPage'
 import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
+import Footer from './components/Footer'
 import { Button } from './components/ui/button'
 import { api } from './api/client'
+
 import { initPasswordlessClient } from './lib/passwordless'
 
 function App() {
@@ -56,6 +58,7 @@ function App() {
             <Route path="/game/:gameId/leaderboard" element={<LeaderboardPage />} />
             <Route path="/join/:inviteCode" element={<HomePage />} />
           </Routes>
+          <Footer />
         </div>
       </BrowserRouter>
     </AuthContext.Provider>

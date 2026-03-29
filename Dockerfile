@@ -4,7 +4,9 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
-RUN npm run build
+ARG VITE_BUILD_DATE
+ARG VITE_COMMIT_SHA
+RUN VITE_BUILD_DATE=$VITE_BUILD_DATE VITE_COMMIT_SHA=$VITE_COMMIT_SHA npm run build
 
 # Stage 2: Build the .NET API
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api-build
