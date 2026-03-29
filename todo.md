@@ -31,8 +31,31 @@
 | 14 | Rewrite start-local.cmd | ✅ | dotnet watch + npm dev (50 lines, no SWA/Functions) |
 | 15 | Remove Azure-specific files | ✅ | staticwebapp.config.json, swa-cli.config.json, AZURE_DEPLOYMENT.md deleted |
 
-## Phase 3: Polish
+## Phase 3: Auth Migration (GitHub OAuth → Passwordless.dev)
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 16 | Responsive design + De Mol theming | ⬜ | |
+| 17 | Remove GitHub OAuth, add Passwordless.AspNetCore + MailerSend NuGet | ⬜ | |
+| 18 | Add AppUser entity + EF Core migration | ⬜ | Id, Email, DisplayName |
+| 19 | Rewrite AuthRoutes: register, login, magic-link recovery | ⬜ | |
+| 20 | Update AuthHelper to use internal AppUser IDs | ⬜ | |
+| 21 | Update Player join logic to use AppUser IDs | ⬜ | |
+| 22 | Frontend: registration page (email + name + passkey) | ⬜ | |
+| 23 | Frontend: login page (email + passkey) | ⬜ | |
+| 24 | Frontend: "can't login" magic-link recovery flow | ⬜ | |
+| 25 | Remove all GitHub login links/buttons from frontend | ⬜ | |
+
+## Phase 4: Test Coverage
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 26 | Integration tests: GameRoutes (create, get, join, by-invite, my-games, add-contestants) | ⬜ | |
+| 27 | Integration tests: EpisodeRoutes (create, update, reveal-mole) | ⬜ | |
+| 28 | Integration tests: RankingRoutes (submit, get mine, get all) | ⬜ | |
+| 29 | Integration tests: LeaderboardRoutes (final, what-if) | ⬜ | |
+| 30 | CI: add 80% line coverage gate for .NET (coverlet threshold) | ⬜ | |
+| 31 | CI: add 80% coverage gate for frontend (Vitest v8) | ⬜ | |
+
+## Phase 5: Polish
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 32 | Responsive design + De Mol theming | ⬜ | Dark theme, green accents |
 

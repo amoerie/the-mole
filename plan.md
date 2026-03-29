@@ -28,15 +28,24 @@ need every player to manually share rankings (defeats the purpose). You **need a
 |-----------|---------|------|
 | Frontend + API | .NET 10 ASP.NET Core (serves both) | ~$0 on Fly.io free tier |
 | Database | SQLite on persistent Fly.io volume | $0 |
-| Auth | GitHub OAuth (AspNet.Security.OAuth.GitHub) | $0 |
+| Auth | Passwordless.dev passkeys (Bitwarden) + MailerSend magic-link recovery | $0 |
 | Hosting | Fly.io free tier (3 shared VMs, 3 GB volume) | $0 |
 | CI/CD | GitHub Actions → GHCR → flyctl deploy | $0 |
 | Custom domain | Any registrar (~€10/yr) + free SSL via Fly.io | ~€10/year |
 
 ### Q3: Authentication
 
-GitHub OAuth via `AspNet.Security.OAuth.GitHub`. Cookie-based sessions. GitHub login only
-(sufficient for colleagues/friends). Callback URL: `/signin-github`.
+**Passwordless.dev** (Bitwarden) passkeys via `Passwordless.AspNetCore`. Cookie-based sessions.
+
+Registration flow:
+1. New user enters **email + display name** → browser creates passkey
+2. Returning user enters email → browser authenticates with passkey
+3. "Can't login" → enters email → magic link sent via MailerSend → re-register passkey
+
+Replaces GitHub OAuth entirely — no OAuth app setup needed, no GitHub account required.
+Free tier: 1 admin + 10,000 users (more than sufficient for ~30 players).
+
+For magic-link recovery emails: **MailerSend** (3,000 emails/month free, .NET SDK available).
 
 ### Q4: Could I also use GitHub Pages (no Azure at all)?
 
@@ -183,12 +192,45 @@ Ranking {
 - Tests: 17 .NET + 27 frontend, all green
 
 ### ⬜ Pending (one-time manual setup before first deploy)
-1. Create GitHub OAuth App → callback `https://the-mole.fly.dev/signin-github`
-2. `flyctl apps create the-mole && flyctl volumes create the_mole_data --region ams --size 1`
-3. `flyctl secrets set GitHub__ClientId=... GitHub__ClientSecret=...`
-4. Add `FLY_API_TOKEN` to GitHub repo secrets → merge PR → CI deploys
+1. Sign up at passwordless.dev → create app → get ApiKey + ApiSecret
+2. Sign up at MailerSend → verify domain → get API key
+3. `flyctl apps create the-mole && flyctl volumes create the_mole_data --region ams --size 1`
+4. `flyctl secrets set Passwordless__ApiKey=... Passwordless__ApiSecret=... MailerSend__ApiKey=...`
+5. Add `FLY_API_TOKEN` to GitHub repo secrets → merge PR → CI deploys
 
-### ⬜ Phase 3: Polish
+### ⬜ Phase 3: Auth Migration (GitHub OAuth → Passwordless.dev)
+
+Replace GitHub OAuth with passkey-based auth. No GitHub account required.
+
+**Backend:**
+- Remove `AspNet.Security.OAuth.GitHub` package + all OAuth config
+- Add `Passwordless.AspNetCore` + `MailerSend` NuGet packages
+- Add `AppUser` entity (Id, Email, DisplayName) + EF Core migration
+- Rewrite `AuthRoutes.cs`: register, login, magic-link recovery endpoints
+- Update `AuthHelper` to read from cookie/session (userId = AppUser.Id)
+- Update `Player` join logic to use internal user IDs (not GitHub IDs)
+
+**Frontend:**
+- Registration page: email + display name → call `/api/auth/register` → browser passkey prompt
+- Login page: email → call `/api/auth/login` → browser passkey prompt
+- "Can't login" flow: email → POST `/api/auth/recover` → "check your email" message
+- Remove all GitHub login links/buttons
+
+### ⬜ Phase 4: Test Coverage
+
+Goal: enforce 80% code coverage in CI for both .NET and frontend.
+
+**Write missing .NET integration tests** (using `WebApplicationFactory`):
+- `GameRoutes`: create, get, join, get-by-invite, my-games, add-contestants
+- `EpisodeRoutes`: create episode, update episode, reveal mole
+- `RankingRoutes`: submit ranking, get mine, get all
+- `LeaderboardRoutes`: final leaderboard, what-if leaderboard
+
+**Add coverage gates to CI:**
+- .NET: coverlet threshold 80% (lines) — fail build if below
+- Frontend: Vitest v8 coverage with 80% threshold on lines/functions/branches
+
+### ⬜ Phase 5: Polish
 - Responsive design + De Mol theming (dark theme, green accents)
 
 ## Local Development
