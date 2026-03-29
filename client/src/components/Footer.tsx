@@ -1,7 +1,7 @@
-const buildDate = import.meta.env.VITE_BUILD_DATE as string | undefined
-const commitSha = import.meta.env.VITE_COMMIT_SHA as string | undefined
-
 export default function Footer() {
+  const buildDate = import.meta.env.VITE_BUILD_DATE as string | undefined
+  const commitSha = import.meta.env.VITE_COMMIT_SHA as string | undefined
+
   if (!buildDate && !commitSha) return null
 
   const shortSha = commitSha?.slice(0, 7)
