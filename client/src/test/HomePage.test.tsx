@@ -20,13 +20,12 @@ vi.mock('../api/client', () => ({
 const mockUser: UserInfo = {
   userId: 'user-123',
   displayName: 'TestUser',
-  identityProvider: 'github',
-  userRoles: ['authenticated'],
+  roles: ['authenticated'],
 }
 
 function renderWithAuth(user: UserInfo | null, loading = false) {
   return render(
-    <AuthContext.Provider value={{ user, loading, error: null }}>
+    <AuthContext.Provider value={{ user, loading, error: null, setUser: () => {} }}>
       <MemoryRouter>
         <HomePage />
       </MemoryRouter>
@@ -47,14 +46,13 @@ describe('HomePage', () => {
 
   it('shows login button when not authenticated', () => {
     renderWithAuth(null)
-    expect(screen.getByText('Inloggen met GitHub')).toBeInTheDocument()
-    expect(screen.queryByText('Inloggen met Microsoft')).not.toBeInTheDocument()
+    expect(screen.getByText('Inloggen')).toBeInTheDocument()
   })
 
-  it('login link points to GitHub auth endpoint', () => {
+  it('login link points to login page', () => {
     renderWithAuth(null)
-    const githubLink = screen.getByText('Inloggen met GitHub') as HTMLAnchorElement
-    expect(githubLink.href).toContain('/auth/login/github')
+    const loginLink = screen.getByText('Inloggen') as HTMLAnchorElement
+    expect(loginLink.href).toContain('/login')
   })
 
   it('shows create and join sections when authenticated', () => {
@@ -65,7 +63,7 @@ describe('HomePage', () => {
 
   it('does not show login buttons when authenticated', () => {
     renderWithAuth(mockUser)
-    expect(screen.queryByText('Inloggen met GitHub')).not.toBeInTheDocument()
+    expect(screen.queryByText('Inloggen')).not.toBeInTheDocument()
   })
 
   it('has a create game input and button', () => {

@@ -85,8 +85,11 @@ export default function HomePage() {
           <h2>Welkom bij De Mol</h2>
           <p>Log in om mee te spelen</p>
           <div className="login-buttons">
-            <a href="/auth/login/github" className="btn btn-login">
-              Inloggen met GitHub
+            <a href="/login" className="btn btn-login">
+              Inloggen
+            </a>
+            <a href="/register" className="btn btn-secondary">
+              Nieuw account aanmaken
             </a>
           </div>
         </div>

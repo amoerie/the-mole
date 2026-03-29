@@ -20,6 +20,21 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Auth
   getMe: () => fetchJson<UserInfo>('/me'),
+  registerPasskey: (email: string, displayName: string) =>
+    fetchJson<{ token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, displayName }),
+    }),
+  verifyPasskey: (token: string) =>
+    fetchJson<UserInfo>('/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
+  requestRecovery: (email: string) =>
+    fetchJson<{ message: string }>('/auth/recover', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
 
   // Games
   createGame: (name: string, contestants: { name: string; age: number; photoUrl: string }[]) =>

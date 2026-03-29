@@ -56,6 +56,5 @@ export interface EpisodeScore {
 export interface UserInfo {
   userId: string
   displayName: string
-  identityProvider: string
-  userRoles: string[]
+  roles: string[]
 }

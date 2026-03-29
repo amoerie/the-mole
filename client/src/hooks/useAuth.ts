@@ -6,9 +6,15 @@ interface AuthState {
   user: UserInfo | null
   loading: boolean
   error: string | null
+  setUser: (user: UserInfo | null) => void
 }
 
-const AuthContext = createContext<AuthState>({ user: null, loading: true, error: null })
+const AuthContext = createContext<AuthState>({
+  user: null,
+  loading: true,
+  error: null,
+  setUser: () => {},
+})
 
 export function useAuth() {
   return useContext(AuthContext)
@@ -17,14 +23,21 @@ export function useAuth() {
 export { AuthContext }
 
 export function useAuthProvider(): AuthState {
-  const [state, setState] = useState<AuthState>({ user: null, loading: true, error: null })
+  const [user, setUser] = useState<UserInfo | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api
       .getMe()
-      .then((user) => setState({ user, loading: false, error: null }))
-      .catch(() => setState({ user: null, loading: false, error: null }))
+      .then((u) => {
+        setUser(u)
+        setLoading(false)
+      })
+      .catch(() => {
+        setUser(null)
+        setLoading(false)
+      })
   }, [])
 
-  return state
+  return { user, loading, error: null, setUser }
 }
