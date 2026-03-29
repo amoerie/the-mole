@@ -34,8 +34,6 @@ describe('RankingBoard', () => {
     render(
       <RankingBoard contestants={contestants} initialOrder={['3', '1', '2']} onChange={() => {}} />,
     )
-    const items = screen.getAllByText(/^#\d$/)
-    // Charlie should be #1, Alice #2, Bob #3
     const rows = screen.getAllByRole('img').map((img) => (img as HTMLImageElement).alt)
     expect(rows).toEqual(['Charlie', 'Alice', 'Bob'])
   })

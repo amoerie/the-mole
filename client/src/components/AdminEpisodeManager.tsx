@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from './ui/alert-dialog'
-import type { Contestant, Episode, Game } from '../types'
+import type { Contestant, Episode } from '../types'
 
 function nextSundayDateStr(): string {
   const now = new Date()
