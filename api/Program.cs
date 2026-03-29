@@ -1,8 +1,8 @@
 using Api.Data;
 using Api.Routes;
-using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Passwordless;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,16 +18,15 @@ builder
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return Task.CompletedTask;
         };
-    })
-    .AddGitHub(options =>
-    {
-        options.ClientId = builder.Configuration["GitHub:ClientId"] ?? "";
-        options.ClientSecret = builder.Configuration["GitHub:ClientSecret"] ?? "";
-        options.CallbackPath = "/signin-github";
-        options.Scope.Add("user:email");
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddPasswordlessSdk(options =>
+{
+    options.ApiKey = builder.Configuration["Passwordless:ApiKey"] ?? "";
+    options.ApiSecret = builder.Configuration["Passwordless:ApiSecret"] ?? "";
+});
 
 var dbPath = builder.Configuration["DatabasePath"] ?? "themole.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));

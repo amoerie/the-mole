@@ -8,9 +8,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Game> Games => Set<Game>();
     public DbSet<Player> Players => Set<Player>();
     public DbSet<Ranking> Rankings => Set<Ranking>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasIndex(u => u.Email).IsUnique();
+        });
         modelBuilder.Entity<Game>(entity =>
         {
             entity.OwnsMany(g => g.Contestants, b => b.ToJson());

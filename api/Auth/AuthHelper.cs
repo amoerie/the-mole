@@ -17,10 +17,7 @@ public static class AuthHelper
         if (string.IsNullOrEmpty(userId))
             return null;
 
-        var displayName =
-            user.FindFirstValue("urn:github:name")
-            ?? user.FindFirstValue(ClaimTypes.Name)
-            ?? userId;
+        var displayName = user.FindFirstValue(ClaimTypes.Name) ?? userId;
 
         return new UserInfo(userId, displayName, ["authenticated"]);
     }
