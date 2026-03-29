@@ -18,15 +18,13 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import type { Contestant } from '../types'
-import { Button } from './ui/button'
 import { cn } from '../lib/utils'
 
 interface RankingBoardProps {
   contestants: Contestant[]
   initialOrder?: string[]
-  onSubmit: (orderedIds: string[]) => void
+  onChange: (orderedIds: string[]) => void
   disabled?: boolean
-  isUpdate?: boolean
 }
 
 function SortableItem({
@@ -89,9 +87,8 @@ function SortableItem({
 export default function RankingBoard({
   contestants,
   initialOrder,
-  onSubmit,
+  onChange,
   disabled,
-  isUpdate,
 }: RankingBoardProps) {
   const [orderedIds, setOrderedIds] = useState<string[]>(() => {
     if (initialOrder?.length) return initialOrder
@@ -106,11 +103,11 @@ export default function RankingBoard({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      setOrderedIds((prev) => {
-        const oldIndex = prev.indexOf(String(active.id))
-        const newIndex = prev.indexOf(String(over.id))
-        return arrayMove(prev, oldIndex, newIndex)
-      })
+      const oldIndex = orderedIds.indexOf(String(active.id))
+      const newIndex = orderedIds.indexOf(String(over.id))
+      const newOrder = arrayMove(orderedIds, oldIndex, newIndex)
+      setOrderedIds(newOrder)
+      onChange(newOrder)
     }
   }
 
@@ -137,13 +134,6 @@ export default function RankingBoard({
           </div>
         </SortableContext>
       </DndContext>
-      <Button onClick={() => onSubmit(orderedIds)} disabled={disabled} className="w-full">
-        {disabled
-          ? 'Deadline verstreken'
-          : isUpdate
-            ? 'Rangschikking bijwerken'
-            : 'Rangschikking indienen'}
-      </Button>
     </div>
   )
 }

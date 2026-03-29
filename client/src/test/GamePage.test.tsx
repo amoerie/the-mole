@@ -6,7 +6,11 @@ import GamePage from '../pages/GamePage'
 import type { UserInfo, Game, Ranking } from '../types'
 
 vi.mock('../components/EpisodeCard', () => ({
-  default: () => <div data-testid="episode-card">EpisodeCard</div>,
+  default: ({ onSubmit }: { onSubmit: (ids: string[]) => Promise<void> }) => (
+    <div data-testid="episode-card">
+      <button onClick={() => onSubmit(['c1', 'c2'])}>Submit ranking</button>
+    </div>
+  ),
 }))
 
 vi.mock('../components/AdminContestantManager', () => ({

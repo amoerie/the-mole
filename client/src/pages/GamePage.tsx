@@ -24,7 +24,6 @@ export default function GamePage() {
   const [episodeRankings, setEpisodeRankings] = useState<PlayerRanking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
 
   const loadGame = useCallback(async () => {
     if (!gameId) return
@@ -101,16 +100,8 @@ export default function GamePage() {
 
   async function handleSubmitRanking(orderedIds: string[]) {
     if (!currentEpisode || !gameId) return
-    setSubmitting(true)
-    setError('')
-    try {
-      await api.submitRanking(gameId, currentEpisode.number, orderedIds)
-      await loadGame()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fout bij indienen')
-    } finally {
-      setSubmitting(false)
-    }
+    await api.submitRanking(gameId, currentEpisode.number, orderedIds)
+    await loadGame()
   }
 
   async function handleCreateEpisode(deadlineIso: string, eliminatedId?: string) {
@@ -233,7 +224,6 @@ export default function GamePage() {
           allContestants={game.contestants}
           myRankings={myRankings}
           episodeRankings={episodeRankings}
-          submitting={submitting}
           onSubmit={handleSubmitRanking}
         />
       )}

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
 import { Separator } from './ui/separator'
-import { CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import RankingBoard from './RankingBoard'
 import type { Contestant, Episode, PlayerRanking, Ranking } from '../types'
 
@@ -12,9 +12,13 @@ interface Props {
   allContestants: Contestant[]
   myRankings: Ranking[]
   episodeRankings: PlayerRanking[]
-  submitting: boolean
   onSubmit: (orderedIds: string[]) => Promise<void>
 }
+
+type SaveStatus = 'idle' | 'saving' | 'saved'
+
+const DEBOUNCE_MS = 500
+const SAVED_FEEDBACK_MS = 3000
 
 export default function EpisodeCard({
   episode,
@@ -22,19 +26,37 @@ export default function EpisodeCard({
   allContestants,
   myRankings,
   episodeRankings,
-  submitting,
   onSubmit,
 }: Props) {
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
-  const [submitted, setSubmitted] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }
+  }, [])
 
   const isDeadlinePassed = new Date(episode.deadline) < new Date()
   const existingRanking = myRankings.find((r) => r.episodeNumber === episode.number)
   const hasSubmitted = myRankings.some((r) => r.episodeNumber === episode.number)
 
-  async function handleSubmit(orderedIds: string[]) {
-    await onSubmit(orderedIds)
-    setSubmitted(true)
+  function handleChange(orderedIds: string[]) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    setSaveStatus('saving')
+    debounceRef.current = setTimeout(async () => {
+      try {
+        await onSubmit(orderedIds)
+        setSaveStatus('saved')
+        savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), SAVED_FEEDBACK_MS)
+      } catch {
+        setSaveStatus('idle')
+      }
+    }, DEBOUNCE_MS)
   }
 
   return (
@@ -51,24 +73,29 @@ export default function EpisodeCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0 flex flex-col gap-3">
-        {(hasSubmitted || submitted) && (
-          <div className="flex items-center gap-2 text-sm text-green-500">
-            <CheckCircle2 className="size-4" />
-            <span>
-              {submitted
-                ? 'Je rangschikking is bijgewerkt voor deze aflevering.'
-                : 'Je rangschikking is ingediend voor deze aflevering.'}
-            </span>
-          </div>
-        )}
         <RankingBoard
           key={existingRanking?.id ?? 'new'}
           contestants={activeContestants}
           initialOrder={existingRanking?.contestantIds}
-          onSubmit={handleSubmit}
-          disabled={isDeadlinePassed || submitting}
-          isUpdate={hasSubmitted && !submitted}
+          onChange={handleChange}
+          disabled={isDeadlinePassed}
         />
+        <div className="flex items-center gap-2 text-sm h-5">
+          {saveStatus === 'saving' && (
+            <>
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground">Opslaan...</span>
+            </>
+          )}
+          {saveStatus === 'saved' && (
+            <>
+              <CheckCircle2 className="size-4 text-green-500" />
+              <span className="text-green-500">
+                {hasSubmitted ? 'Rangschikking bijgewerkt.' : 'Rangschikking opgeslagen.'}
+              </span>
+            </>
+          )}
+        </div>
         {isDeadlinePassed && episodeRankings.length > 0 && (
           <>
             <Separator className="mt-2" />

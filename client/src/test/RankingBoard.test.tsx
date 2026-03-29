@@ -1,5 +1,4 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import RankingBoard from '../components/RankingBoard'
 import type { Contestant } from '../types'
@@ -12,52 +11,42 @@ const contestants: Contestant[] = [
 
 describe('RankingBoard', () => {
   it('renders all contestants', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getByText('Charlie')).toBeInTheDocument()
   })
 
   it('shows rank numbers', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
     expect(screen.getByText('#1')).toBeInTheDocument()
     expect(screen.getByText('#2')).toBeInTheDocument()
     expect(screen.getByText('#3')).toBeInTheDocument()
   })
 
-  it('calls onSubmit with ordered IDs when submit button clicked', async () => {
-    const onSubmit = vi.fn()
-    const user = userEvent.setup()
-    render(<RankingBoard contestants={contestants} onSubmit={onSubmit} />)
-
-    await user.click(screen.getByText('Rangschikking indienen'))
-    expect(onSubmit).toHaveBeenCalledWith(['1', '2', '3'])
+  it('does not call onChange on initial render', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('uses initialOrder when provided', async () => {
-    const onSubmit = vi.fn()
-    const user = userEvent.setup()
+  it('uses initialOrder when provided', () => {
     render(
-      <RankingBoard contestants={contestants} initialOrder={['3', '1', '2']} onSubmit={onSubmit} />,
+      <RankingBoard contestants={contestants} initialOrder={['3', '1', '2']} onChange={() => {}} />,
     )
-
-    await user.click(screen.getByText('Rangschikking indienen'))
-    expect(onSubmit).toHaveBeenCalledWith(['3', '1', '2'])
+    const items = screen.getAllByText(/^#\d$/)
+    // Charlie should be #1, Alice #2, Bob #3
+    const rows = screen.getAllByRole('img').map((img) => (img as HTMLImageElement).alt)
+    expect(rows).toEqual(['Charlie', 'Alice', 'Bob'])
   })
 
-  it('shows bijwerken button when isUpdate is true', async () => {
-    const onSubmit = vi.fn()
-    const user = userEvent.setup()
-    render(<RankingBoard contestants={contestants} onSubmit={onSubmit} isUpdate />)
-
-    const button = screen.getByRole('button', { name: /bijwerken/i })
-    expect(button).toBeInTheDocument()
-    await user.click(button)
-    expect(onSubmit).toHaveBeenCalledWith(['1', '2', '3'])
+  it('does not show submit button', () => {
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
+    expect(screen.queryByRole('button', { name: /indienen|bijwerken/i })).not.toBeInTheDocument()
   })
 
   it('triggers onError fallback for broken image', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
     const imgs = screen.getAllByRole('img')
     const img = imgs[0] as HTMLImageElement
     Object.defineProperty(img, 'src', { writable: true, value: '' })
