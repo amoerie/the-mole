@@ -26,6 +26,7 @@ import {
   listUsers as _listUsers,
   registerPasskey as _registerPasskey,
   requestRecovery as _requestRecovery,
+  resetPasskey as _resetPasskey,
   revealMole as _revealMole,
   submitRanking as _submitRanking,
   updateEpisode as _updateEpisode,
@@ -63,6 +64,11 @@ export const api = {
   async registerPasskey(email: string, displayName: string, inviteCode?: string) {
     const { data } = await _registerPasskey({ email, displayName, inviteCode: inviteCode ?? null })
     return data
+  },
+
+  async resetPasskey() {
+    const { data } = await _resetPasskey()
+    return data!
   },
 
   async verifyPasskey(token: string): Promise<UserInfo> {

@@ -33,6 +33,21 @@ export default function LoginPage() {
     gameName?: string
   }
 
+  async function handleSetupPasskey() {
+    setLoading(true)
+    setError('')
+    try {
+      const { token, email: alias } = await api.resetPasskey()
+      const result = await passwordlessClient.register(token, alias)
+      if (result.error) throw new Error(result.error.title)
+      navigate('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Passkey aanmaken mislukt.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleLogin() {
     if (!email.trim()) {
       setError('Voer je e-mailadres in.')
@@ -61,6 +76,45 @@ export default function LoginPage() {
     }
   }
 
+  if (recovered) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="flex w-full max-w-md flex-col gap-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight">🕵️ De Mol</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Herstel voltooid</p>
+          </div>
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle>Nieuwe passkey instellen</CardTitle>
+              <CardDescription>
+                Je bent ingelogd via de herstelmail. Stel nu een nieuwe passkey in.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 pt-0">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button onClick={handleSetupPasskey} disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Bezig...
+                  </>
+                ) : (
+                  'Nieuwe passkey aanmaken'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="flex w-full max-w-md flex-col gap-6">
@@ -76,13 +130,6 @@ export default function LoginPage() {
             <CardDescription>Gebruik je passkey om in te loggen.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-0">
-            {recovered && (
-              <Alert>
-                <AlertDescription>
-                  Je bent hersteld. Log in met je e-mailadres en maak daarna een nieuwe passkey aan.
-                </AlertDescription>
-              </Alert>
-            )}
             {gameName && (
               <div className="rounded-lg border bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground">Uitgenodigd voor</p>

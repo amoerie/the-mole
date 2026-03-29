@@ -70,6 +70,26 @@
         }
       }
     },
+    "/api/auth/reset-passkey": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "ResetPasskey",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasskeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/recover": {
       "post": {
         "tags": [
@@ -1104,6 +1124,21 @@
         "type": "object",
         "properties": {
           "token": {
+            "type": "string"
+          }
+        }
+      },
+      "ResetPasskeyResponse": {
+        "required": [
+          "token",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "email": {
             "type": "string"
           }
         }

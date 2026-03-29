@@ -128,6 +128,11 @@ export interface RegisterTokenResponse {
   token: string
 }
 
+export interface ResetPasskeyResponse {
+  token: string
+  email: string
+}
+
 export interface RevealMoleRequest {
   /** @nullable */
   moleContestantId: string | null
@@ -209,6 +214,27 @@ export const verifyPasskey = async (
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(verifyRequest),
+  })
+}
+
+export type resetPasskeyResponse200 = {
+  data: ResetPasskeyResponse
+  status: 200
+}
+
+export type resetPasskeyResponseSuccess = resetPasskeyResponse200 & {
+  headers: Headers
+}
+export type resetPasskeyResponse = resetPasskeyResponseSuccess
+
+export const getResetPasskeyUrl = () => {
+  return `/api/auth/reset-passkey`
+}
+
+export const resetPasskey = async (options?: RequestInit): Promise<resetPasskeyResponse> => {
+  return fetcher<resetPasskeyResponse>(getResetPasskeyUrl(), {
+    ...options,
+    method: 'POST',
   })
 }
 

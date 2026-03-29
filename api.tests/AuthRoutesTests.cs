@@ -283,7 +283,32 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task GetMe_WhenNotAuthenticated_ReturnsUnauthorized()
+    public async Task ResetPasskey_WhenAuthenticated_ReturnsTokenAndEmail()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "test@example.com",
+                    DisplayName = "Test User",
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsync("/api/auth/reset-passkey", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.Equal("fake-register-token", body!.RootElement.GetProperty("token").GetString());
+        Assert.Equal("test@example.com", body!.RootElement.GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task ResetPasskey_WhenNotAuthenticated_ReturnsUnauthorized()
     {
         PrepareDb();
         TestAuthHandler.IsAuthenticated = false;
@@ -291,7 +316,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         {
             var client = CreateClient();
 
-            var response = await client.GetAsync("/api/me");
+            var response = await client.PostAsync("/api/auth/reset-passkey", null);
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -300,5 +325,16 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
             TestAuthHandler.IsAuthenticated = true;
             TestAuthHandler.Roles = ["authenticated", "admin"];
         }
+    }
+
+    [Fact]
+    public async Task ResetPasskey_WhenUserNotInDb_ReturnsUnauthorized()
+    {
+        PrepareDb(); // no users seeded — auth handler claims test-user-id but it's not in DB
+        var client = CreateClient();
+
+        var response = await client.PostAsync("/api/auth/reset-passkey", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

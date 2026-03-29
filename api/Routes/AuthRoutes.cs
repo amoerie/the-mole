@@ -152,6 +152,34 @@ public static class AuthRoutes
             .Produces<UserInfo>();
 
         app.MapPost(
+                "/api/auth/reset-passkey",
+                async (HttpContext ctx, AppDbContext db, IPasswordlessClient passwordlessClient) =>
+                {
+                    var userInfo = AuthHelper.GetUserInfo(ctx);
+                    if (userInfo == null)
+                        return Results.Unauthorized();
+
+                    var user = await db.AppUsers.FindAsync(userInfo.UserId);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var tokenResponse = await passwordlessClient.CreateRegisterTokenAsync(
+                        new RegisterOptions(user.Id, user.DisplayName)
+                        {
+                            Aliases = [user.Email],
+                            AliasHashing = false,
+                        }
+                    );
+
+                    return Results.Ok(new ResetPasskeyResponse(tokenResponse.Token, user.Email));
+                }
+            )
+            .WithName("ResetPasskey")
+            .WithTags("Auth")
+            .RequireAuthorization()
+            .Produces<ResetPasskeyResponse>();
+
+        app.MapPost(
                 "/api/auth/recover",
                 async (
                     RecoverRequest req,
@@ -221,6 +249,8 @@ public static class AuthRoutes
     private sealed record RecoverRequest(string Email);
 
     private sealed record RegisterTokenResponse(string Token);
+
+    private sealed record ResetPasskeyResponse(string Token, string Email);
 
     private sealed record MessageResponse(string Message);
 }
