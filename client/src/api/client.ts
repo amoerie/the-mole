@@ -1,97 +1,147 @@
-import type { Game, Ranking, LeaderboardEntry, UserInfo } from '../types'
+/**
+ * API client — thin wrapper around the orval-generated functions.
+ *
+ * Each method calls the generated typed function, then passes the raw response
+ * through the anti-corruption layer (mappers.ts) to produce clean app-level
+ * types. TypeScript will fail to compile here if the API contract changes and
+ * the generated types no longer match what the mappers expect.
+ *
+ * Re-run `npm run generate` after changing the API, then fix any mapper errors.
+ */
+import {
+  addContestants as _addContestants,
+  createEpisode as _createEpisode,
+  createGame as _createGame,
+  getGame as _getGame,
+  getGameByInvite as _getGameByInvite,
+  getLeaderboard as _getLeaderboard,
+  getMe as _getMe,
+  getMyGames as _getMyGames,
+  getMyRanking as _getMyRanking,
+  getMyRankings as _getMyRankings,
+  getWhatIfLeaderboard as _getWhatIfLeaderboard,
+  joinGame as _joinGame,
+  registerPasskey as _registerPasskey,
+  requestRecovery as _requestRecovery,
+  revealMole as _revealMole,
+  submitRanking as _submitRanking,
+  updateEpisode as _updateEpisode,
+  verifyPasskey as _verifyPasskey,
+} from './generated'
+import { mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
+import type { Game, LeaderboardEntry, NewContestant, Ranking, UserInfo } from '../types'
 
-const API_BASE = '/api'
-
-async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`API error ${response.status}: ${errorText}`)
-  }
-  return response.json()
-}
+export type { Game, LeaderboardEntry, NewContestant, Ranking, UserInfo }
 
 export const api = {
   // Auth
-  getMe: () => fetchJson<UserInfo>('/me'),
-  registerPasskey: (email: string, displayName: string) =>
-    fetchJson<{ token: string }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, displayName }),
-    }),
-  verifyPasskey: (token: string) =>
-    fetchJson<UserInfo>('/auth/verify', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }),
-  requestRecovery: (email: string) =>
-    fetchJson<{ message: string }>('/auth/recover', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
+  async getMe(): Promise<UserInfo> {
+    const { data } = await _getMe()
+    return mapUserInfo(data!)
+  },
+
+  async registerPasskey(email: string, displayName: string) {
+    const { data } = await _registerPasskey({ email, displayName })
+    return data
+  },
+
+  async verifyPasskey(token: string): Promise<UserInfo> {
+    const { data } = await _verifyPasskey({ token })
+    return mapUserInfo(data!)
+  },
+
+  async requestRecovery(email: string) {
+    const { data } = await _requestRecovery({ email })
+    return data
+  },
 
   // Games
-  createGame: (name: string, contestants: { name: string; age: number; photoUrl: string }[]) =>
-    fetchJson<Game>('/games', {
-      method: 'POST',
-      body: JSON.stringify({ name, contestants }),
-    }),
+  async createGame(name: string, contestants: NewContestant[]): Promise<Game> {
+    const { data } = await _createGame({ name, contestants })
+    return mapGame(data!)
+  },
 
-  getMyGames: () => fetchJson<Game[]>('/my-games'),
+  async getMyGames(): Promise<Game[]> {
+    const { data } = await _getMyGames()
+    return (data ?? []).map(mapGame)
+  },
 
-  getGame: (gameId: string) => fetchJson<Game>(`/games/${gameId}`),
+  async getGame(gameId: string): Promise<Game> {
+    const { data } = await _getGame(gameId)
+    return mapGame(data!)
+  },
 
-  getGameByInvite: (inviteCode: string) => fetchJson<Game>(`/games/by-invite/${inviteCode}`),
+  async getGameByInvite(inviteCode: string) {
+    const { data } = await _getGameByInvite(inviteCode)
+    return data
+  },
 
-  joinGame: (gameId: string, inviteCode: string) =>
-    fetchJson<void>(`/games/${gameId}/join`, {
-      method: 'POST',
-      body: JSON.stringify({ inviteCode }),
-    }),
+  async joinGame(gameId: string, inviteCode: string) {
+    const { data } = await _joinGame(gameId, { inviteCode })
+    return data
+  },
 
-  addContestants: (
+  async addContestants(gameId: string, contestants: NewContestant[]): Promise<Game> {
+    const { data } = await _addContestants(gameId, { contestants })
+    return mapGame(data!)
+  },
+
+  // Episodes — these return Episode/RevealMoleResponse, not Game.
+  // Callers that need updated game state should call api.getGame() afterwards.
+  async createEpisode(gameId: string, deadline: string, eliminatedContestantId?: string) {
+    const { data } = await _createEpisode(gameId, {
+      deadline,
+      eliminatedContestantId: eliminatedContestantId ?? null,
+    })
+    return data
+  },
+
+  async updateEpisode(
     gameId: string,
-    contestants: { name: string; age: number; photoUrl: string }[],
-  ) =>
-    fetchJson<Game>(`/games/${gameId}/contestants`, {
-      method: 'POST',
-      body: JSON.stringify({ contestants }),
-    }),
+    episodeNumber: number,
+    deadline?: string,
+    eliminatedContestantId?: string,
+  ) {
+    const { data } = await _updateEpisode(gameId, episodeNumber, {
+      deadline: deadline ?? null,
+      eliminatedContestantId: eliminatedContestantId ?? null,
+    })
+    return data
+  },
 
-  // Episodes
-  createEpisode: (gameId: string, deadline: string, eliminatedContestantId?: string) =>
-    fetchJson<Game>(`/games/${gameId}/episodes`, {
-      method: 'POST',
-      body: JSON.stringify({ deadline, eliminatedContestantId }),
-    }),
-
-  revealMole: (gameId: string, moleContestantId: string) =>
-    fetchJson<Game>(`/games/${gameId}/reveal-mole`, {
-      method: 'POST',
-      body: JSON.stringify({ moleContestantId }),
-    }),
+  async revealMole(gameId: string, moleContestantId: string) {
+    const { data } = await _revealMole(gameId, { moleContestantId })
+    return data
+  },
 
   // Rankings
-  submitRanking: (gameId: string, episodeNumber: number, contestantIds: string[]) =>
-    fetchJson<Ranking>(`/games/${gameId}/episodes/${episodeNumber}/rankings`, {
-      method: 'POST',
-      body: JSON.stringify({ contestantIds }),
-    }),
+  async submitRanking(
+    gameId: string,
+    episodeNumber: number,
+    contestantIds: string[],
+  ): Promise<Ranking> {
+    const { data } = await _submitRanking(gameId, episodeNumber, { contestantIds })
+    return mapRanking(data!)
+  },
 
-  getMyRanking: (gameId: string, episodeNumber: number) =>
-    fetchJson<Ranking>(`/games/${gameId}/episodes/${episodeNumber}/rankings/mine`),
+  async getMyRanking(gameId: string, episodeNumber: number): Promise<Ranking> {
+    const { data } = await _getMyRanking(gameId, episodeNumber)
+    return mapRanking(data!)
+  },
 
-  getMyRankings: (gameId: string) => fetchJson<Ranking[]>(`/games/${gameId}/rankings`),
+  async getMyRankings(gameId: string): Promise<Ranking[]> {
+    const { data } = await _getMyRankings(gameId)
+    return (data ?? []).map(mapRanking)
+  },
 
   // Leaderboard
-  getLeaderboard: (gameId: string) => fetchJson<LeaderboardEntry[]>(`/games/${gameId}/leaderboard`),
+  async getLeaderboard(gameId: string): Promise<LeaderboardEntry[]> {
+    const { data } = await _getLeaderboard(gameId)
+    return (data ?? []).map(mapLeaderboardEntry)
+  },
 
-  getWhatIfLeaderboard: (gameId: string, contestantId: string) =>
-    fetchJson<LeaderboardEntry[]>(`/games/${gameId}/leaderboard/what-if/${contestantId}`),
+  async getWhatIfLeaderboard(gameId: string, contestantId: string): Promise<LeaderboardEntry[]> {
+    const { data } = await _getWhatIfLeaderboard(gameId, contestantId)
+    return (data ?? []).map(mapLeaderboardEntry)
+  },
 }

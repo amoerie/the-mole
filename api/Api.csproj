@@ -4,7 +4,28 @@
     <UserSecretsId>a43d5d13-2755-425a-bff6-84a94f0a5b74</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Build-time OpenAPI spec generation → api/openapi.json -->
+  <PropertyGroup>
+    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
+    <OpenApiDocumentName>openapi</OpenApiDocumentName>
+  </PropertyGroup>
+
+  <!-- Rename Api_openapi.json → openapi.json for a cleaner path in orval config -->
+  <Target Name="RenameOpenApiDocument" AfterTargets="GenerateOpenApiDocuments">
+    <Move
+      SourceFiles="$(MSBuildProjectDirectory)\$(MSBuildProjectName)_$(OpenApiDocumentName).json"
+      DestinationFiles="$(MSBuildProjectDirectory)\openapi.json"
+      Condition="Exists('$(MSBuildProjectDirectory)\$(MSBuildProjectName)_$(OpenApiDocumentName).json')"
+    />
+  </Target>
+
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Passwordless" Version="2.*" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.*">

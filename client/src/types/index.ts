@@ -6,6 +6,13 @@ export interface Contestant {
   eliminatedInEpisode?: number
 }
 
+/** Input type for creating contestants — server assigns the id */
+export interface NewContestant {
+  name: string
+  age: number
+  photoUrl: string
+}
+
 export interface Episode {
   number: number
   deadline: string // ISO date

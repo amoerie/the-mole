@@ -14,13 +14,14 @@ describe('API client', () => {
     mockFetch.mockResolvedValueOnce({
       ok,
       status,
+      headers: new Headers(),
       json: () => Promise.resolve(data),
       text: () => Promise.resolve(JSON.stringify(data)),
     })
   }
 
   it('getMe calls /api/me', async () => {
-    const user = { userId: '123', displayName: 'Test' }
+    const user = { userId: '123', displayName: 'Test', roles: ['authenticated'] }
     mockResponse(user)
 
     const result = await api.getMe()
@@ -175,7 +176,7 @@ describe('API client', () => {
         method: 'POST',
         body: JSON.stringify({
           deadline: '2025-01-01T00:00:00Z',
-          eliminatedContestantId: undefined,
+          eliminatedContestantId: null,
         }),
       }),
     )
