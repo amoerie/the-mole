@@ -65,3 +65,10 @@ export interface UserInfo {
   displayName: string
   roles: string[]
 }
+
+export interface AdminUser {
+  id: string
+  email: string
+  displayName: string
+  isAdmin: boolean
+}

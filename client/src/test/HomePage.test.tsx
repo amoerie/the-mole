@@ -31,6 +31,12 @@ const mockUser: UserInfo = {
   roles: ['authenticated'],
 }
 
+const mockAdminUser: UserInfo = {
+  userId: 'admin-123',
+  displayName: 'AdminUser',
+  roles: ['authenticated', 'admin'],
+}
+
 const mockGame: Game = {
   id: 'game-1',
   name: 'Testspel',
@@ -67,28 +73,23 @@ describe('HomePage', () => {
 
   it('shows loading state', () => {
     renderWithAuth(null, true)
-    expect(screen.getByText('Laden...')).toBeInTheDocument()
+    expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument()
   })
 
-  it('shows login button when not authenticated', () => {
+  it('redirects to /join when not authenticated', () => {
     renderWithAuth(null)
-    expect(screen.getByText('Inloggen')).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith('/join')
   })
 
-  it('shows register link when not authenticated', () => {
-    renderWithAuth(null)
-    expect(screen.getByText('Nieuw account aanmaken')).toBeInTheDocument()
-  })
-
-  it('login link points to login page', () => {
-    renderWithAuth(null)
-    const loginLink = screen.getByText('Inloggen') as HTMLAnchorElement
-    expect(loginLink.href).toContain('/login')
-  })
-
-  it('shows create and join sections when authenticated', () => {
-    renderWithAuth(mockUser)
+  it('shows create and join sections when authenticated as admin', () => {
+    renderWithAuth(mockAdminUser)
     expect(screen.getByText('Nieuw spel aanmaken')).toBeInTheDocument()
+    expect(screen.getByText('Deelnemen aan spel')).toBeInTheDocument()
+  })
+
+  it('does not show create game section for non-admin', () => {
+    renderWithAuth(mockUser)
+    expect(screen.queryByText('Nieuw spel aanmaken')).not.toBeInTheDocument()
     expect(screen.getByText('Deelnemen aan spel')).toBeInTheDocument()
   })
 
@@ -98,7 +99,7 @@ describe('HomePage', () => {
   })
 
   it('has a create game input and button', () => {
-    renderWithAuth(mockUser)
+    renderWithAuth(mockAdminUser)
     expect(screen.getByPlaceholderText('Spelnaam')).toBeInTheDocument()
     expect(screen.getByText('Aanmaken')).toBeInTheDocument()
   })
@@ -111,7 +112,7 @@ describe('HomePage', () => {
 
   it('creates a game and navigates to it', async () => {
     vi.mocked(api.createGame).mockResolvedValueOnce(mockGame)
-    renderWithAuth(mockUser)
+    renderWithAuth(mockAdminUser)
     fireEvent.change(screen.getByPlaceholderText('Spelnaam'), {
       target: { value: 'Testspel' },
     })
@@ -121,7 +122,7 @@ describe('HomePage', () => {
 
   it('shows error when create game fails', async () => {
     vi.mocked(api.createGame).mockRejectedValueOnce(new Error('Fout bij aanmaken'))
-    renderWithAuth(mockUser)
+    renderWithAuth(mockAdminUser)
     fireEvent.change(screen.getByPlaceholderText('Spelnaam'), {
       target: { value: 'Testspel' },
     })
@@ -130,7 +131,7 @@ describe('HomePage', () => {
   })
 
   it('does not create a game when name is empty', async () => {
-    renderWithAuth(mockUser)
+    renderWithAuth(mockAdminUser)
     fireEvent.click(screen.getByText('Aanmaken'))
     expect(api.createGame).not.toHaveBeenCalled()
   })
@@ -164,7 +165,7 @@ describe('HomePage', () => {
 
   it('creates game on Enter key press', async () => {
     vi.mocked(api.createGame).mockResolvedValueOnce(mockGame)
-    renderWithAuth(mockUser)
+    renderWithAuth(mockAdminUser)
     const input = screen.getByPlaceholderText('Spelnaam')
     fireEvent.change(input, { target: { value: 'Testspel' } })
     fireEvent.keyDown(input, { key: 'Enter' })

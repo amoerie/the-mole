@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
+import { Button } from '../components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import { Alert, AlertDescription } from '../components/ui/alert'
+import { Loader2 } from 'lucide-react'
 
 export default function MagicLinkPage() {
   const [searchParams] = useSearchParams()
@@ -25,18 +29,29 @@ export default function MagicLinkPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="auth-page">
-      <h2>Toegang herstellen</h2>
-      {error ? (
-        <>
-          <div className="error-message">{error}</div>
-          <a href="/recover" className="btn btn-primary">
-            Nieuwe herstelmail aanvragen
-          </a>
-        </>
-      ) : (
-        <div className="loading">Bezig met inloggen...</div>
-      )}
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Toegang herstellen</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {error ? (
+            <>
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+              <Button asChild>
+                <a href="/recover">Nieuwe herstelmail aanvragen</a>
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="animate-spin" />
+              <span>Bezig met inloggen...</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

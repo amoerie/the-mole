@@ -17,6 +17,7 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
         TestAuthHandler.UserId = "test-user-id";
         TestAuthHandler.DisplayName = "Test User";
         TestAuthHandler.IsAuthenticated = true;
+        TestAuthHandler.Roles = ["authenticated", "admin"];
     }
 
     private HttpClient CreateClient() =>
@@ -76,6 +77,25 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
         finally
         {
             TestAuthHandler.IsAuthenticated = true;
+        }
+    }
+
+    [Fact]
+    public async Task CreateGame_WhenNotAdmin_ReturnsForbidden()
+    {
+        PrepareDb();
+        TestAuthHandler.Roles = ["authenticated"];
+        try
+        {
+            var client = CreateClient();
+
+            var response = await client.PostAsJsonAsync("/api/games", new { name = "My Game" });
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.Roles = ["authenticated", "admin"];
         }
     }
 

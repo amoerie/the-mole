@@ -8,6 +8,7 @@
  * silently at runtime — whenever the API contract changes.
  */
 import type {
+  AdminUserResponse as RawAdminUser,
   Contestant as RawContestant,
   Episode as RawEpisode,
   EpisodeScore as RawEpisodeScore,
@@ -17,6 +18,7 @@ import type {
   UserInfo as RawUserInfo,
 } from './generated'
 import type {
+  AdminUser,
   Contestant,
   Episode,
   EpisodeScore,
@@ -25,6 +27,15 @@ import type {
   Ranking,
   UserInfo,
 } from '../types'
+
+export function mapAdminUser(raw: RawAdminUser): AdminUser {
+  return {
+    id: raw.id ?? '',
+    email: raw.email ?? '',
+    displayName: raw.displayName ?? '',
+    isAdmin: raw.isAdmin ?? false,
+  }
+}
 
 export function mapUserInfo(raw: RawUserInfo): UserInfo {
   return {

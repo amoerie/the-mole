@@ -3,6 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import type { Game } from '../types'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import { Alert, AlertDescription } from '../components/ui/alert'
+import { Skeleton } from '../components/ui/skeleton'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -54,6 +59,12 @@ export default function HomePage() {
       })
   }, [user])
 
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/join')
+    }
+  }, [loading, user, navigate])
+
   async function handleCreateGame() {
     if (!gameName.trim()) return
     setError('')
@@ -75,84 +86,90 @@ export default function HomePage() {
   }
 
   if (loading) {
-    return <div className="loading">Laden...</div>
-  }
-
-  if (!user) {
     return (
-      <div className="home-page">
-        <div className="login-section">
-          <h2>Welkom bij De Mol</h2>
-          <p>Log in om mee te spelen</p>
-          <div className="login-buttons">
-            <a href="/login" className="btn btn-login">
-              Inloggen
-            </a>
-            <a href="/register" className="btn btn-secondary">
-              Nieuw account aanmaken
-            </a>
-          </div>
-        </div>
+      <div data-testid="loading-skeleton" className="mx-auto max-w-2xl p-4 flex flex-col gap-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
       </div>
     )
   }
 
+  if (!user) return null
+
+  const isAdmin = user.roles.includes('admin')
+
   return (
-    <div className="home-page">
-      <section className="create-game">
-        <h2>Nieuw spel aanmaken</h2>
-        <div className="form-row">
-          <input
-            type="text"
-            placeholder="Spelnaam"
-            value={gameName}
-            onChange={(e) => setGameName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreateGame()}
-          />
-          <button className="btn btn-primary" onClick={handleCreateGame}>
-            Aanmaken
-          </button>
-        </div>
-      </section>
+    <div className="mx-auto max-w-2xl p-4 flex flex-col gap-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <section className="join-game">
-        <h2>Deelnemen aan spel</h2>
-        <div className="form-row">
-          <input
-            type="text"
-            placeholder="Uitnodigingscode"
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleJoinByInvite(inviteCode)}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={() => handleJoinByInvite(inviteCode)}
-            disabled={joining}
-          >
-            {joining ? 'Bezig...' : 'Deelnemen'}
-          </button>
-        </div>
-      </section>
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nieuw spel aanmaken</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Spelnaam"
+                value={gameName}
+                onChange={(e) => setGameName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateGame()}
+              />
+              <Button onClick={handleCreateGame}>Aanmaken</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {error && <div className="error-message">{error}</div>}
+      <Card>
+        <CardHeader>
+          <CardTitle>Deelnemen aan spel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Uitnodigingscode"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoinByInvite(inviteCode)}
+            />
+            <Button onClick={() => handleJoinByInvite(inviteCode)} disabled={joining}>
+              {joining ? 'Bezig...' : 'Deelnemen'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {games.length > 0 && (
-        <section className="my-games">
-          <h2>Mijn spellen</h2>
-          <ul className="game-list">
-            {games.map((game) => (
-              <li key={game.id}>
-                <button className="btn btn-game" onClick={() => navigate(`/game/${game.id}`)}>
-                  {game.name}
-                  <span className="game-meta">
+        <Card>
+          <CardHeader>
+            <CardTitle>Mijn spellen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-2">
+              {games.map((game) => (
+                <Button
+                  key={game.id}
+                  variant="outline"
+                  className="justify-between h-auto py-3"
+                  onClick={() => navigate(`/game/${game.id}`)}
+                >
+                  <span>{game.name}</span>
+                  <span className="text-muted-foreground text-xs">
                     {game.contestants.length} deelnemers · {game.episodes.length} afleveringen
                   </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
