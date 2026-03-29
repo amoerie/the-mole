@@ -1,0 +1,26 @@
+#!/bin/sh
+# Pre-commit hook: auto-format staged files with CSharpier (C#) and Prettier (frontend).
+#
+# One-time setup (per clone):
+#   git config core.hooksPath .githooks
+#
+# The hook formats only the staged files, then re-stages them — so the
+# commit always contains formatted code without you having to do anything.
+
+STAGED_CS=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$' || true)
+STAGED_FE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^client/.*\.(ts|tsx|js|json|css)$' || true)
+
+if [ -n "$STAGED_CS" ]; then
+  printf "🔧 CSharpier: formatting staged C# files...\n"
+  # Pass files one per line via xargs to handle spaces in paths
+  echo "$STAGED_CS" | xargs dotnet csharpier
+  echo "$STAGED_CS" | xargs git add
+fi
+
+if [ -n "$STAGED_FE" ]; then
+  printf "🔧 Prettier: formatting staged frontend files...\n"
+  # Strip the leading "client/" prefix for Prettier (runs from client/)
+  FE_RELATIVE=$(echo "$STAGED_FE" | sed 's|^client/||')
+  (cd client && echo "$FE_RELATIVE" | xargs npx prettier --write --log-level warn)
+  echo "$STAGED_FE" | xargs git add
+fi
