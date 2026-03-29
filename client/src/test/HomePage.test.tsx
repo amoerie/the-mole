@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../hooks/useAuth'
 import HomePage from '../pages/HomePage'
-import type { UserInfo } from '../types'
+import type { UserInfo, Game } from '../types'
 
 // Mock the api module
 vi.mock('../api/client', () => ({
@@ -17,10 +17,27 @@ vi.mock('../api/client', () => ({
   },
 }))
 
+import { api } from '../api/client'
+
+const mockNavigate = vi.hoisted(() => vi.fn())
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>()
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 const mockUser: UserInfo = {
   userId: 'user-123',
   displayName: 'TestUser',
   roles: ['authenticated'],
+}
+
+const mockGame: Game = {
+  id: 'game-1',
+  name: 'Testspel',
+  inviteCode: 'abc123',
+  adminUserId: 'user-123',
+  contestants: [{ id: 'c1', name: 'Alice', age: 30, photoUrl: '/a.jpg' }],
+  episodes: [],
 }
 
 function renderWithAuth(user: UserInfo | null, loading = false) {
@@ -37,6 +54,15 @@ describe('HomePage', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    vi.mocked(api.getMyGames).mockRejectedValue(new Error('not available'))
+    vi.mocked(api.getGame).mockResolvedValue({
+      id: 'g',
+      name: '',
+      adminUserId: '',
+      inviteCode: '',
+      contestants: [],
+      episodes: [],
+    })
   })
 
   it('shows loading state', () => {
@@ -47,6 +73,11 @@ describe('HomePage', () => {
   it('shows login button when not authenticated', () => {
     renderWithAuth(null)
     expect(screen.getByText('Inloggen')).toBeInTheDocument()
+  })
+
+  it('shows register link when not authenticated', () => {
+    renderWithAuth(null)
+    expect(screen.getByText('Nieuw account aanmaken')).toBeInTheDocument()
   })
 
   it('login link points to login page', () => {
@@ -76,5 +107,92 @@ describe('HomePage', () => {
     renderWithAuth(mockUser)
     expect(screen.getByPlaceholderText('Uitnodigingscode')).toBeInTheDocument()
     expect(screen.getByText('Deelnemen')).toBeInTheDocument()
+  })
+
+  it('creates a game and navigates to it', async () => {
+    vi.mocked(api.createGame).mockResolvedValueOnce(mockGame)
+    renderWithAuth(mockUser)
+    fireEvent.change(screen.getByPlaceholderText('Spelnaam'), {
+      target: { value: 'Testspel' },
+    })
+    fireEvent.click(screen.getByText('Aanmaken'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/game/game-1'))
+  })
+
+  it('shows error when create game fails', async () => {
+    vi.mocked(api.createGame).mockRejectedValueOnce(new Error('Fout bij aanmaken'))
+    renderWithAuth(mockUser)
+    fireEvent.change(screen.getByPlaceholderText('Spelnaam'), {
+      target: { value: 'Testspel' },
+    })
+    fireEvent.click(screen.getByText('Aanmaken'))
+    expect(await screen.findByText('Fout bij aanmaken')).toBeInTheDocument()
+  })
+
+  it('does not create a game when name is empty', async () => {
+    renderWithAuth(mockUser)
+    fireEvent.click(screen.getByText('Aanmaken'))
+    expect(api.createGame).not.toHaveBeenCalled()
+  })
+
+  it('joins a game by invite code and navigates', async () => {
+    vi.mocked(api.getGameByInvite).mockResolvedValueOnce(mockGame)
+    vi.mocked(api.joinGame).mockResolvedValueOnce(undefined)
+    renderWithAuth(mockUser)
+    fireEvent.change(screen.getByPlaceholderText('Uitnodigingscode'), {
+      target: { value: 'abc123' },
+    })
+    fireEvent.click(screen.getByText('Deelnemen'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/game/game-1'))
+  })
+
+  it('shows error when joining with invalid invite code', async () => {
+    vi.mocked(api.getGameByInvite).mockRejectedValueOnce(new Error('Ongeldige code'))
+    renderWithAuth(mockUser)
+    fireEvent.change(screen.getByPlaceholderText('Uitnodigingscode'), {
+      target: { value: 'badcode' },
+    })
+    fireEvent.click(screen.getByText('Deelnemen'))
+    expect(await screen.findByText('Ongeldige code')).toBeInTheDocument()
+  })
+
+  it('does not join when invite code is empty', () => {
+    renderWithAuth(mockUser)
+    fireEvent.click(screen.getByText('Deelnemen'))
+    expect(api.getGameByInvite).not.toHaveBeenCalled()
+  })
+
+  it('creates game on Enter key press', async () => {
+    vi.mocked(api.createGame).mockResolvedValueOnce(mockGame)
+    renderWithAuth(mockUser)
+    const input = screen.getByPlaceholderText('Spelnaam')
+    fireEvent.change(input, { target: { value: 'Testspel' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/game/game-1'))
+  })
+
+  it('joins game on Enter key press', async () => {
+    vi.mocked(api.getGameByInvite).mockResolvedValueOnce(mockGame)
+    vi.mocked(api.joinGame).mockResolvedValueOnce(undefined)
+    renderWithAuth(mockUser)
+    const input = screen.getByPlaceholderText('Uitnodigingscode')
+    fireEvent.change(input, { target: { value: 'abc123' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/game/game-1'))
+  })
+
+  it('shows games list when getMyGames succeeds', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    renderWithAuth(mockUser)
+    expect(await screen.findByText('Testspel')).toBeInTheDocument()
+    expect(screen.getByText('Mijn spellen')).toBeInTheDocument()
+  })
+
+  it('navigates to game when game button is clicked', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    renderWithAuth(mockUser)
+    const gameButton = await screen.findByText('Testspel')
+    fireEvent.click(gameButton)
+    expect(mockNavigate).toHaveBeenCalledWith('/game/game-1')
   })
 })
