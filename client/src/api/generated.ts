@@ -155,6 +155,10 @@ export interface UpdateEpisodeRequest {
   eliminatedContestantId: string | null
 }
 
+export interface UpdateProfileRequest {
+  displayName: string
+}
+
 export interface UserInfo {
   userId: string
   displayName: string
@@ -303,6 +307,32 @@ export const getMe = async (options?: RequestInit): Promise<getMeResponse> => {
   return fetcher<getMeResponse>(getGetMeUrl(), {
     ...options,
     method: 'GET',
+  })
+}
+
+export type updateProfileResponse200 = {
+  data: UserInfo
+  status: 200
+}
+
+export type updateProfileResponseSuccess = updateProfileResponse200 & {
+  headers: Headers
+}
+export type updateProfileResponse = updateProfileResponseSuccess
+
+export const getUpdateProfileUrl = () => {
+  return `/api/me`
+}
+
+export const updateProfile = async (
+  updateProfileRequest: UpdateProfileRequest,
+  options?: RequestInit,
+): Promise<updateProfileResponse> => {
+  return fetcher<updateProfileResponse>(getUpdateProfileUrl(), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateProfileRequest),
   })
 }
 

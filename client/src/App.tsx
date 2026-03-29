@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import RecoveryPage from './pages/RecoveryPage'
 import MagicLinkPage from './pages/MagicLinkPage'
 import JoinPage from './pages/JoinPage'
+import ProfilePage from './pages/ProfilePage'
 import { Button } from './components/ui/button'
 import { api } from './api/client'
 import { initPasswordlessClient } from './lib/passwordless'
@@ -32,7 +33,9 @@ function App() {
                 </Link>
                 <div className="flex items-center gap-3">
                   <span className="hidden text-sm text-muted-foreground sm:block">
-                    {auth.user.displayName}
+                    <Link to="/profile" className="hover:text-foreground">
+                      {auth.user.displayName}
+                    </Link>
                   </span>
                   <Button asChild variant="ghost" size="sm">
                     <a href="/api/auth/logout">Uitloggen</a>
@@ -48,6 +51,7 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/recover" element={<RecoveryPage />} />
             <Route path="/magic-link" element={<MagicLinkPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/game/:gameId" element={<GamePage />} />
             <Route path="/game/:gameId/leaderboard" element={<LeaderboardPage />} />
             <Route path="/join/:inviteCode" element={<HomePage />} />

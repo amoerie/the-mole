@@ -30,6 +30,7 @@ import {
   revealMole as _revealMole,
   submitRanking as _submitRanking,
   updateEpisode as _updateEpisode,
+  updateProfile as _updateProfile,
   verifyPasskey as _verifyPasskey,
 } from './generated'
 import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
@@ -58,6 +59,11 @@ export const api = {
   // Auth
   async getMe(): Promise<UserInfo> {
     const { data } = await _getMe()
+    return mapUserInfo(data!)
+  },
+
+  async updateProfile(displayName: string): Promise<UserInfo> {
+    const { data } = await _updateProfile({ displayName })
     return mapUserInfo(data!)
   },
 
