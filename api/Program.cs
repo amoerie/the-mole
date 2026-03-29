@@ -95,6 +95,7 @@ app.MapEpisodeRoutes();
 app.MapRankingRoutes();
 app.MapLeaderboardRoutes();
 app.MapAdminRoutes();
+app.MapConfigRoutes();
 
 if (!app.Environment.IsDevelopment())
     app.MapFallbackToFile("index.html");

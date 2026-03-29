@@ -705,6 +705,26 @@
           }
         }
       }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "Config"
+        ],
+        "operationId": "GetConfig",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -746,6 +766,17 @@
           },
           "isAdmin": {
             "type": "boolean"
+          }
+        }
+      },
+      "AppConfig": {
+        "required": [
+          "passwordlessApiKey"
+        ],
+        "type": "object",
+        "properties": {
+          "passwordlessApiKey": {
+            "type": "string"
           }
         }
       },
@@ -1198,6 +1229,9 @@
     },
     {
       "name": "Admin"
+    },
+    {
+      "name": "Config"
     }
   ]
 }

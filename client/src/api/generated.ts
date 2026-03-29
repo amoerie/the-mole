@@ -30,6 +30,10 @@ export interface AdminUserResponse {
   isAdmin: boolean
 }
 
+export interface AppConfig {
+  passwordlessApiKey: string
+}
+
 export interface CreateEpisodeRequest {
   deadline: string
   /** @nullable */
@@ -670,6 +674,27 @@ export const getListUsersUrl = () => {
 
 export const listUsers = async (options?: RequestInit): Promise<listUsersResponse> => {
   return fetcher<listUsersResponse>(getListUsersUrl(), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type getConfigResponse200 = {
+  data: AppConfig
+  status: 200
+}
+
+export type getConfigResponseSuccess = getConfigResponse200 & {
+  headers: Headers
+}
+export type getConfigResponse = getConfigResponseSuccess
+
+export const getGetConfigUrl = () => {
+  return `/api/config`
+}
+
+export const getConfig = async (options?: RequestInit): Promise<getConfigResponse> => {
+  return fetcher<getConfigResponse>(getGetConfigUrl(), {
     ...options,
     method: 'GET',
   })
