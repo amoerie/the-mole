@@ -13,7 +13,7 @@ COPY Directory.Build.props ./
 COPY api/Api.csproj ./api/
 RUN dotnet restore api/Api.csproj
 COPY api/ ./api/
-RUN dotnet publish api/Api.csproj -c Release -o publish --no-restore
+RUN dotnet publish api/Api.csproj -c Release -o publish --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
 
 # Stage 3: Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
