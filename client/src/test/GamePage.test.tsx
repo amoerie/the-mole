@@ -1,13 +1,33 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../hooks/useAuth'
 import GamePage from '../pages/GamePage'
 import type { UserInfo, Game, Ranking } from '../types'
 
-vi.mock('../components/RankingBoard', () => ({
-  default: ({ onSubmit }: { onSubmit: (ids: string[]) => void }) => (
-    <button onClick={() => onSubmit(['c1', 'c2'])}>Submit ranking</button>
+vi.mock('../components/EpisodeCard', () => ({
+  default: () => <div data-testid="episode-card">EpisodeCard</div>,
+}))
+
+vi.mock('../components/AdminContestantManager', () => ({
+  default: () => <div data-testid="admin-contestant-manager">AdminContestantManager</div>,
+}))
+
+vi.mock('../components/AdminEpisodeManager', () => ({
+  default: ({
+    onDeleteEpisode,
+    onCreateEpisode,
+    onRevealMole,
+  }: {
+    onDeleteEpisode: (n: number) => Promise<void>
+    onCreateEpisode: (d: string) => Promise<void>
+    onRevealMole: (id: string) => Promise<void>
+  }) => (
+    <div data-testid="admin-episode-manager">
+      <button onClick={() => onDeleteEpisode(1)}>Delete episode 1</button>
+      <button onClick={() => onCreateEpisode('2026-04-06T18:00:00.000Z')}>Create episode</button>
+      <button onClick={() => onRevealMole('c1')}>Reveal mole</button>
+    </div>
   ),
 }))
 
@@ -41,7 +61,6 @@ const mockAdmin: UserInfo = {
 }
 
 const futureDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-const pastDeadline = new Date(Date.now() - 60 * 60 * 1000).toISOString()
 
 const mockGame: Game = {
   id: 'game-1',
@@ -58,11 +77,6 @@ const mockGame: Game = {
 const mockGameWithEpisode: Game = {
   ...mockGame,
   episodes: [{ number: 1, deadline: futureDeadline }],
-}
-
-const mockGameWithPastEpisode: Game = {
-  ...mockGame,
-  episodes: [{ number: 1, deadline: pastDeadline }],
 }
 
 const emptyRankings: Ranking[] = []
@@ -108,22 +122,17 @@ describe('GamePage', () => {
     expect(await screen.findByText('Nog geen aflevering gestart.')).toBeInTheDocument()
   })
 
-  it('shows episode card when episode exists', async () => {
+  it('shows EpisodeCard when episode exists', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
     renderWithAuth(mockUser)
-    expect(await screen.findByText('Aflevering 1')).toBeInTheDocument()
+    expect(await screen.findByTestId('episode-card')).toBeInTheDocument()
   })
 
-  it('shows Open badge when deadline is in the future', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
+  it('does not show EpisodeCard when no episodes', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
     renderWithAuth(mockUser)
-    expect(await screen.findByText('Open')).toBeInTheDocument()
-  })
-
-  it('shows Deadline verstreken badge when deadline has passed', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGameWithPastEpisode)
-    renderWithAuth(mockUser)
-    expect(await screen.findByText('Deadline verstreken')).toBeInTheDocument()
+    await screen.findByText('Testspel')
+    expect(screen.queryByTestId('episode-card')).not.toBeInTheDocument()
   })
 
   it('shows error when game fails to load', async () => {
@@ -132,78 +141,58 @@ describe('GamePage', () => {
     expect(await screen.findByText('Netwerkfout')).toBeInTheDocument()
   })
 
-  it('does not show admin panel for non-admin', async () => {
+  it('does not show admin panels for non-admin', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     renderWithAuth(mockUser)
     await screen.findByText('Testspel')
-    expect(screen.queryByText('Afleveringen beheren')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('admin-contestant-manager')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('admin-episode-manager')).not.toBeInTheDocument()
   })
 
-  it('shows admin panel for admin user', async () => {
+  it('shows admin panels for admin user', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     renderWithAuth(mockAdmin)
-    expect(await screen.findByText('Afleveringen beheren')).toBeInTheDocument()
+    expect(await screen.findByTestId('admin-contestant-manager')).toBeInTheDocument()
+    expect(await screen.findByTestId('admin-episode-manager')).toBeInTheDocument()
   })
 
-  it('shows existing episodes in admin panel', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
-    renderWithAuth(mockAdmin)
-    expect(await screen.findByText('Afleveringen beheren')).toBeInTheDocument()
-    expect(screen.getAllByText(/Aflevering 1/).length).toBeGreaterThan(0)
-  })
-
-  it('shows delete button for each episode in admin panel', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
-    renderWithAuth(mockAdmin)
-    await screen.findByText('Afleveringen beheren')
-    expect(screen.getByRole('button', { name: 'Verwijderen' })).toBeInTheDocument()
-  })
-
-  it('opens confirmation dialog when delete button is clicked', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
-    renderWithAuth(mockAdmin)
-    await screen.findByText('Afleveringen beheren')
-    fireEvent.click(screen.getByRole('button', { name: 'Verwijderen' }))
-    expect(await screen.findByText('Aflevering 1 verwijderen?')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Dit verwijdert ook alle ingediende rangschikkingen/),
-    ).toBeInTheDocument()
-  })
-
-  it('calls deleteEpisode and reloads when confirmed', async () => {
+  it('calls deleteEpisode and reloads when admin deletes an episode', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
     vi.mocked(api.deleteEpisode).mockResolvedValue(undefined)
     renderWithAuth(mockAdmin)
-    await screen.findByText('Afleveringen beheren')
-    fireEvent.click(screen.getByRole('button', { name: 'Verwijderen' }))
-    await screen.findByText('Aflevering 1 verwijderen?')
-    // Click the confirm button inside the dialog (also labelled Verwijderen)
-    const confirmButtons = screen.getAllByRole('button', { name: 'Verwijderen' })
-    fireEvent.click(confirmButtons[confirmButtons.length - 1])
+    await screen.findByTestId('admin-episode-manager')
+    screen.getByText('Delete episode 1').click()
     await waitFor(() => expect(api.deleteEpisode).toHaveBeenCalledWith('game-1', 1))
     expect(api.getGame).toHaveBeenCalledTimes(2)
-  })
-
-  it('does not call deleteEpisode when cancelled', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
-    renderWithAuth(mockAdmin)
-    await screen.findByText('Afleveringen beheren')
-    fireEvent.click(screen.getByRole('button', { name: 'Verwijderen' }))
-    await screen.findByText('Aflevering 1 verwijderen?')
-    fireEvent.click(screen.getByRole('button', { name: 'Annuleren' }))
-    expect(api.deleteEpisode).not.toHaveBeenCalled()
   })
 
   it('shows error when deleteEpisode fails', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGameWithEpisode)
     vi.mocked(api.deleteEpisode).mockRejectedValue(new Error('Verwijderen mislukt'))
     renderWithAuth(mockAdmin)
-    await screen.findByText('Afleveringen beheren')
-    fireEvent.click(screen.getByRole('button', { name: 'Verwijderen' }))
-    await screen.findByText('Aflevering 1 verwijderen?')
-    const confirmButtons = screen.getAllByRole('button', { name: 'Verwijderen' })
-    fireEvent.click(confirmButtons[confirmButtons.length - 1])
+    await screen.findByTestId('admin-episode-manager')
+    screen.getByText('Delete episode 1').click()
     expect(await screen.findByText('Verwijderen mislukt')).toBeInTheDocument()
+  })
+
+  it('calls createEpisode and reloads when admin creates an episode', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.createEpisode).mockResolvedValue(undefined as never)
+    renderWithAuth(mockAdmin)
+    await screen.findByTestId('admin-episode-manager')
+    screen.getByText('Create episode').click()
+    await waitFor(() => expect(api.createEpisode).toHaveBeenCalled())
+    expect(api.getGame).toHaveBeenCalledTimes(2)
+  })
+
+  it('calls revealMole and reloads', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.revealMole).mockResolvedValue(undefined as never)
+    renderWithAuth(mockAdmin)
+    await screen.findByTestId('admin-episode-manager')
+    screen.getByText('Reveal mole').click()
+    await waitFor(() => expect(api.revealMole).toHaveBeenCalledWith('game-1', 'c1'))
+    expect(api.getGame).toHaveBeenCalledTimes(2)
   })
 
   it('shows mole revealed alert when moleContestantId is set', async () => {
@@ -211,6 +200,5 @@ describe('GamePage', () => {
     vi.mocked(api.getGame).mockResolvedValue(gameWithMole)
     renderWithAuth(mockUser)
     expect(await screen.findByText(/De Mol is onthuld/)).toBeInTheDocument()
-    expect(screen.getAllByText(/Alice/).length).toBeGreaterThanOrEqual(1)
   })
 })
