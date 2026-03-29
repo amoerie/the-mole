@@ -12,6 +12,7 @@ import {
   addContestants as _addContestants,
   createEpisode as _createEpisode,
   createGame as _createGame,
+  getConfig as _getConfig,
   getGame as _getGame,
   getGameByInvite as _getGameByInvite,
   getLeaderboard as _getLeaderboard,
@@ -36,6 +37,12 @@ import type { AdminUser, Game, LeaderboardEntry, NewContestant, Ranking, UserInf
 export type { AdminUser, Game, LeaderboardEntry, NewContestant, Ranking, UserInfo }
 
 export const api = {
+  // Config
+  async getConfig() {
+    const { data } = await _getConfig()
+    return data!
+  },
+
   // Admin
   async listUsers(): Promise<AdminUser[]> {
     const { data } = await _listUsers()

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import { AuthContext, useAuthProvider } from './hooks/useAuth'
 import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
@@ -9,9 +10,15 @@ import RecoveryPage from './pages/RecoveryPage'
 import MagicLinkPage from './pages/MagicLinkPage'
 import JoinPage from './pages/JoinPage'
 import { Button } from './components/ui/button'
+import { api } from './api/client'
+import { initPasswordlessClient } from './lib/passwordless'
 
 function App() {
   const auth = useAuthProvider()
+
+  useEffect(() => {
+    api.getConfig().then((config) => initPasswordlessClient(config.passwordlessApiKey))
+  }, [])
 
   return (
     <AuthContext.Provider value={auth}>
