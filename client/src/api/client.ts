@@ -15,6 +15,7 @@ import {
   getConfig as _getConfig,
   getGame as _getGame,
   getGameByInvite as _getGameByInvite,
+  getEpisodeRankings as _getEpisodeRankings,
   getLeaderboard as _getLeaderboard,
   getMe as _getMe,
   getMyGames as _getMyGames,
@@ -34,9 +35,17 @@ import {
   verifyPasskey as _verifyPasskey,
 } from './generated'
 import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
-import type { AdminUser, Game, LeaderboardEntry, NewContestant, Ranking, UserInfo } from '../types'
+import type {
+  AdminUser,
+  Game,
+  LeaderboardEntry,
+  NewContestant,
+  PlayerRanking,
+  Ranking,
+  UserInfo,
+} from '../types'
 
-export type { AdminUser, Game, LeaderboardEntry, NewContestant, Ranking, UserInfo }
+export type { AdminUser, Game, LeaderboardEntry, NewContestant, PlayerRanking, Ranking, UserInfo }
 
 export const api = {
   // Config
@@ -154,6 +163,16 @@ export const api = {
   ): Promise<Ranking> {
     const { data } = await _submitRanking(gameId, episodeNumber, { contestantIds })
     return mapRanking(data!)
+  },
+
+  async getEpisodeRankings(gameId: string, episodeNumber: number): Promise<PlayerRanking[]> {
+    const { data } = await _getEpisodeRankings(gameId, episodeNumber)
+    return (data ?? []).map((r) => ({
+      userId: r.userId,
+      displayName: r.displayName,
+      contestantIds: r.contestantIds,
+      submittedAt: r.submittedAt,
+    }))
   },
 
   async getMyRanking(gameId: string, episodeNumber: number): Promise<Ranking> {

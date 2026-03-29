@@ -26,6 +26,7 @@ interface RankingBoardProps {
   initialOrder?: string[]
   onSubmit: (orderedIds: string[]) => void
   disabled?: boolean
+  isUpdate?: boolean
 }
 
 function SortableItem({
@@ -90,6 +91,7 @@ export default function RankingBoard({
   initialOrder,
   onSubmit,
   disabled,
+  isUpdate,
 }: RankingBoardProps) {
   const [orderedIds, setOrderedIds] = useState<string[]>(() => {
     if (initialOrder?.length) return initialOrder
@@ -136,7 +138,11 @@ export default function RankingBoard({
         </SortableContext>
       </DndContext>
       <Button onClick={() => onSubmit(orderedIds)} disabled={disabled} className="w-full">
-        {disabled ? 'Deadline verstreken' : 'Rangschikking indienen'}
+        {disabled
+          ? 'Deadline verstreken'
+          : isUpdate
+            ? 'Rangschikking bijwerken'
+            : 'Rangschikking indienen'}
       </Button>
     </div>
   )

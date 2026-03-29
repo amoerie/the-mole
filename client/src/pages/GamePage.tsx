@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
-import type { Game, Ranking } from '../types'
+import type { Game, PlayerRanking, Ranking } from '../types'
 import ContestantCard from '../components/ContestantCard'
 import RankingBoard from '../components/RankingBoard'
 import { Button } from '../components/ui/button'
@@ -12,7 +12,15 @@ import { Alert, AlertDescription } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Separator } from '../components/ui/separator'
-import { AlertCircle, CheckCircle2, Trophy } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Trophy } from 'lucide-react'
+
+function lastSundayDateStr(): string {
+  const now = new Date()
+  const daysBack = now.getDay() === 0 ? 0 : now.getDay()
+  const d = new Date(now)
+  d.setDate(d.getDate() - daysBack)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -20,13 +28,15 @@ export default function GamePage() {
 
   const [game, setGame] = useState<Game | null>(null)
   const [myRankings, setMyRankings] = useState<Ranking[]>([])
+  const [episodeRankings, setEpisodeRankings] = useState<PlayerRanking[]>([])
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   // Admin controls state
-  const [newDeadline, setNewDeadline] = useState('')
+  const [newDeadline, setNewDeadline] = useState(lastSundayDateStr)
   const [eliminatedId, setEliminatedId] = useState('')
   const [moleId, setMoleId] = useState('')
   const [newContestantName, setNewContestantName] = useState('')
@@ -42,6 +52,15 @@ export default function GamePage() {
       ])
       setGame(gameData)
       setMyRankings(rankings)
+
+      const lastEp =
+        gameData.episodes.length > 0 ? gameData.episodes[gameData.episodes.length - 1] : null
+      if (lastEp && new Date(lastEp.deadline) < new Date()) {
+        const allRankings = await api.getEpisodeRankings(gameId, lastEp.number).catch(() => [])
+        setEpisodeRankings(allRankings)
+      } else {
+        setEpisodeRankings([])
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fout bij laden')
     } finally {
@@ -93,10 +112,19 @@ export default function GamePage() {
     ? myRankings.find((r) => r.episodeNumber === currentEpisode.number)
     : undefined
 
+  // Only exclude contestants eliminated in PREVIOUS episodes (not the current one)
+  const activeContestants = currentEpisode
+    ? game.contestants.filter(
+        (c) =>
+          !game.episodes.some(
+            (e) => e.number < currentEpisode.number && e.eliminatedContestantId === c.id,
+          ),
+      )
+    : game.contestants
+
   const eliminatedIds = new Set(
     game.episodes.filter((e) => e.eliminatedContestantId).map((e) => e.eliminatedContestantId!),
   )
-  const activeContestants = game.contestants.filter((c) => !eliminatedIds.has(c.id))
 
   async function handleSubmitRanking(orderedIds: string[]) {
     if (!currentEpisode || !gameId) return
@@ -115,9 +143,11 @@ export default function GamePage() {
   async function handleCreateEpisode() {
     if (!gameId || !newDeadline) return
     try {
-      await api.createEpisode(gameId, newDeadline, eliminatedId || undefined)
+      // Treat selected date as local time at 20:00, convert to UTC ISO string
+      const deadlineIso = new Date(newDeadline + 'T20:00:00').toISOString()
+      await api.createEpisode(gameId, deadlineIso, eliminatedId || undefined)
       await loadGame()
-      setNewDeadline('')
+      setNewDeadline(lastSundayDateStr())
       setEliminatedId('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fout bij aanmaken aflevering')
@@ -248,19 +278,63 @@ export default function GamePage() {
               Deadline: {new Date(currentEpisode.deadline).toLocaleString('nl-BE')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
-            {hasSubmittedCurrent || submitted ? (
+          <CardContent className="pt-0 flex flex-col gap-3">
+            {(hasSubmittedCurrent || submitted) && (
               <div className="flex items-center gap-2 text-sm text-green-500">
                 <CheckCircle2 className="size-4" />
-                <span>Je rangschikking is ingediend voor deze aflevering.</span>
+                <span>
+                  {submitted
+                    ? 'Je rangschikking is bijgewerkt voor deze aflevering.'
+                    : 'Je rangschikking is ingediend voor deze aflevering.'}
+                </span>
               </div>
-            ) : (
-              <RankingBoard
-                contestants={activeContestants}
-                initialOrder={existingRanking?.contestantIds}
-                onSubmit={handleSubmitRanking}
-                disabled={isDeadlinePassed || submitting}
-              />
+            )}
+            <RankingBoard
+              key={existingRanking?.id ?? 'new'}
+              contestants={activeContestants}
+              initialOrder={existingRanking?.contestantIds}
+              onSubmit={handleSubmitRanking}
+              disabled={isDeadlinePassed || submitting}
+              isUpdate={hasSubmittedCurrent && !submitted}
+            />
+            {isDeadlinePassed && episodeRankings.length > 0 && (
+              <>
+                <Separator className="mt-2" />
+                <p className="text-sm font-medium">
+                  Inzendingen aflevering {currentEpisode.number} ({episodeRankings.length}{' '}
+                  {episodeRankings.length === 1 ? 'speler' : 'spelers'})
+                </p>
+                {episodeRankings.map((pr) => (
+                  <div key={pr.userId} className="rounded-md border overflow-hidden">
+                    <button
+                      className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+                      onClick={() =>
+                        setExpandedPlayer(expandedPlayer === pr.userId ? null : pr.userId)
+                      }
+                    >
+                      <span>{pr.displayName}</span>
+                      {expandedPlayer === pr.userId ? (
+                        <ChevronUp className="size-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      )}
+                    </button>
+                    {expandedPlayer === pr.userId && (
+                      <div className="flex flex-col gap-1 border-t px-3 py-2">
+                        {pr.contestantIds.map((id, idx) => {
+                          const contestant = game.contestants.find((c) => c.id === id)
+                          return (
+                            <div key={id} className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground w-5">#{idx + 1}</span>
+                              <span>{contestant?.name ?? id}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
             )}
           </CardContent>
         </Card>
@@ -337,7 +411,7 @@ export default function GamePage() {
                 <p className="text-sm font-medium">Nieuwe aflevering</p>
                 <div className="flex flex-wrap gap-2">
                   <Input
-                    type="datetime-local"
+                    type="date"
                     value={newDeadline}
                     onChange={(e) => setNewDeadline(e.target.value)}
                     className="flex-1 min-w-40"

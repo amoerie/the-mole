@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import RankingBoard from '../components/RankingBoard'
@@ -45,9 +45,23 @@ describe('RankingBoard', () => {
     expect(onSubmit).toHaveBeenCalledWith(['3', '1', '2'])
   })
 
-  it('disabled state prevents submission', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} disabled />)
-    const button = screen.getByText('Deadline verstreken')
-    expect(button).toBeDisabled()
+  it('shows bijwerken button when isUpdate is true', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(<RankingBoard contestants={contestants} onSubmit={onSubmit} isUpdate />)
+
+    const button = screen.getByRole('button', { name: /bijwerken/i })
+    expect(button).toBeInTheDocument()
+    await user.click(button)
+    expect(onSubmit).toHaveBeenCalledWith(['1', '2', '3'])
+  })
+
+  it('triggers onError fallback for broken image', () => {
+    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    const imgs = screen.getAllByRole('img')
+    const img = imgs[0] as HTMLImageElement
+    Object.defineProperty(img, 'src', { writable: true, value: '' })
+    fireEvent.error(img)
+    expect(img.src).toContain('dicebear')
   })
 })

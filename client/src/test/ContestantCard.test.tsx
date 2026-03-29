@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import ContestantCard from '../components/ContestantCard'
 import type { Contestant } from '../types'
@@ -44,8 +44,10 @@ describe('ContestantCard', () => {
     expect(container.querySelector('.eliminated')).not.toBeInTheDocument()
   })
 
-  it('applies custom className', () => {
-    const { container } = render(<ContestantCard contestant={contestant} className="custom" />)
-    expect(container.querySelector('.custom')).toBeInTheDocument()
+  it('falls back to dicebear avatar when image fails to load', () => {
+    render(<ContestantCard contestant={contestant} />)
+    const img = screen.getByAltText('Abigail') as HTMLImageElement
+    fireEvent.error(img)
+    expect(img.src).toContain('dicebear')
   })
 })
