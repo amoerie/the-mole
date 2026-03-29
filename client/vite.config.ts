@@ -24,6 +24,12 @@ export default defineConfig({
     css: true,
     coverage: {
       provider: 'v8',
+      exclude: [
+        'src/api/generated.ts', // auto-generated, not hand-authored
+        'src/api/client.ts', // thin wrapper — tested indirectly via page/hook tests
+        'src/components/ui/**', // shadcn/ui components, not hand-authored
+        'src/test/**',
+      ],
       thresholds: {
         lines: 80,
         functions: 80,
