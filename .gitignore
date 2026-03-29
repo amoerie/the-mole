@@ -36,3 +36,8 @@ coverage/
 
 # Cosmos DB emulator certs
 cosmosdb-cert/
+
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal

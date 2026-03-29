@@ -1,0 +1,243 @@
+using Api.Data;
+using Api.Models;
+using Api.Tests.Helpers;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Api.Tests;
+
+[Collection("Integration")]
+public sealed class EpisodeRoutesTests : IClassFixture<CustomWebApplicationFactory>
+{
+    private readonly CustomWebApplicationFactory _factory;
+
+    public EpisodeRoutesTests(CustomWebApplicationFactory factory)
+    {
+        _factory = factory;
+        TestAuthHandler.UserId = "test-user-id";
+        TestAuthHandler.DisplayName = "Test User";
+        TestAuthHandler.IsAuthenticated = true;
+    }
+
+    private HttpClient CreateClient() =>
+        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+    private void PrepareDb(Action<AppDbContext>? seed = null)
+    {
+        _factory.ResetDb();
+        if (seed == null)
+            return;
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        seed(db);
+        db.SaveChanges();
+    }
+
+    private static Game CreateGameWithContestants(string adminUserId = "test-user-id") =>
+        new()
+        {
+            Id = "game-1",
+            Name = "Test Game",
+            AdminUserId = adminUserId,
+            InviteCode = "INVITE01",
+            Contestants =
+            [
+                new Contestant
+                {
+                    Id = "contestant-1",
+                    Name = "Alice",
+                    Age = 30,
+                    PhotoUrl = "",
+                },
+                new Contestant
+                {
+                    Id = "contestant-2",
+                    Name = "Bob",
+                    Age = 25,
+                    PhotoUrl = "",
+                },
+            ],
+        };
+
+    [Fact]
+    public async Task CreateEpisode_WhenAdmin_ReturnsEpisode()
+    {
+        var game = CreateGameWithContestants();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/episodes",
+            new
+            {
+                deadline = DateTimeOffset.UtcNow.AddDays(7),
+                eliminatedContestantId = (string?)null,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.Equal(1, body!.RootElement.GetProperty("number").GetInt32());
+    }
+
+    [Fact]
+    public async Task CreateEpisode_WhenNotAdmin_ReturnsUnauthorized()
+    {
+        var game = CreateGameWithContestants(adminUserId: "other-user");
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/episodes",
+            new
+            {
+                deadline = DateTimeOffset.UtcNow.AddDays(7),
+                eliminatedContestantId = (string?)null,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateEpisode_WhenGameNotFound_ReturnsNotFound()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/games/nonexistent/episodes",
+            new
+            {
+                deadline = DateTimeOffset.UtcNow.AddDays(7),
+                eliminatedContestantId = (string?)null,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateEpisode_WithEliminatedContestant_SetsEpisodeNumber()
+    {
+        var game = CreateGameWithContestants();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/episodes",
+            new
+            {
+                deadline = DateTimeOffset.UtcNow.AddDays(7),
+                eliminatedContestantId = "contestant-1",
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateEpisode_WhenAdmin_ReturnsUpdatedEpisode()
+    {
+        var game = CreateGameWithContestants();
+        game.Episodes.Add(new Episode { Number = 1, Deadline = DateTimeOffset.UtcNow.AddDays(1) });
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var newDeadline = DateTimeOffset.UtcNow.AddDays(14);
+        var response = await client.PutAsJsonAsync(
+            $"/api/games/{game.Id}/episodes/1",
+            new { deadline = newDeadline, eliminatedContestantId = (string?)null }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateEpisode_WhenEpisodeNotFound_ReturnsNotFound()
+    {
+        var game = CreateGameWithContestants();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/games/{game.Id}/episodes/99",
+            new
+            {
+                deadline = DateTimeOffset.UtcNow.AddDays(7),
+                eliminatedContestantId = (string?)null,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateEpisode_WhenNotAdmin_ReturnsUnauthorized()
+    {
+        var game = CreateGameWithContestants(adminUserId: "other-user");
+        game.Episodes.Add(new Episode { Number = 1, Deadline = DateTimeOffset.UtcNow.AddDays(1) });
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/games/{game.Id}/episodes/1",
+            new
+            {
+                deadline = DateTimeOffset.UtcNow.AddDays(14),
+                eliminatedContestantId = (string?)null,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RevealMole_WhenAdmin_ReturnsOk()
+    {
+        var game = CreateGameWithContestants();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/reveal-mole",
+            new { moleContestantId = "contestant-1" }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.Equal("contestant-1", body!.RootElement.GetProperty("moleContestantId").GetString());
+    }
+
+    [Fact]
+    public async Task RevealMole_WhenContestantNotFound_ReturnsBadRequest()
+    {
+        var game = CreateGameWithContestants();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/reveal-mole",
+            new { moleContestantId = "nonexistent-contestant" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RevealMole_WhenNotAdmin_ReturnsUnauthorized()
+    {
+        var game = CreateGameWithContestants(adminUserId: "other-user");
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/reveal-mole",
+            new { moleContestantId = "contestant-1" }
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+}

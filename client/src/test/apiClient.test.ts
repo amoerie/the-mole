@@ -102,4 +102,103 @@ describe('API client', () => {
       }),
     )
   })
+
+  it('registerPasskey sends POST with email and displayName', async () => {
+    mockResponse({ token: 'reg-token' })
+    const result = await api.registerPasskey('alice@test.com', 'Alice')
+    expect(result).toEqual({ token: 'reg-token' })
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/auth/register',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
+      }),
+    )
+  })
+
+  it('verifyPasskey sends POST with token', async () => {
+    const user = { userId: '1', displayName: 'Alice', roles: [] }
+    mockResponse(user)
+    const result = await api.verifyPasskey('auth-token')
+    expect(result).toEqual(user)
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/auth/verify',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ token: 'auth-token' }),
+      }),
+    )
+  })
+
+  it('requestRecovery sends POST with email', async () => {
+    mockResponse({ message: 'ok' })
+    await api.requestRecovery('user@test.com')
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/auth/recover',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'user@test.com' }),
+      }),
+    )
+  })
+
+  it('getMyGames calls /api/my-games', async () => {
+    mockResponse([])
+    await api.getMyGames()
+    expect(mockFetch).toHaveBeenCalledWith('/api/my-games', expect.anything())
+  })
+
+  it('getGameByInvite calls correct URL', async () => {
+    mockResponse({ id: 'g1' })
+    await api.getGameByInvite('invite123')
+    expect(mockFetch).toHaveBeenCalledWith('/api/games/by-invite/invite123', expect.anything())
+  })
+
+  it('addContestants sends POST with contestants', async () => {
+    mockResponse({ id: 'g1' })
+    await api.addContestants('g1', [{ name: 'Bob', age: 25, photoUrl: '/b.jpg' }])
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/games/g1/contestants',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('Bob'),
+      }),
+    )
+  })
+
+  it('createEpisode sends POST with deadline', async () => {
+    mockResponse({ id: 'g1' })
+    await api.createEpisode('g1', '2025-01-01T00:00:00Z')
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/games/g1/episodes',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          deadline: '2025-01-01T00:00:00Z',
+          eliminatedContestantId: undefined,
+        }),
+      }),
+    )
+  })
+
+  it('getMyRanking calls correct URL', async () => {
+    mockResponse({ id: 'r1' })
+    await api.getMyRanking('g1', 2)
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/games/g1/episodes/2/rankings/mine',
+      expect.anything(),
+    )
+  })
+
+  it('getMyRankings calls correct URL', async () => {
+    mockResponse([])
+    await api.getMyRankings('g1')
+    expect(mockFetch).toHaveBeenCalledWith('/api/games/g1/rankings', expect.anything())
+  })
+
+  it('getLeaderboard calls correct URL', async () => {
+    mockResponse([])
+    await api.getLeaderboard('g1')
+    expect(mockFetch).toHaveBeenCalledWith('/api/games/g1/leaderboard', expect.anything())
+  })
 })
