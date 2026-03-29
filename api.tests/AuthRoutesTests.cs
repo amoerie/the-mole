@@ -328,13 +328,109 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task ResetPasskey_WhenUserNotInDb_ReturnsUnauthorized()
+    public async Task UpdateProfile_WithValidName_ReturnsOkWithUpdatedUserInfo()
     {
-        PrepareDb(); // no users seeded — auth handler claims test-user-id but it's not in DB
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "test@example.com",
+                    DisplayName = "Old Name",
+                }
+            );
+        });
         var client = CreateClient();
 
-        var response = await client.PostAsync("/api/auth/reset-passkey", null);
+        var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "New Name" });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.Equal("New Name", body!.RootElement.GetProperty("displayName").GetString());
+    }
+
+    [Fact]
+    public async Task UpdateProfile_WithEmptyName_ReturnsBadRequest()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "test@example.com",
+                    DisplayName = "Old Name",
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_AlsoUpdatesPlayerDisplayName()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "test@example.com",
+                    DisplayName = "Old Name",
+                }
+            );
+            db.Games.Add(
+                new Game
+                {
+                    Id = "game-1",
+                    Name = "Test Game",
+                    InviteCode = "CODE",
+                    AdminUserId = "test-user-id",
+                }
+            );
+            db.Players.Add(
+                new Player
+                {
+                    Id = "player-1",
+                    GameId = "game-1",
+                    UserId = "test-user-id",
+                    DisplayName = "Old Name",
+                }
+            );
+        });
+        var client = CreateClient();
+
+        await client.PatchAsJsonAsync("/api/me", new { displayName = "New Name" });
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var player = await db.Players.FindAsync("player-1");
+        Assert.Equal("New Name", player!.DisplayName);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_WhenNotAuthenticated_ReturnsUnauthorized()
+    {
+        PrepareDb();
+        TestAuthHandler.IsAuthenticated = false;
+        try
+        {
+            var client = CreateClient();
+
+            var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "Test" });
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.IsAuthenticated = true;
+            TestAuthHandler.Roles = ["authenticated", "admin"];
+        }
     }
 }

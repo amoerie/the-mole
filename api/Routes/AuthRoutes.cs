@@ -240,6 +240,56 @@ public static class AuthRoutes
             .WithName("GetMe")
             .WithTags("Auth")
             .Produces<UserInfo>();
+
+        app.MapPatch(
+                "/api/me",
+                async (HttpContext ctx, AppDbContext db, UpdateProfileRequest req) =>
+                {
+                    var userInfo = AuthHelper.GetUserInfo(ctx);
+                    if (userInfo == null)
+                        return Results.Unauthorized();
+
+                    if (string.IsNullOrWhiteSpace(req.DisplayName))
+                        return Results.BadRequest(new { error = "Naam is verplicht." });
+
+                    var user = await db.AppUsers.FindAsync(userInfo.UserId);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var displayName = req.DisplayName.Trim();
+                    user.DisplayName = displayName;
+
+                    var players = await db.Players.Where(p => p.UserId == user.Id).ToListAsync();
+                    foreach (var player in players)
+                        player.DisplayName = displayName;
+
+                    await db.SaveChangesAsync();
+
+                    var claims = new List<Claim>
+                    {
+                        new(ClaimTypes.NameIdentifier, user.Id),
+                        new(ClaimTypes.Name, displayName),
+                        new(ClaimTypes.Role, "authenticated"),
+                    };
+                    if (user.IsAdmin)
+                        claims.Add(new Claim(ClaimTypes.Role, "admin"));
+                    var identity = new ClaimsIdentity(
+                        claims,
+                        CookieAuthenticationDefaults.AuthenticationScheme
+                    );
+                    await ctx.SignInAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme,
+                        new ClaimsPrincipal(identity)
+                    );
+
+                    string[] roles = user.IsAdmin ? ["authenticated", "admin"] : ["authenticated"];
+                    return Results.Ok(new UserInfo(user.Id, displayName, roles));
+                }
+            )
+            .WithName("UpdateProfile")
+            .WithTags("Auth")
+            .RequireAuthorization()
+            .Produces<UserInfo>();
     }
 
     private sealed record RegisterRequest(string Email, string DisplayName, string? InviteCode);
@@ -247,6 +297,8 @@ public static class AuthRoutes
     private sealed record VerifyRequest(string Token);
 
     private sealed record RecoverRequest(string Email);
+
+    private sealed record UpdateProfileRequest(string DisplayName);
 
     private sealed record RegisterTokenResponse(string Token);
 
