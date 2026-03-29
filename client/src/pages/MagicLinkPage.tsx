@@ -7,14 +7,11 @@ export default function MagicLinkPage() {
   const [searchParams] = useSearchParams()
   const { setUser } = useAuth()
   const navigate = useNavigate()
-  const [error, setError] = useState('')
+  const token = searchParams.get('token')
+  const [error, setError] = useState(token ? '' : 'Ongeldige herstellink.')
 
   useEffect(() => {
-    const token = searchParams.get('token')
-    if (!token) {
-      setError('Ongeldige herstellink.')
-      return
-    }
+    if (!token) return
 
     api
       .verifyPasskey(token)
