@@ -934,7 +934,7 @@
       "CreateEpisodeRequest": {
         "required": [
           "deadline",
-          "eliminatedContestantId"
+          "eliminatedContestantIds"
         ],
         "type": "object",
         "properties": {
@@ -942,11 +942,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "eliminatedContestantId": {
+          "eliminatedContestantIds": {
             "type": [
               "null",
-              "string"
-            ]
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -989,11 +992,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "eliminatedContestantId": {
+          "eliminatedContestantIds": {
             "type": [
               "null",
-              "string"
-            ]
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -1319,7 +1325,7 @@
       "UpdateEpisodeRequest": {
         "required": [
           "deadline",
-          "eliminatedContestantId"
+          "eliminatedContestantIds"
         ],
         "type": "object",
         "properties": {
@@ -1330,11 +1336,14 @@
             ],
             "format": "date-time"
           },
-          "eliminatedContestantId": {
+          "eliminatedContestantIds": {
             "type": [
               "null",
-              "string"
-            ]
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

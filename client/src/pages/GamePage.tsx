@@ -86,17 +86,15 @@ export default function GamePage() {
 
   const isAdmin = user?.roles.includes('admin') ?? false
   const currentEpisode = game.episodes.length > 0 ? game.episodes[game.episodes.length - 1] : null
+  const eliminatedIds = new Set(game.episodes.flatMap((e) => e.eliminatedContestantIds))
   const activeContestants = currentEpisode
     ? game.contestants.filter(
         (c) =>
           !game.episodes.some(
-            (e) => e.number < currentEpisode.number && e.eliminatedContestantId === c.id,
+            (e) => e.number < currentEpisode.number && e.eliminatedContestantIds.includes(c.id),
           ),
       )
     : game.contestants
-  const eliminatedIds = new Set(
-    game.episodes.filter((e) => e.eliminatedContestantId).map((e) => e.eliminatedContestantId!),
-  )
 
   async function handleSubmitRanking(orderedIds: string[]) {
     if (!currentEpisode || !gameId) return
@@ -104,11 +102,15 @@ export default function GamePage() {
     await loadGame()
   }
 
-  async function handleCreateEpisode(deadlineIso: string, eliminatedId?: string) {
+  async function handleCreateEpisode(deadlineIso: string, eliminatedIds: string[]) {
     if (!gameId) return
     setError('')
     try {
-      await api.createEpisode(gameId, deadlineIso, eliminatedId)
+      await api.createEpisode(
+        gameId,
+        deadlineIso,
+        eliminatedIds.length > 0 ? eliminatedIds : undefined,
+      )
       await loadGame()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fout bij aanmaken aflevering')

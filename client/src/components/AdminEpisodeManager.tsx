@@ -28,7 +28,7 @@ interface Props {
   contestants: Contestant[]
   activeContestants: Contestant[]
   moleContestantId?: string
-  onCreateEpisode: (deadline: string, eliminatedId?: string) => Promise<void>
+  onCreateEpisode: (deadline: string, eliminatedIds: string[]) => Promise<void>
   onDeleteEpisode: (episodeNumber: number) => Promise<void>
   onRevealMole: (moleId: string) => Promise<void>
 }
@@ -43,16 +43,20 @@ export default function AdminEpisodeManager({
   onRevealMole,
 }: Props) {
   const [deadline, setDeadline] = useState(nextSundayDateStr)
-  const [eliminatedId, setEliminatedId] = useState('')
+  const [eliminatedIds, setEliminatedIds] = useState<string[]>([])
   const [moleId, setMoleId] = useState('')
+
+  function toggleEliminated(id: string) {
+    setEliminatedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
 
   async function handleCreate() {
     if (!deadline) return
     // Treat selected date as local time at 20:00, convert to UTC ISO string
     const deadlineIso = new Date(deadline + 'T20:00:00').toISOString()
-    await onCreateEpisode(deadlineIso, eliminatedId || undefined)
+    await onCreateEpisode(deadlineIso, eliminatedIds)
     setDeadline(nextSundayDateStr())
-    setEliminatedId('')
+    setEliminatedIds([])
   }
 
   return (
@@ -71,12 +75,13 @@ export default function AdminEpisodeManager({
               >
                 <span>
                   Aflevering {ep.number} — deadline {new Date(ep.deadline).toLocaleString('nl-BE')}
-                  {ep.eliminatedContestantId && (
+                  {ep.eliminatedContestantIds.length > 0 && (
                     <span className="text-muted-foreground">
                       {' '}
                       ·{' '}
-                      {contestants.find((c) => c.id === ep.eliminatedContestantId)?.name ??
-                        ep.eliminatedContestantId}{' '}
+                      {ep.eliminatedContestantIds
+                        .map((id) => contestants.find((c) => c.id === id)?.name ?? id)
+                        .join(', ')}{' '}
                       afgevallen
                     </span>
                   )}
@@ -120,20 +125,26 @@ export default function AdminEpisodeManager({
               onChange={(e) => setDeadline(e.target.value)}
               className="flex-1 min-w-40"
             />
-            <select
-              value={eliminatedId}
-              onChange={(e) => setEliminatedId(e.target.value)}
-              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Geen eliminatie</option>
-              {activeContestants.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
             <Button onClick={handleCreate}>Aflevering toevoegen</Button>
           </div>
+          {activeContestants.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">Afgevallen kandidaten (optioneel)</p>
+              <div className="flex flex-wrap gap-3">
+                {activeContestants.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={eliminatedIds.includes(c.id)}
+                      onChange={() => toggleEliminated(c.id)}
+                      className="accent-primary"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {!moleContestantId && (

@@ -130,10 +130,10 @@ export const api = {
 
   // Episodes — these return Episode/RevealMoleResponse, not Game.
   // Callers that need updated game state should call api.getGame() afterwards.
-  async createEpisode(gameId: string, deadline: string, eliminatedContestantId?: string) {
+  async createEpisode(gameId: string, deadline: string, eliminatedContestantIds?: string[]) {
     const { data } = await _createEpisode(gameId, {
       deadline,
-      eliminatedContestantId: eliminatedContestantId ?? null,
+      eliminatedContestantIds: eliminatedContestantIds ?? null,
     })
     return data
   },
@@ -146,11 +146,11 @@ export const api = {
     gameId: string,
     episodeNumber: number,
     deadline?: string,
-    eliminatedContestantId?: string,
+    eliminatedContestantIds?: string[],
   ) {
     const { data } = await _updateEpisode(gameId, episodeNumber, {
       deadline: deadline ?? null,
-      eliminatedContestantId: eliminatedContestantId ?? null,
+      eliminatedContestantIds: eliminatedContestantIds ?? null,
     })
     return data
   },

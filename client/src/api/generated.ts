@@ -37,7 +37,7 @@ export interface AppConfig {
 export interface CreateEpisodeRequest {
   deadline: string
   /** @nullable */
-  eliminatedContestantId: string | null
+  eliminatedContestantIds: string[] | null
 }
 
 export interface CreateGameRequest {
@@ -51,8 +51,7 @@ export interface Episode {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   number?: number | string
   deadline?: string
-  /** @nullable */
-  eliminatedContestantId?: string | null
+  eliminatedContestantIds?: string[]
 }
 
 export interface EpisodeScore {
@@ -159,7 +158,7 @@ export interface UpdateEpisodeRequest {
   /** @nullable */
   deadline: string | null
   /** @nullable */
-  eliminatedContestantId: string | null
+  eliminatedContestantIds: string[] | null
 }
 
 export interface UpdateProfileRequest {

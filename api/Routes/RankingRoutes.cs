@@ -46,10 +46,8 @@ public static class RankingRoutes
                         return Results.BadRequest(new { error = "ContestantIds are required." });
 
                     var eliminatedBeforeThisEpisode = game
-                        .Episodes.Where(e =>
-                            e.Number < episodeNumber && e.EliminatedContestantId != null
-                        )
-                        .Select(e => e.EliminatedContestantId!)
+                        .Episodes.Where(e => e.Number < episodeNumber)
+                        .SelectMany(e => e.EliminatedContestantIds ?? [])
                         .ToHashSet();
                     var activeContestantIds = game
                         .Contestants.Select(c => c.Id)

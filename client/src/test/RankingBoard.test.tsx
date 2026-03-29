@@ -1,7 +1,28 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import RankingBoard from '../components/RankingBoard'
 import type { Contestant } from '../types'
+import type { DragEndEvent } from '@dnd-kit/core'
+
+// Expose the onDragEnd handler so tests can fire drag events directly
+let capturedOnDragEnd: ((event: DragEndEvent) => void) | null = null
+
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>()
+  return {
+    ...actual,
+    DndContext: ({
+      children,
+      onDragEnd,
+    }: {
+      children: React.ReactNode
+      onDragEnd: (event: DragEndEvent) => void
+    }) => {
+      capturedOnDragEnd = onDragEnd
+      return <>{children}</>
+    },
+  }
+})
 
 const contestants: Contestant[] = [
   { id: '1', name: 'Alice', age: 30, photoUrl: '/alice.jpg' },
@@ -50,5 +71,32 @@ describe('RankingBoard', () => {
     Object.defineProperty(img, 'src', { writable: true, value: '' })
     fireEvent.error(img)
     expect(img.src).toContain('dicebear')
+  })
+
+  it('calls onChange with new order when items are dragged to a different position', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: { id: '3' } } as DragEndEvent)
+    })
+    expect(onChange).toHaveBeenCalledWith(['2', '3', '1'])
+  })
+
+  it('does not call onChange when item is dropped on itself', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: { id: '1' } } as DragEndEvent)
+    })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not call onChange when dropped outside any item', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: null } as DragEndEvent)
+    })
+    expect(onChange).not.toHaveBeenCalled()
   })
 })
