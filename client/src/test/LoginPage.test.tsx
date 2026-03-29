@@ -13,12 +13,14 @@ vi.mock('react-router-dom', async (importOriginal) => {
 vi.mock('../lib/passwordless', () => ({
   passwordlessClient: {
     signinWithAlias: vi.fn(),
+    register: vi.fn(),
   },
 }))
 
 vi.mock('../api/client', () => ({
   api: {
     verifyPasskey: vi.fn(),
+    resetPasskey: vi.fn(),
   },
 }))
 
@@ -67,14 +69,32 @@ describe('LoginPage', () => {
     expect(screen.getByText('Nieuw account aanmaken →')).toBeInTheDocument()
   })
 
-  it('shows recovery info message when recovered=true', () => {
+  it('shows recovery UI when recovered=true', () => {
     renderLoginPage('/login?recovered=true')
-    expect(screen.getByText(/Je bent hersteld/)).toBeInTheDocument()
+    expect(screen.getByText('Nieuwe passkey instellen')).toBeInTheDocument()
+    expect(screen.getByText('Nieuwe passkey aanmaken')).toBeInTheDocument()
+    expect(screen.queryByLabelText('E-mailadres')).not.toBeInTheDocument()
   })
 
-  it('does not show recovery info when recovered is not set', () => {
+  it('does not show recovery UI when recovered is not set', () => {
     renderLoginPage()
-    expect(screen.queryByText(/Je bent hersteld/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Nieuwe passkey instellen')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('E-mailadres')).toBeInTheDocument()
+  })
+
+  it('calls resetPasskey and navigates home on recovery setup', async () => {
+    vi.mocked(api.resetPasskey).mockResolvedValueOnce({ token: 'reg-tok', email: 'me@test.com' })
+    vi.mocked(passwordlessClient.register).mockResolvedValueOnce({ error: undefined })
+    renderLoginPage('/login?recovered=true')
+    fireEvent.click(screen.getByText('Nieuwe passkey aanmaken'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+  })
+
+  it('shows error when resetPasskey fails on recovery', async () => {
+    vi.mocked(api.resetPasskey).mockRejectedValueOnce(new Error('Reset mislukt'))
+    renderLoginPage('/login?recovered=true')
+    fireEvent.click(screen.getByText('Nieuwe passkey aanmaken'))
+    expect(await screen.findByText('Reset mislukt')).toBeInTheDocument()
   })
 
   it('shows error when email is empty and login clicked', async () => {
