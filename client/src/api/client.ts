@@ -5,6 +5,9 @@
  * rest of the app keeps its simple `api.getMe()` call shape. TypeScript will
  * catch any mismatch between what the backend returns and what callers expect
  * the moment the spec changes and you re-run `npm run generate`.
+ *
+ * Return types are cast to the app-level types from `../types` (which declare
+ * fields as required, matching what the API always returns in practice).
  */
 import {
   addContestants as _addContestants,
@@ -26,7 +29,7 @@ import {
   updateEpisode as _updateEpisode,
   verifyPasskey as _verifyPasskey,
 } from './generated'
-import type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo } from './generated'
+import type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo } from '../types'
 
 export type { Contestant, Game, LeaderboardEntry, Ranking, UserInfo }
 

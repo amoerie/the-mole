@@ -30,7 +30,7 @@ jobs:
         run: dotnet restore api/Api.csproj
 
       - name: Build API
-        run: dotnet build api/Api.csproj --configuration Release --no-restore
+        run: dotnet build api/Api.csproj --configuration Release --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
 
       - name: Restore Tests
         run: dotnet restore api.tests/Api.Tests.csproj
