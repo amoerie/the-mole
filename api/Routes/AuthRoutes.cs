@@ -70,15 +70,32 @@ public static class AuthRoutes
 
                     await db.SaveChangesAsync();
 
-                    var tokenResponse = await passwordlessClient.CreateRegisterTokenAsync(
-                        new RegisterOptions(user.Id, user.DisplayName)
-                        {
-                            Aliases = [user.Email],
-                            AliasHashing = false,
-                        }
-                    );
+                    RegisterTokenResponse tokenResponse;
+                    try
+                    {
+                        var result = await passwordlessClient.CreateRegisterTokenAsync(
+                            new RegisterOptions(user.Id, user.DisplayName)
+                            {
+                                Aliases = [user.Email],
+                                AliasHashing = false,
+                            }
+                        );
+                        tokenResponse = new RegisterTokenResponse(result.Token);
+                    }
+                    catch (PasswordlessApiException ex)
+                        when (ex.Details?.Title?.Contains("Alias") == true
+                            || ex.Details?.Title?.Contains("alias") == true
+                        )
+                    {
+                        return Results.Conflict(
+                            new
+                            {
+                                error = "Dit e-mailadres heeft al een account. Gebruik de inlogpagina of hersteloptie.",
+                            }
+                        );
+                    }
 
-                    return Results.Ok(new RegisterTokenResponse(tokenResponse.Token));
+                    return Results.Ok(tokenResponse);
                 }
             )
             .WithName("RegisterPasskey")

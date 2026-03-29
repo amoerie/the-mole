@@ -14,8 +14,14 @@ export const fetcher = async <T>(url: string, options: RequestInit): Promise<T> 
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`API error ${response.status}: ${errorText}`)
+    let message = `API error ${response.status}`
+    try {
+      const body = await response.json()
+      if (body?.error) message = body.error
+    } catch {
+      // fall back to status-only message
+    }
+    throw new Error(message)
   }
 
   const data = response.status === 204 ? undefined : await response.json()
