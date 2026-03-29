@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -94,6 +94,12 @@ export default function JoinPage() {
             )}
           </CardContent>
         </Card>
+        <p className="text-center text-sm text-muted-foreground">
+          Al een account?{' '}
+          <Link to="/login" className="underline hover:text-foreground">
+            Inloggen
+          </Link>
+        </p>
       </div>
     </div>
   )
