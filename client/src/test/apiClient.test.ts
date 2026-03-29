@@ -112,7 +112,7 @@ describe('API client', () => {
       '/api/auth/register',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
+        body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice', inviteCode: null }),
       }),
     )
   })

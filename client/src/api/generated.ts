@@ -116,6 +116,8 @@ export interface RecoverRequest {
 export interface RegisterRequest {
   email: string
   displayName: string
+  /** @nullable */
+  inviteCode: string | null
 }
 
 export interface RegisterTokenResponse {

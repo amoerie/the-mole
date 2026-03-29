@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AuthContext } from '../hooks/useAuth'
 import LoginPage from '../pages/LoginPage'
 
@@ -48,10 +48,23 @@ describe('LoginPage', () => {
     expect(screen.getByText('Inloggen met passkey')).toBeInTheDocument()
   })
 
-  it('has links to register and recover', () => {
+  it('does not show register link without invite code', () => {
     renderLoginPage()
-    expect(screen.getByText('Nieuw account aanmaken →')).toBeInTheDocument()
+    expect(screen.queryByText('Nieuw account aanmaken →')).not.toBeInTheDocument()
     expect(screen.getByText('Kan niet inloggen?')).toBeInTheDocument()
+  })
+
+  it('shows register link when invite code is in state', () => {
+    render(
+      <AuthContext.Provider value={{ user: null, loading: false, error: null, setUser: vi.fn() }}>
+        <MemoryRouter initialEntries={[{ pathname: '/login', state: { inviteCode: 'abc123' } }]}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+    expect(screen.getByText('Nieuw account aanmaken →')).toBeInTheDocument()
   })
 
   it('shows recovery info message when recovered=true', () => {

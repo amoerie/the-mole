@@ -43,13 +43,76 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "test@example.com", displayName = "Alice" }
+            new { email = "admin@test.com", displayName = "Alice" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
         Assert.NotNull(body);
         Assert.Equal("fake-register-token", body!.RootElement.GetProperty("token").GetString());
+    }
+
+    [Fact]
+    public async Task Register_WithValidInviteCode_ReturnsOkWithToken()
+    {
+        PrepareDb(db =>
+        {
+            db.Games.Add(
+                new Game
+                {
+                    Id = "game-1",
+                    Name = "Test Game",
+                    InviteCode = "VALIDCODE",
+                    AdminUserId = "admin-1",
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                email = "test@example.com",
+                displayName = "Alice",
+                inviteCode = "VALIDCODE",
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithoutInviteCode_AndNotAdmin_ReturnsBadRequest()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new { email = "test@example.com", displayName = "Alice" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithInvalidInviteCode_ReturnsBadRequest()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                email = "test@example.com",
+                displayName = "Alice",
+                inviteCode = "BADCODE",
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -74,7 +137,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "test@example.com", displayName = "" }
+            new { email = "admin@test.com", displayName = "" }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -89,7 +152,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 new AppUser
                 {
                     Id = "existing-id",
-                    Email = "test@example.com",
+                    Email = "admin@test.com",
                     DisplayName = "Old Name",
                 }
             );
@@ -98,7 +161,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "test@example.com", displayName = "New Name" }
+            new { email = "admin@test.com", displayName = "New Name" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

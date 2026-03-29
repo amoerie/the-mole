@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { passwordlessClient } from '../lib/passwordless'
 import { api } from '../api/client'
@@ -26,11 +26,18 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const { inviteCode, gameId, gameName } = (location.state ?? {}) as {
+  const { inviteCode, gameId, gameName, adminBypass } = (location.state ?? {}) as {
     inviteCode?: string
     gameId?: string
     gameName?: string
+    adminBypass?: boolean
   }
+
+  useEffect(() => {
+    if (!inviteCode && !adminBypass) {
+      navigate('/join', { replace: true })
+    }
+  }, [inviteCode, adminBypass, navigate])
 
   async function handleRegister() {
     if (!email.trim() || !displayName.trim()) {
@@ -40,7 +47,7 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
     try {
-      const { token } = await api.registerPasskey(email.trim(), displayName.trim())
+      const { token } = await api.registerPasskey(email.trim(), displayName.trim(), inviteCode)
       const registerResult = await passwordlessClient.register(token, email.trim())
       if (registerResult.error) {
         throw new Error(registerResult.error.title)

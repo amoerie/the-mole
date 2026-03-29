@@ -118,13 +118,15 @@ export default function LoginPage() {
             </Button>
           </CardContent>
           <CardFooter className="flex flex-col items-start gap-2">
-            <Link
-              to="/register"
-              state={location.state}
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Nieuw account aanmaken →
-            </Link>
+            {location.state?.inviteCode && (
+              <Link
+                to="/register"
+                state={location.state}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Nieuw account aanmaken →
+              </Link>
+            )}
             <Link to="/recover" className="text-sm text-muted-foreground hover:text-foreground">
               Kan niet inloggen?
             </Link>
