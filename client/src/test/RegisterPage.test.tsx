@@ -106,7 +106,7 @@ describe('RegisterPage', () => {
     })
     fireEvent.change(screen.getByLabelText(/Naam/), { target: { value: 'Alice' } })
     fireEvent.click(screen.getByRole('button', { name: 'Account aanmaken' }))
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/login'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/login', { state: null }))
   })
 
   it('shows error when passkey registration fails', async () => {

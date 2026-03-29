@@ -5,6 +5,12 @@ import { api } from '../api/client'
 import type { Game, Ranking } from '../types'
 import ContestantCard from '../components/ContestantCard'
 import RankingBoard from '../components/RankingBoard'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import { Alert, AlertDescription } from '../components/ui/alert'
+import { Badge } from '../components/ui/badge'
+import { Skeleton } from '../components/ui/skeleton'
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -45,11 +51,35 @@ export default function GamePage() {
     loadGame()
   }, [loadGame])
 
-  if (loading) return <div className="loading">Laden...</div>
-  if (error) return <div className="error-message">{error}</div>
-  if (!game) return <div className="error-message">Spel niet gevonden</div>
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl p-4 flex flex-col gap-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="mx-auto max-w-2xl p-4">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+  if (!game) {
+    return (
+      <div className="mx-auto max-w-2xl p-4">
+        <Alert variant="destructive">
+          <AlertDescription>Spel niet gevonden</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
-  const isAdmin = user?.userId === game.adminUserId
+  const isAdmin = user?.roles.includes('admin') ?? false
   const currentEpisode = game.episodes.length > 0 ? game.episodes[game.episodes.length - 1] : null
   const isDeadlinePassed = currentEpisode ? new Date(currentEpisode.deadline) < new Date() : true
   const hasSubmittedCurrent = currentEpisode
@@ -143,148 +173,175 @@ export default function GamePage() {
   }
 
   return (
-    <div className="game-page">
-      <div className="game-header">
-        <h2>{game.name}</h2>
-        <div className="game-actions">
-          <Link to={`/game/${game.id}/leaderboard`} className="btn btn-secondary">
-            Klassement
-          </Link>
-          <span className="invite-code" title="Uitnodigingscode">
-            Code: <strong>{game.inviteCode}</strong>
-          </span>
+    <div className="mx-auto max-w-2xl p-4 flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold">{game.name}</h2>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/game/${game.id}/leaderboard`}>Klassement</Link>
+          </Button>
+          <Badge variant="secondary">Code: {game.inviteCode}</Badge>
         </div>
       </div>
 
-      {game.moleContestantId && (
-        <div className="mole-revealed">
-          🕵️ De Mol is onthuld:{' '}
-          <strong>{game.contestants.find((c) => c.id === game.moleContestantId)?.name}</strong>
-        </div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <section className="contestants-section">
-        <h3>Kandidaten</h3>
-        <div className="contestants-grid">
-          {game.contestants.map((c) => (
-            <ContestantCard key={c.id} contestant={c} eliminated={eliminatedIds.has(c.id)} />
-          ))}
-        </div>
-      </section>
+      {game.moleContestantId && (
+        <Alert>
+          <AlertDescription>
+            🕵️ De Mol is onthuld:{' '}
+            <strong>{game.contestants.find((c) => c.id === game.moleContestantId)?.name}</strong>
+          </AlertDescription>
+        </Alert>
+      )}
 
+      {/* Contestants */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Kandidaten</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {game.contestants.map((c) => (
+              <ContestantCard key={c.id} contestant={c} eliminated={eliminatedIds.has(c.id)} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Current episode ranking */}
       {currentEpisode && !game.moleContestantId && (
-        <section className="episode-section">
-          <h3>Aflevering {currentEpisode.number}</h3>
-          <p className="deadline">
-            Deadline: {new Date(currentEpisode.deadline).toLocaleString('nl-BE')}
-            {isDeadlinePassed && <span className="deadline-passed"> (verstreken)</span>}
-          </p>
-
-          {hasSubmittedCurrent || submitted ? (
-            <div className="already-submitted">
-              ✅ Je rangschikking is ingediend voor deze aflevering.
-            </div>
-          ) : (
-            <RankingBoard
-              contestants={activeContestants}
-              initialOrder={existingRanking?.contestantIds}
-              onSubmit={handleSubmitRanking}
-              disabled={isDeadlinePassed || submitting}
-            />
-          )}
-        </section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Aflevering {currentEpisode.number}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              Deadline: {new Date(currentEpisode.deadline).toLocaleString('nl-BE')}
+              {isDeadlinePassed && <span className="text-destructive ml-1">(verstreken)</span>}
+            </p>
+            {hasSubmittedCurrent || submitted ? (
+              <p className="text-sm text-green-500">
+                ✅ Je rangschikking is ingediend voor deze aflevering.
+              </p>
+            ) : (
+              <RankingBoard
+                contestants={activeContestants}
+                initialOrder={existingRanking?.contestantIds}
+                onSubmit={handleSubmitRanking}
+                disabled={isDeadlinePassed || submitting}
+              />
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {!currentEpisode && !game.moleContestantId && (
-        <p className="no-episode">Nog geen aflevering gestart.</p>
+        <p className="text-sm text-muted-foreground">Nog geen aflevering gestart.</p>
       )}
 
+      {/* Admin section */}
       {isAdmin && (
-        <section className="admin-section">
-          <h3>Beheer</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>Beheer</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            {game.contestants.length === 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">Kandidaten toevoegen</p>
+                <p className="text-sm text-muted-foreground">
+                  Je spel heeft nog geen kandidaten. Voeg ze één voor één toe, of laad het huidige
+                  seizoen.
+                </p>
+                <Button variant="outline" onClick={handleLoadSeason14}>
+                  🇧🇪 Seizoen 14 laden (2026)
+                </Button>
+              </div>
+            )}
 
-          {game.contestants.length === 0 && (
-            <div className="admin-card">
-              <h4>Kandidaten toevoegen</h4>
-              <p>
-                Je spel heeft nog geen kandidaten. Voeg ze één voor één toe, of laad het huidige
-                seizoen.
-              </p>
-              <button className="btn btn-primary" onClick={handleLoadSeason14}>
-                🇧🇪 Seizoen 14 laden (2026)
-              </button>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Kandidaat toevoegen</p>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  type="text"
+                  placeholder="Naam"
+                  value={newContestantName}
+                  onChange={(e) => setNewContestantName(e.target.value)}
+                  className="flex-1 min-w-24"
+                />
+                <Input
+                  type="number"
+                  placeholder="Leeftijd"
+                  value={newContestantAge}
+                  onChange={(e) => setNewContestantAge(e.target.value)}
+                  className="w-24"
+                />
+                <Input
+                  type="text"
+                  placeholder="Foto URL (optioneel)"
+                  value={newContestantPhoto}
+                  onChange={(e) => setNewContestantPhoto(e.target.value)}
+                  className="flex-1 min-w-32"
+                />
+                <Button onClick={handleAddContestant}>Toevoegen</Button>
+              </div>
             </div>
-          )}
 
-          <div className="admin-card">
-            <h4>Kandidaat toevoegen</h4>
-            <div className="form-row">
-              <input
-                type="text"
-                placeholder="Naam"
-                value={newContestantName}
-                onChange={(e) => setNewContestantName(e.target.value)}
-              />
-              <input
-                type="number"
-                placeholder="Leeftijd"
-                value={newContestantAge}
-                onChange={(e) => setNewContestantAge(e.target.value)}
-                style={{ width: '100px' }}
-              />
-              <input
-                type="text"
-                placeholder="Foto URL (optioneel)"
-                value={newContestantPhoto}
-                onChange={(e) => setNewContestantPhoto(e.target.value)}
-              />
-              <button className="btn btn-primary" onClick={handleAddContestant}>
-                Toevoegen
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-card">
-            <h4>Nieuwe aflevering</h4>
-            <div className="form-row">
-              <input
-                type="datetime-local"
-                value={newDeadline}
-                onChange={(e) => setNewDeadline(e.target.value)}
-              />
-              <select value={eliminatedId} onChange={(e) => setEliminatedId(e.target.value)}>
-                <option value="">Geen eliminatie</option>
-                {activeContestants.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <button className="btn btn-primary" onClick={handleCreateEpisode}>
-                Aflevering toevoegen
-              </button>
-            </div>
-          </div>
-
-          {!game.moleContestantId && (
-            <div className="admin-card">
-              <h4>De Mol onthullen</h4>
-              <div className="form-row">
-                <select value={moleId} onChange={(e) => setMoleId(e.target.value)}>
-                  <option value="">Selecteer de Mol</option>
-                  {game.contestants.map((c) => (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Nieuwe aflevering</p>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  type="datetime-local"
+                  value={newDeadline}
+                  onChange={(e) => setNewDeadline(e.target.value)}
+                  className="flex-1 min-w-40"
+                />
+                <select
+                  value={eliminatedId}
+                  onChange={(e) => setEliminatedId(e.target.value)}
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Geen eliminatie</option>
+                  {activeContestants.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </select>
-                <button className="btn btn-danger" onClick={handleRevealMole}>
-                  Onthullen
-                </button>
+                <Button onClick={handleCreateEpisode}>Aflevering toevoegen</Button>
               </div>
             </div>
-          )}
-        </section>
+
+            {!game.moleContestantId && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">De Mol onthullen</p>
+                <div className="flex gap-2">
+                  <select
+                    value={moleId}
+                    onChange={(e) => setMoleId(e.target.value)}
+                    className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecteer de Mol</option>
+                    {game.contestants.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button variant="destructive" onClick={handleRevealMole}>
+                    Onthullen
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   )

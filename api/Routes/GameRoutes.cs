@@ -17,6 +17,9 @@ public static class GameRoutes
                     if (user == null)
                         return Results.Unauthorized();
 
+                    if (!user.Roles.Contains("admin"))
+                        return Results.Forbid();
+
                     if (string.IsNullOrWhiteSpace(body.Name))
                         return Results.BadRequest(new { error = "Name is required." });
 

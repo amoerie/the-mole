@@ -23,6 +23,13 @@ export interface AddContestantsRequest {
   contestants: Contestant[] | null
 }
 
+export interface AdminUserResponse {
+  id: string
+  email: string
+  displayName: string
+  isAdmin: boolean
+}
+
 export interface CreateEpisodeRequest {
   deadline: string
   /** @nullable */
@@ -616,6 +623,51 @@ export const getWhatIfLeaderboard = async (
   options?: RequestInit,
 ): Promise<getWhatIfLeaderboardResponse> => {
   return fetcher<getWhatIfLeaderboardResponse>(getGetWhatIfLeaderboardUrl(gameId, contestantId), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type grantAdminResponse200 = {
+  data: MessageResponse
+  status: 200
+}
+
+export type grantAdminResponseSuccess = grantAdminResponse200 & {
+  headers: Headers
+}
+export type grantAdminResponse = grantAdminResponseSuccess
+
+export const getGrantAdminUrl = (userId: string) => {
+  return `/api/admin/users/${userId}/grant-admin`
+}
+
+export const grantAdmin = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<grantAdminResponse> => {
+  return fetcher<grantAdminResponse>(getGrantAdminUrl(userId), {
+    ...options,
+    method: 'POST',
+  })
+}
+
+export type listUsersResponse200 = {
+  data: AdminUserResponse[]
+  status: 200
+}
+
+export type listUsersResponseSuccess = listUsersResponse200 & {
+  headers: Headers
+}
+export type listUsersResponse = listUsersResponseSuccess
+
+export const getListUsersUrl = () => {
+  return `/api/admin/users`
+}
+
+export const listUsers = async (options?: RequestInit): Promise<listUsersResponse> => {
+  return fetcher<listUsersResponse>(getListUsersUrl(), {
     ...options,
     method: 'GET',
   })

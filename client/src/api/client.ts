@@ -20,7 +20,9 @@ import {
   getMyRanking as _getMyRanking,
   getMyRankings as _getMyRankings,
   getWhatIfLeaderboard as _getWhatIfLeaderboard,
+  grantAdmin as _grantAdmin,
   joinGame as _joinGame,
+  listUsers as _listUsers,
   registerPasskey as _registerPasskey,
   requestRecovery as _requestRecovery,
   revealMole as _revealMole,
@@ -28,12 +30,23 @@ import {
   updateEpisode as _updateEpisode,
   verifyPasskey as _verifyPasskey,
 } from './generated'
-import { mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
-import type { Game, LeaderboardEntry, NewContestant, Ranking, UserInfo } from '../types'
+import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
+import type { AdminUser, Game, LeaderboardEntry, NewContestant, Ranking, UserInfo } from '../types'
 
-export type { Game, LeaderboardEntry, NewContestant, Ranking, UserInfo }
+export type { AdminUser, Game, LeaderboardEntry, NewContestant, Ranking, UserInfo }
 
 export const api = {
+  // Admin
+  async listUsers(): Promise<AdminUser[]> {
+    const { data } = await _listUsers()
+    return (data ?? []).map(mapAdminUser)
+  },
+
+  async grantAdmin(userId: string) {
+    const { data } = await _grantAdmin(userId)
+    return data
+  },
+
   // Auth
   async getMe(): Promise<UserInfo> {
     const { data } = await _getMe()

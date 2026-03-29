@@ -19,6 +19,10 @@ public static class AuthHelper
 
         var displayName = user.FindFirstValue(ClaimTypes.Name) ?? userId;
 
-        return new UserInfo(userId, displayName, ["authenticated"]);
+        var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();
+        if (roles.Length == 0)
+            roles = ["authenticated"];
+
+        return new UserInfo(userId, displayName, roles);
     }
 }

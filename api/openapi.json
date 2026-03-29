@@ -652,6 +652,59 @@
           }
         }
       }
+    },
+    "/api/admin/users/{userId}/grant-admin": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "GrantAdmin",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "ListUsers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -670,6 +723,29 @@
             "items": {
               "$ref": "#/components/schemas/Contestant"
             }
+          }
+        }
+      },
+      "AdminUserResponse": {
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "isAdmin"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isAdmin": {
+            "type": "boolean"
           }
         }
       },
@@ -1112,6 +1188,9 @@
     },
     {
       "name": "Leaderboard"
+    },
+    {
+      "name": "Admin"
     }
   ]
 }

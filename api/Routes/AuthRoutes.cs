@@ -19,7 +19,8 @@ public static class AuthRoutes
                 async (
                     RegisterRequest req,
                     AppDbContext db,
-                    IPasswordlessClient passwordlessClient
+                    IPasswordlessClient passwordlessClient,
+                    IConfiguration config
                 ) =>
                 {
                     if (
@@ -31,10 +32,17 @@ public static class AuthRoutes
                         );
 
                     var email = req.Email.Trim().ToLowerInvariant();
+                    var adminEmail = (config["AdminEmail"] ?? "").Trim().ToLowerInvariant();
+
                     var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
                     if (user == null)
                     {
-                        user = new AppUser { Email = email, DisplayName = req.DisplayName.Trim() };
+                        user = new AppUser
+                        {
+                            Email = email,
+                            DisplayName = req.DisplayName.Trim(),
+                            IsAdmin = email == adminEmail,
+                        };
                         db.AppUsers.Add(user);
                     }
                     else
@@ -88,7 +96,10 @@ public static class AuthRoutes
                     {
                         new(ClaimTypes.NameIdentifier, user.Id),
                         new(ClaimTypes.Name, user.DisplayName),
+                        new(ClaimTypes.Role, "authenticated"),
                     };
+                    if (user.IsAdmin)
+                        claims.Add(new Claim(ClaimTypes.Role, "admin"));
                     var identity = new ClaimsIdentity(
                         claims,
                         CookieAuthenticationDefaults.AuthenticationScheme

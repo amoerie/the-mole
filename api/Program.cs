@@ -94,6 +94,7 @@ app.MapGameRoutes();
 app.MapEpisodeRoutes();
 app.MapRankingRoutes();
 app.MapLeaderboardRoutes();
+app.MapAdminRoutes();
 
 if (!app.Environment.IsDevelopment())
     app.MapFallbackToFile("index.html");
