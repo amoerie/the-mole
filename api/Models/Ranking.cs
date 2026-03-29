@@ -8,5 +8,4 @@ public class Ranking
     public string UserId { get; set; } = string.Empty;
     public List<string> ContestantIds { get; set; } = new(); // ordered most→least suspect
     public DateTimeOffset SubmittedAt { get; set; } = DateTimeOffset.UtcNow;
-    public string PartitionKey => GameId;
 }

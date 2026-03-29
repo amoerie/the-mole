@@ -7,5 +7,4 @@ public class Player
     public string UserId { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public DateTimeOffset JoinedAt { get; set; } = DateTimeOffset.UtcNow;
-    public string PartitionKey => GameId;
 }

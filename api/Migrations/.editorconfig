@@ -1,0 +1,3 @@
+# Auto-generated EF Core migration files — disable all analysis
+[*.cs]
+generated_code = true

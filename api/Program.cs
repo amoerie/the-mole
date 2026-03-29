@@ -1,34 +1,80 @@
-using Api.Services;
-using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Api.Data;
+using Api.Routes;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using Passwordless;
 
-var builder = FunctionsApplication.CreateBuilder(args);
-builder.ConfigureFunctionsWebApplication();
-
-var cosmosConnectionString =
-    Environment.GetEnvironmentVariable("CosmosDbConnectionString")
-    ?? "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-
-builder.Services.AddSingleton(
-    new CosmosClient(
-        cosmosConnectionString,
-        new CosmosClientOptions
-        {
-            SerializerOptions = new CosmosSerializationOptions
-            {
-                PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase,
-            },
-        }
-    )
-);
-builder.Services.AddSingleton<CosmosDbService>();
-builder.Services.AddHostedService<CosmosDbInitializer>();
+var builder = WebApplication.CreateBuilder(args);
 
 builder
-    .Services.AddApplicationInsightsTelemetryWorkerService()
-    .ConfigureFunctionsApplicationInsights();
+    .Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Events.OnRedirectToLogin = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+    });
 
-builder.Build().Run();
+builder.Services.AddAuthorization();
+
+builder.Services.AddPasswordlessSdk(options =>
+{
+    options.ApiKey = builder.Configuration["Passwordless:ApiKey"] ?? "";
+    options.ApiSecret = builder.Configuration["Passwordless:ApiSecret"] ?? "";
+});
+
+var dbPath = builder.Configuration["DatabasePath"] ?? "themole.db";
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddCors(options =>
+        options.AddDefaultPolicy(policy =>
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials()
+        )
+    );
+}
+
+builder.Services.AddApplicationInsightsTelemetry();
+
+var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
+if (app.Environment.IsDevelopment())
+    app.UseCors();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapAuthRoutes();
+app.MapGameRoutes();
+app.MapEpisodeRoutes();
+app.MapRankingRoutes();
+app.MapLeaderboardRoutes();
+
+if (!app.Environment.IsDevelopment())
+    app.MapFallbackToFile("index.html");
+
+app.Run();
+
+public partial class Program { }
