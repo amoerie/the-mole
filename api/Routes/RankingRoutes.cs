@@ -10,100 +10,109 @@ public static class RankingRoutes
     public static void MapRankingRoutes(this WebApplication app)
     {
         app.MapPost(
-            "/api/games/{gameId}/episodes/{episodeNumber:int}/rankings",
-            async (
-                HttpContext ctx,
-                AppDbContext db,
-                string gameId,
-                int episodeNumber,
-                SubmitRankingRequest body
-            ) =>
-            {
-                var user = AuthHelper.GetUserInfo(ctx);
-                if (user == null)
-                    return Results.Unauthorized();
+                "/api/games/{gameId}/episodes/{episodeNumber:int}/rankings",
+                async (
+                    HttpContext ctx,
+                    AppDbContext db,
+                    string gameId,
+                    int episodeNumber,
+                    SubmitRankingRequest body
+                ) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
 
-                var game = await db.Games.FindAsync(gameId);
-                if (game == null)
-                    return Results.NotFound();
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound();
 
-                var isPlayer = await db.Players.AnyAsync(p =>
-                    p.GameId == gameId && p.UserId == user.UserId
-                );
-                if (!isPlayer)
-                    return Results.Unauthorized();
+                    var isPlayer = await db.Players.AnyAsync(p =>
+                        p.GameId == gameId && p.UserId == user.UserId
+                    );
+                    if (!isPlayer)
+                        return Results.Unauthorized();
 
-                var episode = game.Episodes.FirstOrDefault(e => e.Number == episodeNumber);
-                if (episode == null)
-                    return Results.NotFound(new { error = "Episode not found." });
+                    var episode = game.Episodes.FirstOrDefault(e => e.Number == episodeNumber);
+                    if (episode == null)
+                        return Results.NotFound(new { error = "Episode not found." });
 
-                if (DateTimeOffset.UtcNow > episode.Deadline)
-                    return Results.BadRequest(
-                        new { error = "Deadline has passed for this episode." }
+                    if (DateTimeOffset.UtcNow > episode.Deadline)
+                        return Results.BadRequest(
+                            new { error = "Deadline has passed for this episode." }
+                        );
+
+                    if (body.ContestantIds == null || body.ContestantIds.Count == 0)
+                        return Results.BadRequest(new { error = "ContestantIds are required." });
+
+                    var ranking = await db.Rankings.FirstOrDefaultAsync(r =>
+                        r.GameId == gameId
+                        && r.EpisodeNumber == episodeNumber
+                        && r.UserId == user.UserId
                     );
 
-                if (body.ContestantIds == null || body.ContestantIds.Count == 0)
-                    return Results.BadRequest(new { error = "ContestantIds are required." });
-
-                var ranking = await db.Rankings.FirstOrDefaultAsync(r =>
-                    r.GameId == gameId
-                    && r.EpisodeNumber == episodeNumber
-                    && r.UserId == user.UserId
-                );
-
-                if (ranking == null)
-                {
-                    ranking = new Ranking
+                    if (ranking == null)
                     {
-                        GameId = gameId,
-                        EpisodeNumber = episodeNumber,
-                        UserId = user.UserId,
-                    };
-                    db.Rankings.Add(ranking);
+                        ranking = new Ranking
+                        {
+                            GameId = gameId,
+                            EpisodeNumber = episodeNumber,
+                            UserId = user.UserId,
+                        };
+                        db.Rankings.Add(ranking);
+                    }
+
+                    ranking.ContestantIds = body.ContestantIds;
+                    ranking.SubmittedAt = DateTimeOffset.UtcNow;
+
+                    await db.SaveChangesAsync();
+                    return Results.Ok(ranking);
                 }
-
-                ranking.ContestantIds = body.ContestantIds;
-                ranking.SubmittedAt = DateTimeOffset.UtcNow;
-
-                await db.SaveChangesAsync();
-                return Results.Ok(ranking);
-            }
-        );
+            )
+            .WithName("SubmitRanking")
+            .WithTags("Rankings")
+            .Produces<Ranking>();
 
         app.MapGet(
-            "/api/games/{gameId}/episodes/{episodeNumber:int}/rankings/mine",
-            async (HttpContext ctx, AppDbContext db, string gameId, int episodeNumber) =>
-            {
-                var user = AuthHelper.GetUserInfo(ctx);
-                if (user == null)
-                    return Results.Unauthorized();
+                "/api/games/{gameId}/episodes/{episodeNumber:int}/rankings/mine",
+                async (HttpContext ctx, AppDbContext db, string gameId, int episodeNumber) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
 
-                var ranking = await db.Rankings.FirstOrDefaultAsync(r =>
-                    r.GameId == gameId
-                    && r.EpisodeNumber == episodeNumber
-                    && r.UserId == user.UserId
-                );
+                    var ranking = await db.Rankings.FirstOrDefaultAsync(r =>
+                        r.GameId == gameId
+                        && r.EpisodeNumber == episodeNumber
+                        && r.UserId == user.UserId
+                    );
 
-                return ranking == null ? Results.NotFound() : Results.Ok(ranking);
-            }
-        );
+                    return ranking == null ? Results.NotFound() : Results.Ok(ranking);
+                }
+            )
+            .WithName("GetMyRanking")
+            .WithTags("Rankings")
+            .Produces<Ranking>();
 
         app.MapGet(
-            "/api/games/{gameId}/rankings",
-            async (HttpContext ctx, AppDbContext db, string gameId) =>
-            {
-                var user = AuthHelper.GetUserInfo(ctx);
-                if (user == null)
-                    return Results.Unauthorized();
+                "/api/games/{gameId}/rankings",
+                async (HttpContext ctx, AppDbContext db, string gameId) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
 
-                var rankings = await db
-                    .Rankings.Where(r => r.GameId == gameId && r.UserId == user.UserId)
-                    .OrderBy(r => r.EpisodeNumber)
-                    .ToListAsync();
+                    var rankings = await db
+                        .Rankings.Where(r => r.GameId == gameId && r.UserId == user.UserId)
+                        .OrderBy(r => r.EpisodeNumber)
+                        .ToListAsync();
 
-                return Results.Ok(rankings);
-            }
-        );
+                    return Results.Ok(rankings);
+                }
+            )
+            .WithName("GetMyRankings")
+            .WithTags("Rankings")
+            .Produces<List<Ranking>>();
     }
 
     private sealed record SubmitRankingRequest(List<string>? ContestantIds);

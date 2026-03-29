@@ -10,152 +10,171 @@ using Passwordless.Models;
 
 namespace Api.Routes;
 
-file sealed record RegisterRequest(string Email, string DisplayName);
-
-file sealed record VerifyRequest(string Token);
-
-file sealed record RecoverRequest(string Email);
-
 public static class AuthRoutes
 {
     public static void MapAuthRoutes(this WebApplication app)
     {
         app.MapPost(
-            "/api/auth/register",
-            async (RegisterRequest req, AppDbContext db, IPasswordlessClient passwordlessClient) =>
-            {
-                if (
-                    string.IsNullOrWhiteSpace(req.Email)
-                    || string.IsNullOrWhiteSpace(req.DisplayName)
-                )
-                    return Results.BadRequest(
-                        new { error = "E-mailadres en naam zijn verplicht." }
+                "/api/auth/register",
+                async (
+                    RegisterRequest req,
+                    AppDbContext db,
+                    IPasswordlessClient passwordlessClient
+                ) =>
+                {
+                    if (
+                        string.IsNullOrWhiteSpace(req.Email)
+                        || string.IsNullOrWhiteSpace(req.DisplayName)
+                    )
+                        return Results.BadRequest(
+                            new { error = "E-mailadres en naam zijn verplicht." }
+                        );
+
+                    var email = req.Email.Trim().ToLowerInvariant();
+                    var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
+                    if (user == null)
+                    {
+                        user = new AppUser { Email = email, DisplayName = req.DisplayName.Trim() };
+                        db.AppUsers.Add(user);
+                    }
+                    else
+                    {
+                        user.DisplayName = req.DisplayName.Trim();
+                    }
+
+                    await db.SaveChangesAsync();
+
+                    var tokenResponse = await passwordlessClient.CreateRegisterTokenAsync(
+                        new RegisterOptions(user.Id, user.DisplayName)
+                        {
+                            Aliases = [user.Email],
+                            AliasHashing = false,
+                        }
                     );
 
-                var email = req.Email.Trim().ToLowerInvariant();
-                var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
-                if (user == null)
-                {
-                    user = new AppUser { Email = email, DisplayName = req.DisplayName.Trim() };
-                    db.AppUsers.Add(user);
+                    return Results.Ok(new RegisterTokenResponse(tokenResponse.Token));
                 }
-                else
+            )
+            .WithName("RegisterPasskey")
+            .WithTags("Auth")
+            .Produces<RegisterTokenResponse>();
+
+        app.MapPost(
+                "/api/auth/verify",
+                async (
+                    HttpContext ctx,
+                    VerifyRequest req,
+                    AppDbContext db,
+                    IPasswordlessClient passwordlessClient
+                ) =>
                 {
-                    user.DisplayName = req.DisplayName.Trim();
-                }
-
-                await db.SaveChangesAsync();
-
-                var tokenResponse = await passwordlessClient.CreateRegisterTokenAsync(
-                    new RegisterOptions(user.Id, user.DisplayName)
+                    VerifiedUser verified;
+                    try
                     {
-                        Aliases = [user.Email],
-                        AliasHashing = false,
+                        verified = await passwordlessClient.VerifyAuthenticationTokenAsync(
+                            req.Token
+                        );
                     }
-                );
+                    catch (PasswordlessApiException)
+                    {
+                        return Results.Unauthorized();
+                    }
 
-                return Results.Ok(new { token = tokenResponse.Token });
-            }
-        );
+                    var user = await db.AppUsers.FindAsync(verified.UserId);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var claims = new List<Claim>
+                    {
+                        new(ClaimTypes.NameIdentifier, user.Id),
+                        new(ClaimTypes.Name, user.DisplayName),
+                    };
+                    var identity = new ClaimsIdentity(
+                        claims,
+                        CookieAuthenticationDefaults.AuthenticationScheme
+                    );
+                    await ctx.SignInAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme,
+                        new ClaimsPrincipal(identity)
+                    );
+
+                    return Results.Ok(new UserInfo(user.Id, user.DisplayName, ["authenticated"]));
+                }
+            )
+            .WithName("VerifyPasskey")
+            .WithTags("Auth")
+            .Produces<UserInfo>();
 
         app.MapPost(
-            "/api/auth/verify",
-            async (
-                HttpContext ctx,
-                VerifyRequest req,
-                AppDbContext db,
-                IPasswordlessClient passwordlessClient
-            ) =>
-            {
-                VerifiedUser verified;
-                try
+                "/api/auth/recover",
+                async (
+                    RecoverRequest req,
+                    AppDbContext db,
+                    IPasswordlessClient passwordlessClient,
+                    IConfiguration config
+                ) =>
                 {
-                    verified = await passwordlessClient.VerifyAuthenticationTokenAsync(req.Token);
-                }
-                catch (PasswordlessApiException)
-                {
-                    return Results.Unauthorized();
-                }
+                    var email = req.Email.Trim().ToLowerInvariant();
+                    var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
 
-                var user = await db.AppUsers.FindAsync(verified.UserId);
-                if (user == null)
-                    return Results.Unauthorized();
+                    if (user != null)
+                    {
+                        var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
+                        await passwordlessClient.SendMagicLinkAsync(
+                            new SendMagicLinkRequest(
+                                user.Email,
+                                $"{baseUrl}/magic-link?token=$TOKEN",
+                                user.Id,
+                                TimeSpan.FromHours(1)
+                            )
+                        );
+                    }
 
-                var claims = new List<Claim>
-                {
-                    new(ClaimTypes.NameIdentifier, user.Id),
-                    new(ClaimTypes.Name, user.DisplayName),
-                };
-                var identity = new ClaimsIdentity(
-                    claims,
-                    CookieAuthenticationDefaults.AuthenticationScheme
-                );
-                await ctx.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(identity)
-                );
-
-                return Results.Ok(new { userId = user.Id, user.DisplayName });
-            }
-        );
-
-        app.MapPost(
-            "/api/auth/recover",
-            async (
-                RecoverRequest req,
-                AppDbContext db,
-                IPasswordlessClient passwordlessClient,
-                IConfiguration config
-            ) =>
-            {
-                var email = req.Email.Trim().ToLowerInvariant();
-                var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
-
-                if (user != null)
-                {
-                    var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
-                    await passwordlessClient.SendMagicLinkAsync(
-                        new SendMagicLinkRequest(
-                            user.Email,
-                            $"{baseUrl}/magic-link?token=$TOKEN",
-                            user.Id,
-                            TimeSpan.FromHours(1)
+                    return Results.Ok(
+                        new MessageResponse(
+                            "Als dit e-mailadres bekend is, ontvang je een herstelmail."
                         )
                     );
                 }
-
-                return Results.Ok(
-                    new { message = "Als dit e-mailadres bekend is, ontvang je een herstelmail." }
-                );
-            }
-        );
+            )
+            .WithName("RequestRecovery")
+            .WithTags("Auth")
+            .Produces<MessageResponse>();
 
         app.MapGet(
-            "/api/auth/logout",
-            async (HttpContext ctx) =>
-            {
-                await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                return Results.Redirect("/");
-            }
-        );
+                "/api/auth/logout",
+                async (HttpContext ctx) =>
+                {
+                    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return Results.Redirect("/");
+                }
+            )
+            .WithName("Logout")
+            .WithTags("Auth");
 
         app.MapGet(
-            "/api/me",
-            (HttpContext ctx) =>
-            {
-                var user = AuthHelper.GetUserInfo(ctx);
-                if (user == null)
-                    return Results.Unauthorized();
+                "/api/me",
+                (HttpContext ctx) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
 
-                return Results.Ok(
-                    new
-                    {
-                        user.UserId,
-                        user.DisplayName,
-                        user.Roles,
-                    }
-                );
-            }
-        );
+                    return Results.Ok(user);
+                }
+            )
+            .WithName("GetMe")
+            .WithTags("Auth")
+            .Produces<UserInfo>();
     }
+
+    private sealed record RegisterRequest(string Email, string DisplayName);
+
+    private sealed record VerifyRequest(string Token);
+
+    private sealed record RecoverRequest(string Email);
+
+    private sealed record RegisterTokenResponse(string Token);
+
+    private sealed record MessageResponse(string Message);
 }

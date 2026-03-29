@@ -44,11 +44,31 @@ if (builder.Environment.IsDevelopment())
     );
 }
 
+builder.Services.AddOpenApi(
+    "openapi",
+    options =>
+    {
+        options.AddDocumentTransformer(
+            (document, _, _) =>
+            {
+                document.Info.Title = "De Mol API";
+                document.Info.Version = "v1";
+                document.Servers = [new() { Url = "/" }];
+                return Task.CompletedTask;
+            }
+        );
+    }
+);
+
 builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
 
-if (!app.Environment.IsEnvironment("Test"))
+// Skip migrations when the build tool probes for the OpenAPI document
+var isDocumentGeneration =
+    Environment.GetEnvironmentVariable("DOTNET_RUNNING_AS_GETDOCUMENT") == "1";
+
+if (!app.Environment.IsEnvironment("Test") && !isDocumentGeneration)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -66,6 +86,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapOpenApi();
 
 app.MapAuthRoutes();
 app.MapGameRoutes();
