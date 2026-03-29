@@ -45,6 +45,7 @@ jobs:
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
           --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*]*.Migrations.*"
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Threshold=80
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdType=line
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdStat=Total
