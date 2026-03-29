@@ -3,9 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 
 export default function MagicLinkPage() {
   const [searchParams] = useSearchParams()
@@ -30,28 +30,35 @@ export default function MagicLinkPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Toegang herstellen</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {error ? (
-            <>
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-              <Button asChild>
-                <a href="/recover">Nieuwe herstelmail aanvragen</a>
-              </Button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="animate-spin" />
-              <span>Bezig met inloggen...</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex w-full max-w-md flex-col gap-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold tracking-tight">🕵️ De Mol</h1>
+        </div>
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle>Toegang herstellen</CardTitle>
+            <CardDescription>Bezig met verificatie van je herstellink.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 pt-0">
+            {error ? (
+              <>
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+                <Button asChild>
+                  <a href="/recover">Nieuwe herstelmail aanvragen</a>
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                <span>Bezig met inloggen...</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

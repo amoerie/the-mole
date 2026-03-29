@@ -6,9 +6,16 @@ import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/card'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -60,63 +67,74 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Registreren</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {gameName && (
-            <Alert>
-              <AlertDescription>
-                Je wordt uitgenodigd voor: <strong>{gameName}</strong>
-              </AlertDescription>
-            </Alert>
-          )}
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">E-mailadres</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="displayName">Naam (zoals zichtbaar voor andere spelers)</Label>
-            <Input
-              id="displayName"
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
-            />
-          </div>
-          <Button onClick={handleRegister} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" />
-                Bezig...
-              </>
-            ) : (
-              'Account aanmaken'
+      <div className="flex w-full max-w-md flex-col gap-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold tracking-tight">🕵️ De Mol</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Maak een account aan om mee te spelen
+          </p>
+        </div>
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle>Registreren</CardTitle>
+            <CardDescription>Maak een nieuw account aan met een passkey.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 pt-0">
+            {gameName && (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Uitgenodigd voor</p>
+                <p className="font-semibold">{gameName}</p>
+              </div>
             )}
-          </Button>
-        </CardContent>
-        <CardFooter>
-          <Link
-            to="/login"
-            state={location.state}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Terug naar inloggen
-          </Link>
-        </CardFooter>
-      </Card>
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mailadres</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jou@email.be"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Naam</Label>
+              <Input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                placeholder="Zichtbaar voor andere spelers"
+              />
+            </div>
+            <Button onClick={handleRegister} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                'Account aanmaken'
+              )}
+            </Button>
+          </CardContent>
+          <CardFooter>
+            <Link
+              to="/login"
+              state={location.state}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Terug naar inloggen
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   )
 }

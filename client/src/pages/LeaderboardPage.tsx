@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { Skeleton } from '../components/ui/skeleton'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -14,6 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table'
+
+function rankMedal(index: number) {
+  if (index === 0) return '🥇'
+  if (index === 1) return '🥈'
+  if (index === 2) return '🥉'
+  return String(index + 1)
+}
 
 export default function LeaderboardPage() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -45,7 +53,7 @@ export default function LeaderboardPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl p-4 flex flex-col gap-4">
+      <div className="container mx-auto max-w-2xl px-4 py-8 flex flex-col gap-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -53,8 +61,9 @@ export default function LeaderboardPage() {
   }
   if (error) {
     return (
-      <div className="mx-auto max-w-2xl p-4">
+      <div className="container mx-auto max-w-2xl px-4 py-8">
         <Alert variant="destructive">
+          <AlertCircle className="size-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       </div>
@@ -62,8 +71,9 @@ export default function LeaderboardPage() {
   }
   if (!game) {
     return (
-      <div className="mx-auto max-w-2xl p-4">
+      <div className="container mx-auto max-w-2xl px-4 py-8">
         <Alert variant="destructive">
+          <AlertCircle className="size-4" />
           <AlertDescription>Spel niet gevonden</AlertDescription>
         </Alert>
       </div>
@@ -72,14 +82,22 @@ export default function LeaderboardPage() {
 
   const isMoleRevealed = !!game.moleContestantId
   const episodeNumbers = game.episodes.map((e) => e.number)
+  const sortedLeaderboard = [...leaderboard].sort((a, b) => b.totalScore - a.totalScore)
 
   return (
-    <div className="mx-auto max-w-2xl p-4 flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Klassement — {game.name}</h2>
-        <Button asChild variant="outline" size="sm">
-          <Link to={`/game/${game.id}`}>← Terug</Link>
+    <main className="container mx-auto max-w-2xl px-4 py-8 flex flex-col gap-6">
+      <div className="flex items-center gap-3">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to={`/game/${game.id}`}>
+            <ArrowLeft className="size-4" />
+            Terug
+          </Link>
         </Button>
+      </div>
+
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Klassement</h1>
+        <p className="text-sm text-muted-foreground">{game.name}</p>
       </div>
 
       {isMoleRevealed ? (
@@ -110,7 +128,7 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {leaderboard.length > 0 ? (
+      {sortedLeaderboard.length > 0 ? (
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -127,34 +145,34 @@ export default function LeaderboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leaderboard
-                  .sort((a, b) => b.totalScore - a.totalScore)
-                  .map((entry, index) => (
-                    <TableRow key={entry.userId} className={index === 0 ? 'font-semibold' : ''}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{entry.displayName}</TableCell>
-                      {episodeNumbers.map((n) => {
-                        const epScore = entry.episodeScores.find((es) => es.episodeNumber === n)
-                        return (
-                          <TableCell key={n} className="text-center text-muted-foreground">
-                            {epScore ? epScore.score : '—'}
-                          </TableCell>
-                        )
-                      })}
-                      <TableCell className="text-right">{entry.totalScore}</TableCell>
-                    </TableRow>
-                  ))}
+                {sortedLeaderboard.map((entry, index) => (
+                  <TableRow key={entry.userId} className={index === 0 ? 'font-semibold' : ''}>
+                    <TableCell className="text-base">{rankMedal(index)}</TableCell>
+                    <TableCell>{entry.displayName}</TableCell>
+                    {episodeNumbers.map((n) => {
+                      const epScore = entry.episodeScores.find((es) => es.episodeNumber === n)
+                      return (
+                        <TableCell key={n} className="text-center text-muted-foreground">
+                          {epScore ? epScore.score : '—'}
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell className="text-right font-medium">{entry.totalScore}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {isMoleRevealed
-            ? 'Nog geen scores beschikbaar.'
-            : 'Selecteer een kandidaat om het hypothetisch klassement te zien.'}
-        </p>
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            {isMoleRevealed
+              ? 'Nog geen scores beschikbaar.'
+              : 'Selecteer een kandidaat om het hypothetisch klassement te zien.'}
+          </p>
+        </div>
       )}
-    </div>
+    </main>
   )
 }

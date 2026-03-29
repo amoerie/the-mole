@@ -5,9 +5,11 @@ import { api } from '../api/client'
 import type { Game } from '../types'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { Skeleton } from '../components/ui/skeleton'
+import { Separator } from '../components/ui/separator'
+import { AlertCircle, ChevronRight, Gamepad2, Users } from 'lucide-react'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -87,7 +89,10 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div data-testid="loading-skeleton" className="mx-auto max-w-2xl p-4 flex flex-col gap-4">
+      <div
+        data-testid="loading-skeleton"
+        className="container mx-auto max-w-2xl px-4 py-8 flex flex-col gap-4"
+      >
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
@@ -100,19 +105,21 @@ export default function HomePage() {
   const isAdmin = user.roles.includes('admin')
 
   return (
-    <div className="mx-auto max-w-2xl p-4 flex flex-col gap-6">
+    <main className="container mx-auto max-w-2xl px-4 py-8 flex flex-col gap-6">
       {error && (
         <Alert variant="destructive">
+          <AlertCircle className="size-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {isAdmin && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <CardTitle>Nieuw spel aanmaken</CardTitle>
+            <CardDescription>Maak een spel aan en nodig spelers uit met een code.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <div className="flex gap-2">
               <Input
                 type="text"
@@ -128,10 +135,11 @@ export default function HomePage() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle>Deelnemen aan spel</CardTitle>
+          <CardDescription>Heb je een uitnodigingscode? Vul die hier in.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <div className="flex gap-2">
             <Input
               type="text"
@@ -147,30 +155,44 @@ export default function HomePage() {
         </CardContent>
       </Card>
 
-      {games.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Mijn spellen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2">
-              {games.map((game) => (
-                <Button
-                  key={game.id}
-                  variant="outline"
-                  className="justify-between h-auto py-3"
-                  onClick={() => navigate(`/game/${game.id}`)}
-                >
-                  <span>{game.name}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {game.contestants.length} deelnemers · {game.episodes.length} afleveringen
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Mijn spellen</h2>
+          <Separator className="flex-1" />
+        </div>
+
+        {games.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-10 text-center">
+            <Gamepad2 className="size-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">Je neemt nog niet deel aan een spel.</p>
+            <p className="text-xs text-muted-foreground">
+              Gebruik een uitnodigingscode om deel te nemen.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {games.map((game) => (
+              <button
+                key={game.id}
+                className="flex items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                onClick={() => navigate(`/game/${game.id}`)}
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">{game.name}</span>
+                  <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Users className="size-3" />
+                      {game.contestants.length} kandidaten
+                    </span>
+                    <span>{game.episodes.length} afleveringen</span>
                   </span>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                </div>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   )
 }

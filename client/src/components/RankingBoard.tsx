@@ -16,8 +16,10 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import type { Contestant } from '../types'
-import ContestantCard from './ContestantCard'
+import { Button } from './ui/button'
+import { cn } from '../lib/utils'
 
 interface RankingBoardProps {
   contestants: Contestant[]
@@ -43,15 +45,42 @@ function SortableItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'dragging' : ''}`}>
-      <span className="drag-handle" {...attributes} {...listeners}>
-        ⠿
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-3 rounded-md border bg-card p-2 transition-colors',
+        isDragging ? 'border-primary opacity-50 shadow-lg' : 'hover:border-primary/40',
+        disabled && 'cursor-default',
+      )}
+    >
+      <button
+        className={cn(
+          'flex touch-none items-center text-muted-foreground',
+          disabled ? 'cursor-default' : 'cursor-grab hover:text-foreground active:cursor-grabbing',
+        )}
+        {...attributes}
+        {...listeners}
+        aria-label="Versleep om te herschikken"
+      >
+        <GripVertical className="size-4" />
+      </button>
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+        #{rank}
       </span>
-      <ContestantCard contestant={contestant} rank={rank} />
+      <img
+        src={contestant.photoUrl}
+        alt={contestant.name}
+        className="size-8 rounded-full border border-border object-cover"
+        onError={(e) => {
+          ;(e.target as HTMLImageElement).src =
+            `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contestant.name)}&backgroundType=gradientLinear`
+        }}
+      />
+      <span className="text-sm font-medium">{contestant.name}</span>
     </div>
   )
 }
@@ -86,12 +115,11 @@ export default function RankingBoard({
   const contestantMap = new Map(contestants.map((c) => [c.id, c]))
 
   return (
-    <div className="ranking-board">
-      <h3>Rangschikking</h3>
-      <p className="ranking-hint">#1 = meest verdacht · Sleep om te herschikken</p>
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">#1 = meest verdacht · Sleep om te herschikken</p>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-          <div className="ranking-list">
+          <div className="flex flex-col gap-1.5">
             {orderedIds.map((id, index) => {
               const contestant = contestantMap.get(id)
               if (!contestant) return null
@@ -107,13 +135,9 @@ export default function RankingBoard({
           </div>
         </SortableContext>
       </DndContext>
-      <button
-        className="btn btn-primary submit-ranking"
-        onClick={() => onSubmit(orderedIds)}
-        disabled={disabled}
-      >
+      <Button onClick={() => onSubmit(orderedIds)} disabled={disabled} className="w-full">
         {disabled ? 'Deadline verstreken' : 'Rangschikking indienen'}
-      </button>
+      </Button>
     </div>
   )
 }
