@@ -552,6 +552,47 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "Rankings"
+        ],
+        "operationId": "GetEpisodeRankings",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "episodeNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlayerRankingResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/games/{gameId}/episodes/{episodeNumber}/rankings/mine": {
@@ -1077,6 +1118,33 @@
         "properties": {
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "PlayerRankingResponse": {
+        "required": [
+          "userId",
+          "displayName",
+          "contestantIds",
+          "submittedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "contestantIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

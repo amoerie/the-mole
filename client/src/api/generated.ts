@@ -103,6 +103,13 @@ export interface MessageResponse {
   message: string
 }
 
+export interface PlayerRankingResponse {
+  userId: string
+  displayName: string
+  contestantIds: string[]
+  submittedAt: string
+}
+
 export interface Ranking {
   id?: string
   gameId?: string
@@ -589,6 +596,31 @@ export const submitRanking = async (
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(submitRankingRequest),
+  })
+}
+
+export type getEpisodeRankingsResponse200 = {
+  data: PlayerRankingResponse[]
+  status: 200
+}
+
+export type getEpisodeRankingsResponseSuccess = getEpisodeRankingsResponse200 & {
+  headers: Headers
+}
+export type getEpisodeRankingsResponse = getEpisodeRankingsResponseSuccess
+
+export const getGetEpisodeRankingsUrl = (gameId: string, episodeNumber: number) => {
+  return `/api/games/${gameId}/episodes/${episodeNumber}/rankings`
+}
+
+export const getEpisodeRankings = async (
+  gameId: string,
+  episodeNumber: number,
+  options?: RequestInit,
+): Promise<getEpisodeRankingsResponse> => {
+  return fetcher<getEpisodeRankingsResponse>(getGetEpisodeRankingsUrl(gameId, episodeNumber), {
+    ...options,
+    method: 'GET',
   })
 }
 

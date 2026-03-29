@@ -46,6 +46,13 @@ export interface Ranking {
   submittedAt: string
 }
 
+export interface PlayerRanking {
+  userId: string
+  displayName: string
+  contestantIds: string[]
+  submittedAt: string
+}
+
 export interface LeaderboardEntry {
   userId: string
   displayName: string
