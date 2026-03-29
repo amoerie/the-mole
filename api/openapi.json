@@ -462,6 +462,37 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "DeleteEpisode",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "episodeNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/games/{gameId}/reveal-mole": {

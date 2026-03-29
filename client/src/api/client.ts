@@ -11,6 +11,7 @@
 import {
   addContestants as _addContestants,
   createEpisode as _createEpisode,
+  deleteEpisode as _deleteEpisode,
   createGame as _createGame,
   getConfig as _getConfig,
   getGame as _getGame,
@@ -135,6 +136,10 @@ export const api = {
       eliminatedContestantId: eliminatedContestantId ?? null,
     })
     return data
+  },
+
+  async deleteEpisode(gameId: string, episodeNumber: number) {
+    await _deleteEpisode(gameId, episodeNumber)
   },
 
   async updateEpisode(

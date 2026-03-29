@@ -9,16 +9,27 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../components/ui/alert-dialog'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Separator } from '../components/ui/separator'
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Trophy } from 'lucide-react'
 
-function lastSundayDateStr(): string {
+function nextSundayDateStr(): string {
   const now = new Date()
-  const daysBack = now.getDay() === 0 ? 0 : now.getDay()
+  const daysUntilSunday = now.getDay() === 0 ? 7 : 7 - now.getDay()
   const d = new Date(now)
-  d.setDate(d.getDate() - daysBack)
+  d.setDate(d.getDate() + daysUntilSunday)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -36,7 +47,7 @@ export default function GamePage() {
   const [submitted, setSubmitted] = useState(false)
 
   // Admin controls state
-  const [newDeadline, setNewDeadline] = useState(lastSundayDateStr)
+  const [newDeadline, setNewDeadline] = useState(nextSundayDateStr)
   const [eliminatedId, setEliminatedId] = useState('')
   const [moleId, setMoleId] = useState('')
   const [newContestantName, setNewContestantName] = useState('')
@@ -147,10 +158,20 @@ export default function GamePage() {
       const deadlineIso = new Date(newDeadline + 'T20:00:00').toISOString()
       await api.createEpisode(gameId, deadlineIso, eliminatedId || undefined)
       await loadGame()
-      setNewDeadline(lastSundayDateStr())
+      setNewDeadline(nextSundayDateStr())
       setEliminatedId('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fout bij aanmaken aflevering')
+    }
+  }
+
+  async function handleDeleteEpisode(episodeNumber: number) {
+    if (!gameId) return
+    try {
+      await api.deleteEpisode(gameId, episodeNumber)
+      await loadGame()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fout bij verwijderen aflevering')
     }
   }
 
@@ -407,6 +428,57 @@ export default function GamePage() {
               <CardTitle>Afleveringen beheren</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-6 pt-0">
+              {game.episodes.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-medium">Bestaande afleveringen</p>
+                  {game.episodes.map((ep) => (
+                    <div
+                      key={ep.number}
+                      className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                    >
+                      <span>
+                        Aflevering {ep.number} — deadline{' '}
+                        {new Date(ep.deadline).toLocaleString('nl-BE')}
+                        {ep.eliminatedContestantId && (
+                          <span className="text-muted-foreground">
+                            {' '}
+                            ·{' '}
+                            {game.contestants.find((c) => c.id === ep.eliminatedContestantId)
+                              ?.name ?? ep.eliminatedContestantId}{' '}
+                            afgevallen
+                          </span>
+                        )}
+                      </span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            Verwijderen
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Aflevering {ep.number} verwijderen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dit verwijdert ook alle ingediende rangschikkingen van deze
+                              aflevering. Deze actie kan niet ongedaan worden gemaakt.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => handleDeleteEpisode(ep.number)}
+                            >
+                              Verwijderen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex flex-col gap-2">
                 <p className="text-sm font-medium">Nieuwe aflevering</p>
                 <div className="flex flex-wrap gap-2">

@@ -113,6 +113,50 @@ public static class EpisodeRoutes
             .WithTags("Episodes")
             .Produces<Episode>();
 
+        app.MapDelete(
+                "/api/games/{gameId}/episodes/{episodeNumber:int}",
+                async (HttpContext ctx, AppDbContext db, string gameId, int episodeNumber) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound();
+
+                    if (game.AdminUserId != user.UserId)
+                        return Results.Unauthorized();
+
+                    var episode = game.Episodes.FirstOrDefault(e => e.Number == episodeNumber);
+                    if (episode == null)
+                        return Results.NotFound(new { error = "Episode not found." });
+
+                    // Restore eliminated contestant if this episode had one
+                    if (!string.IsNullOrEmpty(episode.EliminatedContestantId))
+                    {
+                        var contestant = game.Contestants.FirstOrDefault(c =>
+                            c.Id == episode.EliminatedContestantId
+                        );
+                        if (contestant != null)
+                            contestant.EliminatedInEpisode = null;
+                    }
+
+                    game.Episodes.Remove(episode);
+
+                    var rankings = db.Rankings.Where(r =>
+                        r.GameId == gameId && r.EpisodeNumber == episodeNumber
+                    );
+                    db.Rankings.RemoveRange(rankings);
+
+                    await db.SaveChangesAsync();
+
+                    return Results.NoContent();
+                }
+            )
+            .WithName("DeleteEpisode")
+            .WithTags("Episodes");
+
         app.MapPost(
                 "/api/games/{gameId}/reveal-mole",
                 async (HttpContext ctx, AppDbContext db, string gameId, RevealMoleRequest body) =>

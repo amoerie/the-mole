@@ -530,6 +530,21 @@ export const getUpdateEpisodeUrl = (gameId: string, episodeNumber: number) => {
   return `/api/games/${gameId}/episodes/${episodeNumber}`
 }
 
+export const getDeleteEpisodeUrl = (gameId: string, episodeNumber: number) => {
+  return `/api/games/${gameId}/episodes/${episodeNumber}`
+}
+
+export const deleteEpisode = async (
+  gameId: string,
+  episodeNumber: number,
+  options?: RequestInit,
+): Promise<{ status: 204; headers: Headers }> => {
+  return fetcher<{ status: 204; headers: Headers }>(getDeleteEpisodeUrl(gameId, episodeNumber), {
+    ...options,
+    method: 'DELETE',
+  })
+}
+
 export const updateEpisode = async (
   gameId: string,
   episodeNumber: number,
