@@ -53,8 +53,8 @@ export const api = {
     return mapUserInfo(data!)
   },
 
-  async registerPasskey(email: string, displayName: string) {
-    const { data } = await _registerPasskey({ email, displayName })
+  async registerPasskey(email: string, displayName: string, inviteCode?: string) {
+    const { data } = await _registerPasskey({ email, displayName, inviteCode: inviteCode ?? null })
     return data
   },
 

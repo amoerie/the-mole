@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Passwordless;
 
@@ -21,6 +22,14 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Test");
+        builder.ConfigureAppConfiguration(
+            (_, config) =>
+            {
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?> { ["AdminEmail"] = "admin@test.com" }
+                );
+            }
+        );
         builder.ConfigureServices(services =>
         {
             var dbDescriptor = services.SingleOrDefault(d =>

@@ -34,6 +34,24 @@ public static class AuthRoutes
                     var email = req.Email.Trim().ToLowerInvariant();
                     var adminEmail = (config["AdminEmail"] ?? "").Trim().ToLowerInvariant();
 
+                    if (email != adminEmail)
+                    {
+                        var inviteCode = req.InviteCode?.Trim();
+                        if (string.IsNullOrEmpty(inviteCode))
+                            return Results.BadRequest(
+                                new
+                                {
+                                    error = "Een uitnodigingscode is verplicht om te registreren.",
+                                }
+                            );
+
+                        var gameExists = await db.Games.AnyAsync(g => g.InviteCode == inviteCode);
+                        if (!gameExists)
+                            return Results.BadRequest(
+                                new { error = "Ongeldige uitnodigingscode." }
+                            );
+                    }
+
                     var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
                     if (user == null)
                     {
@@ -179,7 +197,7 @@ public static class AuthRoutes
             .Produces<UserInfo>();
     }
 
-    private sealed record RegisterRequest(string Email, string DisplayName);
+    private sealed record RegisterRequest(string Email, string DisplayName, string? InviteCode);
 
     private sealed record VerifyRequest(string Token);
 

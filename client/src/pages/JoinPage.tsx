@@ -100,6 +100,15 @@ export default function JoinPage() {
             Inloggen
           </Link>
         </p>
+        <p className="text-center text-xs text-muted-foreground/50">
+          <Link
+            to="/register"
+            state={{ adminBypass: true }}
+            className="hover:text-muted-foreground"
+          >
+            Beheerder?
+          </Link>
+        </p>
       </div>
     </div>
   )
