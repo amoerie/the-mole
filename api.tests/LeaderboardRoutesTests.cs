@@ -17,6 +17,7 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
         TestAuthHandler.UserId = "test-user-id";
         TestAuthHandler.DisplayName = "Test User";
         TestAuthHandler.IsAuthenticated = true;
+        TestAuthHandler.Roles = ["authenticated", "admin"];
     }
 
     private HttpClient CreateClient() =>

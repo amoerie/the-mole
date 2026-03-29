@@ -18,6 +18,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         TestAuthHandler.UserId = "test-user-id";
         TestAuthHandler.DisplayName = "Test User";
         TestAuthHandler.IsAuthenticated = true;
+        TestAuthHandler.Roles = ["authenticated", "admin"];
     }
 
     private HttpClient CreateClient() =>
@@ -234,6 +235,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         finally
         {
             TestAuthHandler.IsAuthenticated = true;
+            TestAuthHandler.Roles = ["authenticated", "admin"];
         }
     }
 }
