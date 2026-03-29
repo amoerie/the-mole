@@ -7,7 +7,7 @@ public class ScoringServiceTests
 {
     /// <summary>
     /// Creates a game with N contestants (including the mole) and the specified episodes.
-    /// Contestants eliminated before each episode are tracked via Episode.EliminatedContestantId.
+    /// Contestants eliminated before each episode are tracked via Episode.EliminatedContestantIds.
     /// </summary>
     private static Game CreateGame(
         string moleId,
@@ -26,7 +26,7 @@ public class ScoringServiceTests
                 .Select(e => new Episode
                 {
                     Number = e.number,
-                    EliminatedContestantId = e.eliminatedId,
+                    EliminatedContestantIds = e.eliminatedId != null ? [e.eliminatedId] : [],
                 })
                 .ToList(),
         };

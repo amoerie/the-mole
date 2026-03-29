@@ -11,6 +11,7 @@
 import {
   addContestants as _addContestants,
   createEpisode as _createEpisode,
+  deleteEpisode as _deleteEpisode,
   createGame as _createGame,
   getConfig as _getConfig,
   getGame as _getGame,
@@ -129,23 +130,27 @@ export const api = {
 
   // Episodes — these return Episode/RevealMoleResponse, not Game.
   // Callers that need updated game state should call api.getGame() afterwards.
-  async createEpisode(gameId: string, deadline: string, eliminatedContestantId?: string) {
+  async createEpisode(gameId: string, deadline: string, eliminatedContestantIds?: string[]) {
     const { data } = await _createEpisode(gameId, {
       deadline,
-      eliminatedContestantId: eliminatedContestantId ?? null,
+      eliminatedContestantIds: eliminatedContestantIds ?? null,
     })
     return data
+  },
+
+  async deleteEpisode(gameId: string, episodeNumber: number) {
+    await _deleteEpisode(gameId, episodeNumber)
   },
 
   async updateEpisode(
     gameId: string,
     episodeNumber: number,
     deadline?: string,
-    eliminatedContestantId?: string,
+    eliminatedContestantIds?: string[],
   ) {
     const { data } = await _updateEpisode(gameId, episodeNumber, {
       deadline: deadline ?? null,
-      eliminatedContestantId: eliminatedContestantId ?? null,
+      eliminatedContestantIds: eliminatedContestantIds ?? null,
     })
     return data
   },

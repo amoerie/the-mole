@@ -78,7 +78,7 @@ describe('mapGame', () => {
     name: 'Test Game',
     adminUserId: 'u1',
     contestants: [{ id: 'c1', name: 'Alice', age: 28, photoUrl: '/a.jpg' }],
-    episodes: [{ number: 1, deadline: '2025-01-01T00:00:00Z', eliminatedContestantId: null }],
+    episodes: [{ number: 1, deadline: '2025-01-01T00:00:00Z', eliminatedContestantIds: [] }],
     moleContestantId: null,
     inviteCode: 'abc123',
   }

@@ -40,8 +40,8 @@ public class ScoringService
         foreach (var ep in game.Episodes.OrderBy(e => e.Number))
         {
             eliminatedBefore[ep.Number] = new HashSet<string>(eliminatedSoFar);
-            if (!string.IsNullOrEmpty(ep.EliminatedContestantId))
-                eliminatedSoFar.Add(ep.EliminatedContestantId);
+            foreach (var id in ep.EliminatedContestantIds ?? [])
+                eliminatedSoFar.Add(id);
         }
 
         var entries = new List<LeaderboardEntry>();

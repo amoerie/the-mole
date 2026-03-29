@@ -297,7 +297,7 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
                 {
                     Number = 1,
                     Deadline = DateTimeOffset.UtcNow.AddDays(-1),
-                    EliminatedContestantId = "contestant-2",
+                    EliminatedContestantIds = ["contestant-2"],
                 },
                 new Episode { Number = 2, Deadline = DateTimeOffset.UtcNow.AddDays(7) },
             ],

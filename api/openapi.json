@@ -462,6 +462,37 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Episodes"
+        ],
+        "operationId": "DeleteEpisode",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "episodeNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/games/{gameId}/reveal-mole": {
@@ -903,7 +934,7 @@
       "CreateEpisodeRequest": {
         "required": [
           "deadline",
-          "eliminatedContestantId"
+          "eliminatedContestantIds"
         ],
         "type": "object",
         "properties": {
@@ -911,11 +942,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "eliminatedContestantId": {
+          "eliminatedContestantIds": {
             "type": [
               "null",
-              "string"
-            ]
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -958,11 +992,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "eliminatedContestantId": {
+          "eliminatedContestantIds": {
             "type": [
               "null",
-              "string"
-            ]
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -1288,7 +1325,7 @@
       "UpdateEpisodeRequest": {
         "required": [
           "deadline",
-          "eliminatedContestantId"
+          "eliminatedContestantIds"
         ],
         "type": "object",
         "properties": {
@@ -1299,11 +1336,14 @@
             ],
             "format": "date-time"
           },
-          "eliminatedContestantId": {
+          "eliminatedContestantIds": {
             "type": [
               "null",
-              "string"
-            ]
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

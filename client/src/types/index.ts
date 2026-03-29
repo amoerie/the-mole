@@ -16,7 +16,7 @@ export interface NewContestant {
 export interface Episode {
   number: number
   deadline: string // ISO date
-  eliminatedContestantId?: string
+  eliminatedContestantIds: string[]
 }
 
 export interface Game {

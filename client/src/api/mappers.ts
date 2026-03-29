@@ -60,7 +60,7 @@ export function mapEpisode(raw: RawEpisode): Episode {
   return {
     number: Number(raw.number ?? 0),
     deadline: raw.deadline ?? '',
-    eliminatedContestantId: raw.eliminatedContestantId ?? undefined,
+    eliminatedContestantIds: raw.eliminatedContestantIds ?? [],
   }
 }
 

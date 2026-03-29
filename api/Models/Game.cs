@@ -24,5 +24,5 @@ public class Episode
 {
     public int Number { get; set; }
     public DateTimeOffset Deadline { get; set; }
-    public string? EliminatedContestantId { get; set; }
+    public List<string>? EliminatedContestantIds { get; set; } = [];
 }

@@ -180,7 +180,7 @@ namespace Api.Migrations
                             b1.Property<DateTimeOffset>("Deadline")
                                 .HasColumnType("TEXT");
 
-                            b1.Property<string>("EliminatedContestantId")
+                            b1.PrimitiveCollection<string>("EliminatedContestantIds")
                                 .HasColumnType("TEXT");
 
                             b1.Property<int>("Number")

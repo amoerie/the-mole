@@ -176,7 +176,7 @@ describe('API client', () => {
         method: 'POST',
         body: JSON.stringify({
           deadline: '2025-01-01T00:00:00Z',
-          eliminatedContestantId: null,
+          eliminatedContestantIds: null,
         }),
       }),
     )

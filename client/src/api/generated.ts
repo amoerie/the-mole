@@ -37,7 +37,7 @@ export interface AppConfig {
 export interface CreateEpisodeRequest {
   deadline: string
   /** @nullable */
-  eliminatedContestantId: string | null
+  eliminatedContestantIds: string[] | null
 }
 
 export interface CreateGameRequest {
@@ -51,8 +51,7 @@ export interface Episode {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   number?: number | string
   deadline?: string
-  /** @nullable */
-  eliminatedContestantId?: string | null
+  eliminatedContestantIds?: string[]
 }
 
 export interface EpisodeScore {
@@ -159,7 +158,7 @@ export interface UpdateEpisodeRequest {
   /** @nullable */
   deadline: string | null
   /** @nullable */
-  eliminatedContestantId: string | null
+  eliminatedContestantIds: string[] | null
 }
 
 export interface UpdateProfileRequest {
@@ -528,6 +527,21 @@ export type updateEpisodeResponse = updateEpisodeResponseSuccess
 
 export const getUpdateEpisodeUrl = (gameId: string, episodeNumber: number) => {
   return `/api/games/${gameId}/episodes/${episodeNumber}`
+}
+
+export const getDeleteEpisodeUrl = (gameId: string, episodeNumber: number) => {
+  return `/api/games/${gameId}/episodes/${episodeNumber}`
+}
+
+export const deleteEpisode = async (
+  gameId: string,
+  episodeNumber: number,
+  options?: RequestInit,
+): Promise<{ status: 204; headers: Headers }> => {
+  return fetcher<{ status: 204; headers: Headers }>(getDeleteEpisodeUrl(gameId, episodeNumber), {
+    ...options,
+    method: 'DELETE',
+  })
 }
 
 export const updateEpisode = async (

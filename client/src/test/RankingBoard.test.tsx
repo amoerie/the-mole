@@ -1,8 +1,28 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import RankingBoard from '../components/RankingBoard'
 import type { Contestant } from '../types'
+import type { DragEndEvent } from '@dnd-kit/core'
+
+// Expose the onDragEnd handler so tests can fire drag events directly
+let capturedOnDragEnd: ((event: DragEndEvent) => void) | null = null
+
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>()
+  return {
+    ...actual,
+    DndContext: ({
+      children,
+      onDragEnd,
+    }: {
+      children: React.ReactNode
+      onDragEnd: (event: DragEndEvent) => void
+    }) => {
+      capturedOnDragEnd = onDragEnd
+      return <>{children}</>
+    },
+  }
+})
 
 const contestants: Contestant[] = [
   { id: '1', name: 'Alice', age: 30, photoUrl: '/alice.jpg' },
@@ -12,56 +32,71 @@ const contestants: Contestant[] = [
 
 describe('RankingBoard', () => {
   it('renders all contestants', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getByText('Charlie')).toBeInTheDocument()
   })
 
   it('shows rank numbers', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
     expect(screen.getByText('#1')).toBeInTheDocument()
     expect(screen.getByText('#2')).toBeInTheDocument()
     expect(screen.getByText('#3')).toBeInTheDocument()
   })
 
-  it('calls onSubmit with ordered IDs when submit button clicked', async () => {
-    const onSubmit = vi.fn()
-    const user = userEvent.setup()
-    render(<RankingBoard contestants={contestants} onSubmit={onSubmit} />)
-
-    await user.click(screen.getByText('Rangschikking indienen'))
-    expect(onSubmit).toHaveBeenCalledWith(['1', '2', '3'])
+  it('does not call onChange on initial render', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('uses initialOrder when provided', async () => {
-    const onSubmit = vi.fn()
-    const user = userEvent.setup()
+  it('uses initialOrder when provided', () => {
     render(
-      <RankingBoard contestants={contestants} initialOrder={['3', '1', '2']} onSubmit={onSubmit} />,
+      <RankingBoard contestants={contestants} initialOrder={['3', '1', '2']} onChange={() => {}} />,
     )
-
-    await user.click(screen.getByText('Rangschikking indienen'))
-    expect(onSubmit).toHaveBeenCalledWith(['3', '1', '2'])
+    const rows = screen.getAllByRole('img').map((img) => (img as HTMLImageElement).alt)
+    expect(rows).toEqual(['Charlie', 'Alice', 'Bob'])
   })
 
-  it('shows bijwerken button when isUpdate is true', async () => {
-    const onSubmit = vi.fn()
-    const user = userEvent.setup()
-    render(<RankingBoard contestants={contestants} onSubmit={onSubmit} isUpdate />)
-
-    const button = screen.getByRole('button', { name: /bijwerken/i })
-    expect(button).toBeInTheDocument()
-    await user.click(button)
-    expect(onSubmit).toHaveBeenCalledWith(['1', '2', '3'])
+  it('does not show submit button', () => {
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
+    expect(screen.queryByRole('button', { name: /indienen|bijwerken/i })).not.toBeInTheDocument()
   })
 
   it('triggers onError fallback for broken image', () => {
-    render(<RankingBoard contestants={contestants} onSubmit={() => {}} />)
+    render(<RankingBoard contestants={contestants} onChange={() => {}} />)
     const imgs = screen.getAllByRole('img')
     const img = imgs[0] as HTMLImageElement
     Object.defineProperty(img, 'src', { writable: true, value: '' })
     fireEvent.error(img)
     expect(img.src).toContain('dicebear')
+  })
+
+  it('calls onChange with new order when items are dragged to a different position', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: { id: '3' } } as DragEndEvent)
+    })
+    expect(onChange).toHaveBeenCalledWith(['2', '3', '1'])
+  })
+
+  it('does not call onChange when item is dropped on itself', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: { id: '1' } } as DragEndEvent)
+    })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not call onChange when dropped outside any item', () => {
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: null } as DragEndEvent)
+    })
+    expect(onChange).not.toHaveBeenCalled()
   })
 })
