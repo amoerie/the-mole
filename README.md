@@ -29,11 +29,11 @@ cumulative scores determine the winner.
 # 1. Install frontend dependencies
 cd client && npm install && cd ..
 
-# 2. Restore .NET tools (CSharpier formatter)
+# 2. Restore .NET tools (CSharpier, Husky.NET)
 dotnet tool restore
 
-# 3. Enable the pre-commit formatting hook
-git config core.hooksPath .githooks
+# 3. Enable the pre-commit formatting hook (Husky.NET)
+dotnet husky install
 ```
 
 ### Local Development

@@ -20,6 +20,8 @@ jobs:
 
       - name: Restore tools
         run: dotnet tool restore
+        env:
+          HUSKY: 0
 
       - name: Check formatting (CSharpier)
         run: dotnet csharpier check .
