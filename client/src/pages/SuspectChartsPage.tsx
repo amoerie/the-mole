@@ -107,7 +107,12 @@ export default function SuspectChartsPage() {
                     tick={{ fontSize: 12 }}
                     label={{ value: 'Gem. rang', angle: -90, position: 'insideLeft', fontSize: 11 }}
                   />
-                  <Tooltip formatter={(value: number) => [value.toFixed(1), 'Gem. rang']} />
+                  <Tooltip
+                    formatter={(value) => [
+                      typeof value === 'number' ? value.toFixed(1) : value,
+                      'Gem. rang',
+                    ]}
+                  />
                   <Bar dataKey="avgRank" radius={[4, 4, 0, 0]}>
                     {episode.stats.map((entry, index) => (
                       <Cell
