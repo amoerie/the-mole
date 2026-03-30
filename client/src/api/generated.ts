@@ -122,6 +122,14 @@ export interface MessagesResponse {
   hasMore: boolean
 }
 
+export interface Player {
+  id?: string
+  gameId?: string
+  userId?: string
+  displayName?: string
+  joinedAt?: string
+}
+
 export interface PlayerRankingResponse {
   userId: string
   displayName: string
@@ -132,10 +140,6 @@ export interface PlayerRankingResponse {
 export interface PostMessageRequest {
   /** @nullable */
   content: string | null
-}
-
-export interface UnreadCountResponse {
-  count?: number
 }
 
 export interface Ranking {
@@ -174,6 +178,11 @@ export interface RevealMoleResponse {
 export interface SubmitRankingRequest {
   /** @nullable */
   contestantIds: string[] | null
+}
+
+export interface UnreadCountResponse {
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  count: number | string
 }
 
 export interface UpdateEpisodeRequest {
@@ -909,6 +918,30 @@ export const markMessagesRead = async (
   return fetcher<markMessagesReadResponse>(getMarkMessagesReadUrl(gameId), {
     ...options,
     method: 'POST',
+  })
+}
+
+export type getGamePlayersResponse200 = {
+  data: Player[]
+  status: 200
+}
+
+export type getGamePlayersResponseSuccess = getGamePlayersResponse200 & {
+  headers: Headers
+}
+export type getGamePlayersResponse = getGamePlayersResponseSuccess
+
+export const getGetGamePlayersUrl = (gameId: string) => {
+  return `/api/games/${gameId}/players`
+}
+
+export const getGamePlayers = async (
+  gameId: string,
+  options?: RequestInit,
+): Promise<getGamePlayersResponse> => {
+  return fetcher<getGamePlayersResponse>(getGetGamePlayersUrl(gameId), {
+    ...options,
+    method: 'GET',
   })
 }
 

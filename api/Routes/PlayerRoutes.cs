@@ -29,9 +29,10 @@ public static class PlayerRoutes
                     if (!isAdmin && !isPlayer)
                         return Results.Unauthorized();
 
-                    var players = (await db.Players.Where(p => p.GameId == gameId).ToListAsync())
+                    var players = await db
+                        .Players.Where(p => p.GameId == gameId)
                         .OrderBy(p => p.JoinedAt)
-                        .ToList();
+                        .ToListAsync();
 
                     return Results.Ok(players);
                 }

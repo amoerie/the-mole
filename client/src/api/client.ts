@@ -38,17 +38,18 @@ import {
   postMessage as _postMessage,
   getUnreadMessageCount as _getUnreadMessageCount,
   markMessagesRead as _markMessagesRead,
+  getGamePlayers as _getGamePlayers,
 } from './generated'
 import {
   mapAdminUser,
   mapGame,
+  mapGamePlayer,
   mapLeaderboardEntry,
   mapMessage,
   mapMessagesPage,
   mapRanking,
   mapUserInfo,
 } from './mappers'
-import { fetcher } from './fetcher'
 import type {
   AdminUser,
   Game,
@@ -248,7 +249,7 @@ export const api = {
 
   async getUnreadMessageCount(gameId: string): Promise<number> {
     const { data } = await _getUnreadMessageCount(gameId)
-    return data?.count ?? 0
+    return Number(data?.count ?? 0)
   },
 
   async markMessagesRead(gameId: string): Promise<void> {
@@ -256,9 +257,7 @@ export const api = {
   },
 
   async getGamePlayers(gameId: string): Promise<GamePlayer[]> {
-    const result = await fetcher<{ data: GamePlayer[] }>(`/api/games/${gameId}/players`, {
-      method: 'GET',
-    })
-    return result.data ?? []
+    const { data } = await _getGamePlayers(gameId)
+    return (data ?? []).map(mapGamePlayer)
   },
 }
