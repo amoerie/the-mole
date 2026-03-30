@@ -29,10 +29,11 @@ public static class PlayerRoutes
                     if (!isAdmin && !isPlayer)
                         return Results.Unauthorized();
 
-                    var players = await db
-                        .Players.Where(p => p.GameId == gameId)
+                    // OrderBy is applied after ToListAsync because SQLite does not support
+                    // DateTimeOffset ordering natively at the database level.
+                    var players = (await db.Players.Where(p => p.GameId == gameId).ToListAsync())
                         .OrderBy(p => p.JoinedAt)
-                        .ToListAsync();
+                        .ToList();
 
                     return Results.Ok(players);
                 }
