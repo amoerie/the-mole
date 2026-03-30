@@ -9,6 +9,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
+import MessageBoardPage from './pages/MessageBoardPage'
 import Footer from './components/Footer'
 import { Button } from './components/ui/button'
 
@@ -48,6 +49,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/game/:gameId" element={<GamePage />} />
             <Route path="/game/:gameId/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/game/:gameId/messages" element={<MessageBoardPage />} />
             <Route path="/join/:inviteCode" element={<HomePage />} />
           </Routes>
           <Footer />

@@ -9,6 +9,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Player> Players => Set<Player>();
     public DbSet<Ranking> Rankings => Set<Ranking>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<MessageRead> MessageReads => Set<MessageRead>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +28,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Player>(entity =>
         {
             entity.HasIndex(p => new { p.GameId, p.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Message>(entity =>
+        {
+            entity.HasIndex(m => m.GameId);
+        });
+
+        modelBuilder.Entity<MessageRead>(entity =>
+        {
+            entity.HasKey(mr => new { mr.UserId, mr.GameId });
         });
 
         modelBuilder.Entity<Ranking>(entity =>

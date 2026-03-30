@@ -34,11 +34,25 @@ import {
   submitRanking as _submitRanking,
   updateEpisode as _updateEpisode,
   updateProfile as _updateProfile,
+  getMessages as _getMessages,
+  postMessage as _postMessage,
+  getUnreadMessageCount as _getUnreadMessageCount,
+  markMessagesRead as _markMessagesRead,
 } from './generated'
-import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
+import {
+  mapAdminUser,
+  mapGame,
+  mapLeaderboardEntry,
+  mapMessage,
+  mapMessagesPage,
+  mapRanking,
+  mapUserInfo,
+} from './mappers'
 import type {
   AdminUser,
   Game,
+  GameMessage,
+  MessagesPage,
   LeaderboardEntry,
   NewContestant,
   PlayerRanking,
@@ -46,7 +60,17 @@ import type {
   UserInfo,
 } from '../types'
 
-export type { AdminUser, Game, LeaderboardEntry, NewContestant, PlayerRanking, Ranking, UserInfo }
+export type {
+  AdminUser,
+  Game,
+  GameMessage,
+  MessagesPage,
+  LeaderboardEntry,
+  NewContestant,
+  PlayerRanking,
+  Ranking,
+  UserInfo,
+}
 
 export const api = {
   // Admin
@@ -207,5 +231,24 @@ export const api = {
   async getWhatIfLeaderboard(gameId: string, contestantId: string): Promise<LeaderboardEntry[]> {
     const { data } = await _getWhatIfLeaderboard(gameId, contestantId)
     return (data ?? []).map(mapLeaderboardEntry)
+  },
+
+  async getMessages(gameId: string, skip = 0): Promise<MessagesPage> {
+    const { data } = await _getMessages(gameId, { skip })
+    return mapMessagesPage(data!)
+  },
+
+  async postMessage(gameId: string, content: string): Promise<GameMessage> {
+    const { data } = await _postMessage(gameId, { content })
+    return mapMessage(data!)
+  },
+
+  async getUnreadMessageCount(gameId: string): Promise<number> {
+    const { data } = await _getUnreadMessageCount(gameId)
+    return data?.count ?? 0
+  },
+
+  async markMessagesRead(gameId: string): Promise<void> {
+    await _markMessagesRead(gameId)
   },
 }

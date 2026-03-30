@@ -3,6 +3,7 @@ using System;
 using Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260330112118_AddMessages")]
+    partial class AddMessages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.14");
@@ -108,22 +111,6 @@ namespace Api.Migrations
                     b.HasIndex("GameId");
 
                     b.ToTable("Messages");
-                });
-
-            modelBuilder.Entity("Api.Models.MessageRead", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("GameId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("LastReadAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("UserId", "GameId");
-
-                    b.ToTable("MessageReads");
                 });
 
             modelBuilder.Entity("Api.Models.Player", b =>

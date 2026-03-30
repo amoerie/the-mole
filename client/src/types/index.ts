@@ -73,6 +73,20 @@ export interface UserInfo {
   roles: string[]
 }
 
+export interface GameMessage {
+  id: string
+  gameId: string
+  userId: string
+  displayName: string
+  content: string
+  postedAt: string
+}
+
+export interface MessagesPage {
+  items: GameMessage[]
+  hasMore: boolean
+}
+
 export interface AdminUser {
   id: string
   email: string

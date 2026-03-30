@@ -4,6 +4,8 @@ import {
   mapContestant,
   mapGame,
   mapLeaderboardEntry,
+  mapMessage,
+  mapMessagesPage,
   mapRanking,
   mapUserInfo,
 } from '../api/mappers'
@@ -13,6 +15,8 @@ import type {
   EpisodeScore as RawEpisodeScore,
   Game as RawGame,
   LeaderboardEntry as RawLeaderboardEntry,
+  Message as RawMessage,
+  MessagesResponse as RawMessagesPage,
   Ranking as RawRanking,
   UserInfo as RawUserInfo,
 } from '../api/generated'
@@ -243,5 +247,77 @@ describe('mapLeaderboardEntry', () => {
     expect(result.displayName).toBe('')
     expect(result.totalScore).toBe(0)
     expect(result.episodeScores).toEqual([])
+  })
+})
+
+describe('mapMessage', () => {
+  const rawMessage: RawMessage = {
+    id: 'm1',
+    gameId: 'g1',
+    userId: 'u1',
+    displayName: 'Alice',
+    content: 'Hello!',
+    postedAt: '2025-01-01T00:00:00Z',
+  }
+
+  it('maps all fields', () => {
+    expect(mapMessage(rawMessage)).toEqual({
+      id: 'm1',
+      gameId: 'g1',
+      userId: 'u1',
+      displayName: 'Alice',
+      content: 'Hello!',
+      postedAt: '2025-01-01T00:00:00Z',
+    })
+  })
+
+  it('uses empty string defaults for missing fields', () => {
+    const result = mapMessage({})
+    expect(result.id).toBe('')
+    expect(result.gameId).toBe('')
+    expect(result.userId).toBe('')
+    expect(result.displayName).toBe('')
+    expect(result.content).toBe('')
+    expect(result.postedAt).toBe('')
+  })
+})
+
+describe('mapMessagesPage', () => {
+  it('maps items and hasMore', () => {
+    const raw: RawMessagesPage = {
+      items: [
+        {
+          id: 'm1',
+          gameId: 'g1',
+          userId: 'u1',
+          displayName: 'Alice',
+          content: 'Hi',
+          postedAt: '2025-01-01T00:00:00Z',
+        },
+      ],
+      hasMore: true,
+    }
+    const result = mapMessagesPage(raw)
+    expect(result.hasMore).toBe(true)
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].id).toBe('m1')
+    expect(result.items[0].content).toBe('Hi')
+  })
+
+  it('defaults to empty items and hasMore=false when fields are missing', () => {
+    const result = mapMessagesPage({ items: [], hasMore: false })
+    expect(result.items).toEqual([])
+    expect(result.hasMore).toBe(false)
+  })
+
+  it('maps nested messages through mapMessage', () => {
+    const raw: RawMessagesPage = {
+      items: [{ id: 'm2', displayName: 'Bob' }],
+      hasMore: false,
+    }
+    const result = mapMessagesPage(raw)
+    expect(result.items[0].id).toBe('m2')
+    expect(result.items[0].displayName).toBe('Bob')
+    expect(result.items[0].content).toBe('')
   })
 })

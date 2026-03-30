@@ -5,6 +5,7 @@ import { api } from '../api/client'
 import type { Game, PlayerRanking, Ranking } from '../types'
 import ContestantCard from '../components/ContestantCard'
 import EpisodeCard from '../components/EpisodeCard'
+import MessageBoard from '../components/MessageBoard'
 import AdminContestantManager from '../components/AdminContestantManager'
 import AdminEpisodeManager from '../components/AdminEpisodeManager'
 import { Button } from '../components/ui/button'
@@ -218,6 +219,8 @@ export default function GamePage() {
           )}
         </CardContent>
       </Card>
+
+      {user && <MessageBoard gameId={game.id} />}
 
       {currentEpisode && !game.moleContestantId && (
         <EpisodeCard
