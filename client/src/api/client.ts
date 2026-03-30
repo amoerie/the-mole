@@ -34,9 +34,18 @@ import {
   submitRanking as _submitRanking,
   updateEpisode as _updateEpisode,
   updateProfile as _updateProfile,
+  getMessages as _getMessages,
+  postMessage as _postMessage,
 } from './generated'
-import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
-import { fetcher } from './fetcher'
+import {
+  mapAdminUser,
+  mapGame,
+  mapLeaderboardEntry,
+  mapMessage,
+  mapMessagesPage,
+  mapRanking,
+  mapUserInfo,
+} from './mappers'
 import type {
   AdminUser,
   Game,
@@ -223,18 +232,12 @@ export const api = {
   },
 
   async getMessages(gameId: string, skip = 0): Promise<MessagesPage> {
-    const result = await fetcher<{ data: MessagesPage }>(
-      `/api/games/${gameId}/messages?skip=${skip}`,
-      { method: 'GET' },
-    )
-    return result.data ?? { items: [], hasMore: false }
+    const { data } = await _getMessages(gameId, { skip })
+    return mapMessagesPage(data!)
   },
 
   async postMessage(gameId: string, content: string): Promise<GameMessage> {
-    const result = await fetcher<{ data: GameMessage }>(`/api/games/${gameId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    })
-    return result.data!
+    const { data } = await _postMessage(gameId, { content })
+    return mapMessage(data!)
   },
 }

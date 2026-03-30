@@ -14,6 +14,8 @@ import type {
   EpisodeScore as RawEpisodeScore,
   Game as RawGame,
   LeaderboardEntry as RawLeaderboardEntry,
+  Message as RawMessage,
+  MessagesResponse as RawMessagesPage,
   Ranking as RawRanking,
   UserInfo as RawUserInfo,
 } from './generated'
@@ -23,7 +25,9 @@ import type {
   Episode,
   EpisodeScore,
   Game,
+  GameMessage,
   LeaderboardEntry,
+  MessagesPage,
   Ranking,
   UserInfo,
 } from '../types'
@@ -91,6 +95,24 @@ export function mapLeaderboardEntry(raw: RawLeaderboardEntry): LeaderboardEntry 
     displayName: raw.displayName ?? '',
     totalScore: Number(raw.totalScore ?? 0),
     episodeScores: (raw.episodeScores ?? []).map(mapEpisodeScore),
+  }
+}
+
+export function mapMessage(raw: RawMessage): GameMessage {
+  return {
+    id: raw.id ?? '',
+    gameId: raw.gameId ?? '',
+    userId: raw.userId ?? '',
+    displayName: raw.displayName ?? '',
+    content: raw.content ?? '',
+    postedAt: raw.postedAt ?? '',
+  }
+}
+
+export function mapMessagesPage(raw: RawMessagesPage): MessagesPage {
+  return {
+    items: (raw.items ?? []).map(mapMessage),
+    hasMore: raw.hasMore ?? false,
   }
 }
 
