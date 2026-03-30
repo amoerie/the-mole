@@ -104,8 +104,22 @@ export interface LoginRequest {
   password: string
 }
 
+export interface Message {
+  id?: string
+  gameId?: string
+  userId?: string
+  displayName?: string
+  content?: string
+  postedAt?: string
+}
+
 export interface MessageResponse {
   message: string
+}
+
+export interface MessagesResponse {
+  items: Message[]
+  hasMore: boolean
 }
 
 export interface PlayerRankingResponse {
@@ -113,6 +127,11 @@ export interface PlayerRankingResponse {
   displayName: string
   contestantIds: string[]
   submittedAt: string
+}
+
+export interface PostMessageRequest {
+  /** @nullable */
+  content: string | null
 }
 
 export interface Ranking {
@@ -168,6 +187,13 @@ export interface UserInfo {
   userId: string
   displayName: string
   roles: string[]
+}
+
+export type GetMessagesParams = {
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  skip?: number | string
 }
 
 export type registerResponse200 = {
@@ -767,6 +793,70 @@ export const getWhatIfLeaderboard = async (
   return fetcher<getWhatIfLeaderboardResponse>(getGetWhatIfLeaderboardUrl(gameId, contestantId), {
     ...options,
     method: 'GET',
+  })
+}
+
+export type getMessagesResponse200 = {
+  data: MessagesResponse
+  status: 200
+}
+
+export type getMessagesResponseSuccess = getMessagesResponse200 & {
+  headers: Headers
+}
+export type getMessagesResponse = getMessagesResponseSuccess
+
+export const getGetMessagesUrl = (gameId: string, params?: GetMessagesParams) => {
+  const normalizedParams = new URLSearchParams()
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  })
+
+  const stringifiedParams = normalizedParams.toString()
+
+  return stringifiedParams.length > 0
+    ? `/api/games/${gameId}/messages?${stringifiedParams}`
+    : `/api/games/${gameId}/messages`
+}
+
+export const getMessages = async (
+  gameId: string,
+  params?: GetMessagesParams,
+  options?: RequestInit,
+): Promise<getMessagesResponse> => {
+  return fetcher<getMessagesResponse>(getGetMessagesUrl(gameId, params), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type postMessageResponse201 = {
+  data: Message
+  status: 201
+}
+
+export type postMessageResponseSuccess = postMessageResponse201 & {
+  headers: Headers
+}
+export type postMessageResponse = postMessageResponseSuccess
+
+export const getPostMessageUrl = (gameId: string) => {
+  return `/api/games/${gameId}/messages`
+}
+
+export const postMessage = async (
+  gameId: string,
+  postMessageRequest: PostMessageRequest,
+  options?: RequestInit,
+): Promise<postMessageResponse> => {
+  return fetcher<postMessageResponse>(getPostMessageUrl(gameId), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(postMessageRequest),
   })
 }
 
