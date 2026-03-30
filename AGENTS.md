@@ -65,7 +65,7 @@ Scores are calculated after the mole is revealed. Each episode is worth 0–100 
 
 ### 🧪 Testing & Coverage
 
-We enforce a **80% code coverage** threshold for both the API and the Client in CI.
+We enforce an **80% code coverage** threshold for both the API and the Client in CI.
 Before opening a pull request, run the coverage commands for both backend and frontend locally and ensure new or changed code is covered by tests; avoid lowering coverage thresholds unless there is an explicit team decision and update or add tests whenever you modify behavior.
 
 ### Backend (.NET)
