@@ -197,7 +197,8 @@ public static class GameRoutes
                 }
             )
             .WithName("DeleteGame")
-            .WithTags("Games");
+            .WithTags("Games")
+            .Produces(StatusCodes.Status204NoContent);
 
         app.MapPost(
                 "/api/games/{gameId}/contestants",

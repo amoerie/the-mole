@@ -3,6 +3,7 @@ using Api.Data;
 using Api.Routes;
 using Api.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
@@ -145,6 +146,14 @@ if (!app.Environment.IsDevelopment())
 
 if (app.Environment.IsDevelopment())
     app.UseCors();
+
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+};
+forwardedOptions.KnownIPNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
 
 if (!app.Environment.IsEnvironment("Test"))
     app.UseRateLimiter();

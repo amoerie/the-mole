@@ -116,13 +116,20 @@ public static class AuthRoutes
                     IConfiguration config
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(req.Email))
+                        return Results.BadRequest(new { error = "E-mailadres is verplicht." });
+
                     var email = req.Email.Trim().ToLowerInvariant();
                     var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
 
                     if (user != null)
                     {
-                        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-                        user.PasswordResetToken = token;
+                        var tokenBytes = RandomNumberGenerator.GetBytes(32);
+                        var token = Convert.ToHexString(tokenBytes);
+                        var tokenHash = Convert.ToHexString(
+                            System.Security.Cryptography.SHA256.HashData(tokenBytes)
+                        );
+                        user.PasswordResetToken = tokenHash;
                         user.PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(24);
                         await db.SaveChangesAsync();
 
@@ -155,11 +162,31 @@ public static class AuthRoutes
                             new { error = "Token en nieuw wachtwoord zijn verplicht." }
                         );
 
+                    string incomingHash;
+                    try
+                    {
+                        incomingHash = Convert.ToHexString(
+                            System.Security.Cryptography.SHA256.HashData(
+                                Convert.FromHexString(req.Token)
+                            )
+                        );
+                    }
+                    catch (FormatException)
+                    {
+                        return Results.BadRequest(
+                            new { error = "Ongeldige of verlopen herstelcode." }
+                        );
+                    }
+
                     var user = await db.AppUsers.FirstOrDefaultAsync(u =>
-                        u.PasswordResetToken == req.Token
+                        u.PasswordResetToken == incomingHash
                     );
 
-                    if (user == null || user.PasswordResetTokenExpiry < DateTimeOffset.UtcNow)
+                    if (
+                        user == null
+                        || !user.PasswordResetTokenExpiry.HasValue
+                        || user.PasswordResetTokenExpiry.Value < DateTimeOffset.UtcNow
+                    )
                         return Results.BadRequest(
                             new { error = "Ongeldige of verlopen herstelcode." }
                         );

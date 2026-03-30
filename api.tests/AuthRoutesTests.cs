@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Api.Auth;
 using Api.Data;
 using Api.Models;
@@ -23,6 +24,10 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
     private HttpClient CreateClient() =>
         _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+    /// <summary>Mimics the server: SHA256-hash the raw hex token bytes before storing.</summary>
+    private static string HashToken(string hexToken) =>
+        Convert.ToHexString(SHA256.HashData(Convert.FromHexString(hexToken)));
 
     private void PrepareDb(Action<AppDbContext>? seed = null)
     {
@@ -311,6 +316,20 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
+    public async Task ForgotPassword_WithMissingEmail_ReturnsBadRequest()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new { email = "" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ForgotPassword_WithUnknownEmail_StillReturnsOkButNoEmail()
     {
         PrepareDb();
@@ -330,6 +349,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ResetPassword_WithValidToken_ReturnsOkAndUpdatesPassword()
     {
+        // Raw token (64 hex chars = 32 bytes) sent in the email link; DB stores its SHA256 hash
+        const string rawToken = "AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899";
         PrepareDb(db =>
         {
             db.AppUsers.Add(
@@ -339,7 +360,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     Email = "alice@test.com",
                     DisplayName = "Alice",
                     PasswordHash = PasswordHelper.Hash("oldpass"),
-                    PasswordResetToken = "validtoken",
+                    PasswordResetToken = HashToken(rawToken),
                     PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(1),
                 }
             );
@@ -348,7 +369,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/reset-password",
-            new { token = "validtoken", newPassword = "NewP@ss123" }
+            new { token = rawToken, newPassword = "NewP@ss123" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -363,6 +384,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ResetPassword_WithExpiredToken_ReturnsBadRequest()
     {
+        const string rawToken = "FFEEDDCCBBAA99887766554433221100FFEEDDCCBBAA99887766554433221100";
         PrepareDb(db =>
         {
             db.AppUsers.Add(
@@ -372,7 +394,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     Email = "alice@test.com",
                     DisplayName = "Alice",
                     PasswordHash = PasswordHelper.Hash("oldpass"),
-                    PasswordResetToken = "expiredtoken",
+                    PasswordResetToken = HashToken(rawToken),
                     PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(-1),
                 }
             );
@@ -381,7 +403,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/reset-password",
-            new { token = "expiredtoken", newPassword = "NewP@ss123" }
+            new { token = rawToken, newPassword = "NewP@ss123" }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

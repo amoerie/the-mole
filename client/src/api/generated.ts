@@ -389,12 +389,12 @@ export const getGame = async (gameId: string, options?: RequestInit): Promise<ge
   })
 }
 
-export type deleteGameResponse200 = {
+export type deleteGameResponse204 = {
   data: void
-  status: 200
+  status: 204
 }
 
-export type deleteGameResponseSuccess = deleteGameResponse200 & {
+export type deleteGameResponseSuccess = deleteGameResponse204 & {
   headers: Headers
 }
 export type deleteGameResponse = deleteGameResponseSuccess
@@ -567,12 +567,12 @@ export const updateEpisode = async (
   })
 }
 
-export type deleteEpisodeResponse200 = {
+export type deleteEpisodeResponse204 = {
   data: void
-  status: 200
+  status: 204
 }
 
-export type deleteEpisodeResponseSuccess = deleteEpisodeResponse200 & {
+export type deleteEpisodeResponseSuccess = deleteEpisodeResponse204 & {
   headers: Headers
 }
 export type deleteEpisodeResponse = deleteEpisodeResponseSuccess

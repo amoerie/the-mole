@@ -35,6 +35,7 @@ public sealed class MailerSendEmailService(
             "application/json"
         );
 
-        await client.SendAsync(request);
+        var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
     }
 }
