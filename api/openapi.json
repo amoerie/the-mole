@@ -971,6 +971,39 @@
         }
       }
     },
+    "/api/games/{gameId}/suspect-stats": {
+      "get": {
+        "tags": [
+          "SuspectStats"
+        ],
+        "operationId": "GetSuspectStats",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EpisodeStats"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users/{userId}/grant-admin": {
       "post": {
         "tags": [
@@ -1098,6 +1131,39 @@
           }
         }
       },
+      "ContestantStats": {
+        "required": [
+          "contestantId",
+          "name",
+          "avgRank",
+          "rankingCount"
+        ],
+        "type": "object",
+        "properties": {
+          "contestantId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avgRank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "rankingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateEpisodeRequest": {
         "required": [
           "deadline",
@@ -1204,6 +1270,29 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "EpisodeStats": {
+        "required": [
+          "episodeNumber",
+          "stats"
+        ],
+        "type": "object",
+        "properties": {
+          "episodeNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContestantStats"
+            }
           }
         }
       },
@@ -1671,6 +1760,9 @@
     },
     {
       "name": "Players"
+    },
+    {
+      "name": "SuspectStats"
     },
     {
       "name": "Admin"

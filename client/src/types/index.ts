@@ -89,6 +89,19 @@ export interface MessagesPage {
 
 export type GamePlayer = Player
 
+export interface ContestantStat {
+  contestantId: string
+  name: string
+  avgRank: number
+  rankingCount: number
+}
+
+export interface EpisodeStat {
+  episodeNumber: number
+  stats: ContestantStat[]
+}
+
+
 export interface AdminUser {
   id: string
   email: string

@@ -50,8 +50,10 @@ import {
   mapRanking,
   mapUserInfo,
 } from './mappers'
+import { fetcher } from './fetcher'
 import type {
   AdminUser,
+  EpisodeStat,
   Game,
   GameMessage,
   GamePlayer,
@@ -65,6 +67,7 @@ import type {
 
 export type {
   AdminUser,
+  EpisodeStat,
   Game,
   GameMessage,
   GamePlayer,
@@ -259,5 +262,12 @@ export const api = {
   async getGamePlayers(gameId: string): Promise<GamePlayer[]> {
     const { data } = await _getGamePlayers(gameId)
     return (data ?? []).map(mapGamePlayer)
+  },
+
+  async getSuspectStats(gameId: string): Promise<EpisodeStat[]> {
+    const result = await fetcher<{ data: EpisodeStat[] }>(`/api/games/${gameId}/suspect-stats`, {
+      method: 'GET',
+    })
+    return result.data ?? []
   },
 }
