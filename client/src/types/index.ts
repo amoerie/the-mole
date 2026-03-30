@@ -87,6 +87,8 @@ export interface MessagesPage {
   hasMore: boolean
 }
 
+export type GamePlayer = Player
+
 export interface AdminUser {
   id: string
   email: string

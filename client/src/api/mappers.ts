@@ -16,6 +16,7 @@ import type {
   LeaderboardEntry as RawLeaderboardEntry,
   Message as RawMessage,
   MessagesResponse as RawMessagesPage,
+  Player as RawPlayer,
   Ranking as RawRanking,
   UserInfo as RawUserInfo,
 } from './generated'
@@ -26,6 +27,7 @@ import type {
   EpisodeScore,
   Game,
   GameMessage,
+  GamePlayer,
   LeaderboardEntry,
   MessagesPage,
   Ranking,
@@ -113,6 +115,16 @@ export function mapMessagesPage(raw: RawMessagesPage): MessagesPage {
   return {
     items: (raw.items ?? []).map(mapMessage),
     hasMore: raw.hasMore ?? false,
+  }
+}
+
+export function mapGamePlayer(raw: RawPlayer): GamePlayer {
+  return {
+    id: raw.id ?? '',
+    gameId: raw.gameId ?? '',
+    userId: raw.userId ?? '',
+    displayName: raw.displayName ?? '',
+    joinedAt: raw.joinedAt ?? '',
   }
 }
 

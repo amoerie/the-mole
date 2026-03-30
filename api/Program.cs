@@ -179,6 +179,7 @@ app.MapEpisodeRoutes();
 app.MapRankingRoutes();
 app.MapLeaderboardRoutes();
 app.MapMessageRoutes();
+app.MapPlayerRoutes();
 app.MapAdminRoutes();
 app.MapConfigRoutes();
 

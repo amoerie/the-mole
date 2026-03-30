@@ -10,6 +10,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
 import MessageBoardPage from './pages/MessageBoardPage'
+import GroupPage from './pages/GroupPage'
 import Footer from './components/Footer'
 import { Button } from './components/ui/button'
 
@@ -50,6 +51,7 @@ function App() {
             <Route path="/game/:gameId" element={<GamePage />} />
             <Route path="/game/:gameId/leaderboard" element={<LeaderboardPage />} />
             <Route path="/game/:gameId/messages" element={<MessageBoardPage />} />
+            <Route path="/game/:gameId/group" element={<GroupPage />} />
             <Route path="/join/:inviteCode" element={<HomePage />} />
           </Routes>
           <Footer />
