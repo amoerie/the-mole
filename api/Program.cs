@@ -1,8 +1,11 @@
 using System.Threading.RateLimiting;
 using Api.Data;
+using Api.DataProtection;
 using Api.Routes;
 using Api.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -101,6 +104,12 @@ builder.Services.AddRateLimiter(options =>
 
 var dbPath = builder.Configuration["DatabasePath"] ?? "themole.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddSingleton<EfDataProtectionKeyRepository>();
+builder.Services.AddDataProtection().SetApplicationName("the-mole");
+builder
+    .Services.AddOptions<KeyManagementOptions>()
+    .Configure<EfDataProtectionKeyRepository>((options, repo) => options.XmlRepository = repo);
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IEmailService, MailerSendEmailService>();
