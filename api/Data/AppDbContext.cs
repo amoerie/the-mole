@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<MessageRead> MessageReads => Set<MessageRead>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +52,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 })
                 .IsUnique();
             entity.PrimitiveCollection(r => r.ContestantIds);
+        });
+
+        modelBuilder.Entity<DataProtectionKey>(entity =>
+        {
+            entity.HasIndex(k => k.FriendlyName).IsUnique();
         });
     }
 }
