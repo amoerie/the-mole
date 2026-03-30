@@ -91,9 +91,9 @@ MailerSend email. Add full game deletion. Add rate limiting to login and invite-
 
 | Topic | Decision |
 |-------|----------|
-| Password hashing | `Rfc2898DeriveBytes.Pbkdf2` — built into .NET, no extra package |
-| Email provider | MailerSend (3,000 free emails/month, official .NET SDK) |
-| Password reset token | Cryptographically random 32-byte token, stored hashed, 24h expiry |
-| Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting`; per-IP keyed fixed-window policies; disabled in Test env |
-| Register flow | Admin email: no invite code needed. Others: must supply valid invite code |
+| Password hashing | `Rfc2898DeriveBytes.Pbkdf2` (SHA-256, 100k iterations, 16-byte random salt per password) — built into .NET, no extra package; stored as `base64(salt):base64(hash)` |
+| Email provider | MailerSend (3,000 free emails/month) via direct REST API call using `IHttpClientFactory` — no SDK |
+| Password reset token | 32 random bytes; plain hex sent in email link; SHA-256 hash stored in DB; `FormatException` on invalid hex → 400; 24h expiry |
+| Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting`; per-IP partitioned fixed-window policies; `UseForwardedHeaders` ensures real client IP on Fly.io; disabled in Test env |
+| Register flow | Admin email: no invite code needed. Others: must supply valid invite code matching an existing game |
 | Existing users | Migration adds nullable `PasswordHash` — existing users must re-register |
