@@ -93,17 +93,33 @@ public sealed class DataProtectionKeyRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void GetAllElements_ReturnsValidXml()
+    public void GetAllElements_ReturnsStructurallyIdenticalXml()
     {
         var repo = CreateRepository();
-        var element = MakeKey("abc-123");
-        repo.StoreElement(element, "key-20260101-000000");
+        var original = MakeKey("abc-123");
+        repo.StoreElement(original, "key-20260101-000000");
 
         var result = repo.GetAllElements();
 
         var retrieved = Assert.Single(result);
-        Assert.Equal("key", retrieved.Name.LocalName);
-        Assert.Equal("abc-123", retrieved.Attribute("id")!.Value);
+        // Verify element name, all attributes, all descendant elements and their attributes
+        Assert.Equal(original.Name, retrieved.Name);
+        Assert.Equal(
+            original.Attributes().Select(a => (a.Name, a.Value)),
+            retrieved.Attributes().Select(a => (a.Name, a.Value))
+        );
+        Assert.Equal(
+            original
+                .Descendants()
+                .Select(d =>
+                    (d.Name, Attrs: d.Attributes().Select(a => (a.Name, a.Value)).ToList())
+                ),
+            retrieved
+                .Descendants()
+                .Select(d =>
+                    (d.Name, Attrs: d.Attributes().Select(a => (a.Name, a.Value)).ToList())
+                )
+        );
     }
 
     public void Dispose()
