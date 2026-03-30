@@ -2,11 +2,42 @@ using Api.Auth;
 using Api.Data;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Api.Routes;
 
-public static class RankingRoutes
+public static partial class RankingRoutes
 {
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "SubmitRanking rejected: deadline passed. Game={GameId} Episode={Episode} Deadline={Deadline} Now={Now}"
+    )]
+    private static partial void LogDeadlinePassed(
+        ILogger logger,
+        string gameId,
+        int episode,
+        DateTimeOffset deadline,
+        DateTimeOffset now
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "SubmitRanking rejected: no contestant IDs submitted. Game={GameId} Episode={Episode}"
+    )]
+    private static partial void LogNoContestantIds(ILogger logger, string gameId, int episode);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "SubmitRanking rejected: contestant mismatch. Game={GameId} Episode={Episode} Expected=[{Expected}] Got=[{Got}]"
+    )]
+    private static partial void LogContestantMismatch(
+        ILogger logger,
+        string gameId,
+        int episode,
+        string expected,
+        string got
+    );
+
     public static void MapRankingRoutes(this WebApplication app)
     {
         app.MapPost(
@@ -14,11 +45,13 @@ public static class RankingRoutes
                 async (
                     HttpContext ctx,
                     AppDbContext db,
+                    ILoggerFactory loggerFactory,
                     string gameId,
                     int episodeNumber,
                     SubmitRankingRequest body
                 ) =>
                 {
+                    var logger = loggerFactory.CreateLogger("Api.Routes.RankingRoutes");
                     var user = AuthHelper.GetUserInfo(ctx);
                     if (user == null)
                         return Results.Unauthorized();
@@ -38,15 +71,27 @@ public static class RankingRoutes
                         return Results.NotFound(new { error = "Episode not found." });
 
                     if (DateTimeOffset.UtcNow > episode.Deadline)
+                    {
+                        LogDeadlinePassed(
+                            logger,
+                            gameId,
+                            episodeNumber,
+                            episode.Deadline,
+                            DateTimeOffset.UtcNow
+                        );
                         return Results.BadRequest(
                             new { error = "Deadline has passed for this episode." }
                         );
+                    }
 
                     if (body.ContestantIds == null || body.ContestantIds.Count == 0)
+                    {
+                        LogNoContestantIds(logger, gameId, episodeNumber);
                         return Results.BadRequest(new { error = "ContestantIds are required." });
+                    }
 
                     var eliminatedBeforeThisEpisode = game
-                        .Episodes.Where(e => e.Number < episodeNumber)
+                        .Episodes.Where(e => e.Number <= episodeNumber)
                         .SelectMany(e => e.EliminatedContestantIds ?? [])
                         .ToHashSet();
                     var activeContestantIds = game
@@ -54,9 +99,18 @@ public static class RankingRoutes
                         .Where(id => !eliminatedBeforeThisEpisode.Contains(id))
                         .ToHashSet();
                     if (!body.ContestantIds.ToHashSet().SetEquals(activeContestantIds))
+                    {
+                        LogContestantMismatch(
+                            logger,
+                            gameId,
+                            episodeNumber,
+                            string.Join(", ", activeContestantIds.Order()),
+                            string.Join(", ", body.ContestantIds.Order())
+                        );
                         return Results.BadRequest(
                             new { error = "Je rangschikking bevat niet de juiste kandidaten." }
                         );
+                    }
 
                     var ranking = await db.Rankings.FirstOrDefaultAsync(r =>
                         r.GameId == gameId
