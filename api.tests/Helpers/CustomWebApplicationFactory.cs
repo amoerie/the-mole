@@ -1,4 +1,5 @@
 using Api.Data;
+using Api.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -6,13 +7,14 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Passwordless;
 
 namespace Api.Tests.Helpers;
 
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
+    public FakeEmailService EmailService { get; } = new();
 
     public CustomWebApplicationFactory()
     {
@@ -40,13 +42,13 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
 
-            var passwordlessDescriptor = services.SingleOrDefault(d =>
-                d.ServiceType == typeof(IPasswordlessClient)
+            var emailDescriptor = services.SingleOrDefault(d =>
+                d.ServiceType == typeof(IEmailService)
             );
-            if (passwordlessDescriptor != null)
-                services.Remove(passwordlessDescriptor);
+            if (emailDescriptor != null)
+                services.Remove(emailDescriptor);
 
-            services.AddSingleton<IPasswordlessClient, FakePasswordlessClient>();
+            services.AddSingleton<IEmailService>(EmailService);
 
             services
                 .AddAuthentication(TestAuthHandler.SchemeName)

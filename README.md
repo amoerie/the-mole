@@ -11,7 +11,7 @@ cumulative scores determine the winner.
 | Frontend | React 19 + TypeScript (Vite) |
 | Backend | ASP.NET Core 10 Minimal API (C#) |
 | Database | SQLite + EF Core 9 |
-| Auth | Passwordless.dev passkeys (Bitwarden) |
+| Auth | Email + password (cookie sessions), password reset via MailerSend |
 | Hosting | Fly.io (free tier, Amsterdam) |
 | CI/CD | GitHub Actions → GHCR → flyctl deploy |
 
@@ -21,7 +21,6 @@ cumulative scores determine the winner.
 
 - [Node.js](https://nodejs.org/) 22+
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- A [Passwordless.dev](https://admin.passwordless.dev) account (free) — needed for passkey auth
 
 ### First-time setup
 
@@ -44,25 +43,21 @@ start-local.cmd
 
 This opens two terminals:
 - `dotnet watch run` — API on http://localhost:5000
-- `npm run dev` — Vite dev server on http://localhost:5173 (proxies `/api` and `/auth` to :5000)
+- `npm run dev` — Vite dev server on http://localhost:5173 (proxies `/api` to :5000)
 
-#### Auth credentials
+#### Configuration
 
-Add your Passwordless.dev keys to `api/appsettings.Development.json` (or .NET user secrets):
+Add to `api/appsettings.Development.json` (or use .NET user secrets):
 
 ```json
 {
-  "Passwordless": {
-    "ApiKey": "your-app:public:...",
-    "ApiSecret": "your-app:secret:..."
+  "AdminEmail": "your@email.com",
+  "MailerSend": {
+    "ApiKey": "your-mailersend-api-key",
+    "FromEmail": "noreply@yourdomain.com",
+    "FromName": "De Mol"
   }
 }
-```
-
-Add the public key to `client/.env.local`:
-
-```
-VITE_PASSWORDLESS_API_KEY=your-app:public:...
 ```
 
 The SQLite database is created automatically at `api/themole.db` on first run.
@@ -102,20 +97,19 @@ R = rank position given to the actual mole (1 = most suspect)
 the-mole/
 ├── client/              # React + TypeScript SPA
 │   ├── src/
-│   │   ├── api/         # API client
+│   │   ├── api/         # Orval-generated API client + hand-written wrapper
 │   │   ├── components/  # Reusable components
-│   │   ├── hooks/       # React hooks (auth, etc.)
-│   │   ├── lib/         # Shared libraries (passwordless client)
+│   │   ├── hooks/       # React hooks (auth context)
 │   │   ├── pages/       # Route pages
 │   │   ├── test/        # Vitest tests
 │   │   └── types/       # TypeScript interfaces
 │   └── package.json
 ├── api/                 # ASP.NET Core 10 Minimal API
-│   ├── Auth/            # Auth helpers
+│   ├── Auth/            # Auth helpers (cookie sign-in, password hashing)
 │   ├── Data/            # EF Core DbContext + migrations
 │   ├── Models/          # Data models
 │   ├── Routes/          # Endpoint route handlers
-│   ├── Services/        # Business logic (scoring)
+│   ├── Services/        # Email service (MailerSend) + scoring
 │   └── Api.csproj
 ├── api.tests/           # xUnit integration tests
 ├── .github/workflows/   # CI/CD (build → test → Docker → Fly.io)
@@ -131,4 +125,3 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for full Fly.io setup instructions.
 
 Pushes to `main` automatically build a Docker image, push it to GHCR, and deploy to Fly.io.
 Required GitHub secret: `FLY_API_TOKEN`.
-

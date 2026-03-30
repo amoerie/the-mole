@@ -1,12 +1,12 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Api.Auth;
 using Api.Data;
 using Api.Models;
+using Api.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using Passwordless;
-using Passwordless.Models;
 
 namespace Api.Routes;
 
@@ -19,16 +19,17 @@ public static class AuthRoutes
                 async (
                     RegisterRequest req,
                     AppDbContext db,
-                    IPasswordlessClient passwordlessClient,
-                    IConfiguration config
+                    IConfiguration config,
+                    HttpContext ctx
                 ) =>
                 {
                     if (
                         string.IsNullOrWhiteSpace(req.Email)
                         || string.IsNullOrWhiteSpace(req.DisplayName)
+                        || string.IsNullOrWhiteSpace(req.Password)
                     )
                         return Results.BadRequest(
-                            new { error = "E-mailadres en naam zijn verplicht." }
+                            new { error = "E-mailadres, naam en wachtwoord zijn verplicht." }
                         );
 
                     var email = req.Email.Trim().ToLowerInvariant();
@@ -52,156 +53,89 @@ public static class AuthRoutes
                             );
                     }
 
-                    var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
-                    if (user == null)
-                    {
-                        user = new AppUser
-                        {
-                            Email = email,
-                            DisplayName = req.DisplayName.Trim(),
-                            IsAdmin = email == adminEmail,
-                        };
-                        db.AppUsers.Add(user);
-                    }
-                    else
-                    {
-                        user.DisplayName = req.DisplayName.Trim();
-                    }
+                    var existing = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
+                    if (existing != null)
+                        return Results.Conflict(
+                            new { error = "Dit e-mailadres is al in gebruik." }
+                        );
 
+                    var user = new AppUser
+                    {
+                        Email = email,
+                        DisplayName = req.DisplayName.Trim(),
+                        IsAdmin = email == adminEmail,
+                        PasswordHash = PasswordHelper.Hash(req.Password),
+                    };
+                    db.AppUsers.Add(user);
                     await db.SaveChangesAsync();
 
-                    RegisterTokenResponse tokenResponse;
-                    try
-                    {
-                        var result = await passwordlessClient.CreateRegisterTokenAsync(
-                            new RegisterOptions(user.Id, user.DisplayName)
-                            {
-                                Aliases = [user.Email],
-                                AliasHashing = false,
-                            }
-                        );
-                        tokenResponse = new RegisterTokenResponse(result.Token);
-                    }
-                    catch (PasswordlessApiException ex)
-                        when (ex.Details?.Title?.Contains("Alias") == true
-                            || ex.Details?.Title?.Contains("alias") == true
-                        )
-                    {
-                        return Results.Conflict(
-                            new
-                            {
-                                error = "Dit e-mailadres heeft al een account. Gebruik de inlogpagina of hersteloptie.",
-                            }
-                        );
-                    }
-
-                    return Results.Ok(tokenResponse);
+                    await SignIn(ctx, user);
+                    string[] roles = user.IsAdmin ? ["authenticated", "admin"] : ["authenticated"];
+                    return Results.Ok(new UserInfo(user.Id, user.DisplayName, roles));
                 }
             )
-            .WithName("RegisterPasskey")
+            .WithName("Register")
             .WithTags("Auth")
-            .Produces<RegisterTokenResponse>();
-
-        app.MapPost(
-                "/api/auth/verify",
-                async (
-                    HttpContext ctx,
-                    VerifyRequest req,
-                    AppDbContext db,
-                    IPasswordlessClient passwordlessClient
-                ) =>
-                {
-                    VerifiedUser verified;
-                    try
-                    {
-                        verified = await passwordlessClient.VerifyAuthenticationTokenAsync(
-                            req.Token
-                        );
-                    }
-                    catch (PasswordlessApiException)
-                    {
-                        return Results.Unauthorized();
-                    }
-
-                    var user = await db.AppUsers.FindAsync(verified.UserId);
-                    if (user == null)
-                        return Results.Unauthorized();
-
-                    var claims = new List<Claim>
-                    {
-                        new(ClaimTypes.NameIdentifier, user.Id),
-                        new(ClaimTypes.Name, user.DisplayName),
-                        new(ClaimTypes.Role, "authenticated"),
-                    };
-                    if (user.IsAdmin)
-                        claims.Add(new Claim(ClaimTypes.Role, "admin"));
-                    var identity = new ClaimsIdentity(
-                        claims,
-                        CookieAuthenticationDefaults.AuthenticationScheme
-                    );
-                    await ctx.SignInAsync(
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                        new ClaimsPrincipal(identity)
-                    );
-
-                    return Results.Ok(new UserInfo(user.Id, user.DisplayName, ["authenticated"]));
-                }
-            )
-            .WithName("VerifyPasskey")
-            .WithTags("Auth")
+            .RequireRateLimiting("register")
             .Produces<UserInfo>();
 
         app.MapPost(
-                "/api/auth/reset-passkey",
-                async (HttpContext ctx, AppDbContext db, IPasswordlessClient passwordlessClient) =>
+                "/api/auth/login",
+                async (LoginRequest req, AppDbContext db, HttpContext ctx) =>
                 {
-                    var userInfo = AuthHelper.GetUserInfo(ctx);
-                    if (userInfo == null)
+                    if (
+                        string.IsNullOrWhiteSpace(req.Email)
+                        || string.IsNullOrWhiteSpace(req.Password)
+                    )
+                        return Results.BadRequest(
+                            new { error = "E-mailadres en wachtwoord zijn verplicht." }
+                        );
+
+                    var email = req.Email.Trim().ToLowerInvariant();
+                    var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
+
+                    if (user == null || !PasswordHelper.Verify(req.Password, user.PasswordHash))
                         return Results.Unauthorized();
 
-                    var user = await db.AppUsers.FindAsync(userInfo.UserId);
-                    if (user == null)
-                        return Results.Unauthorized();
-
-                    var tokenResponse = await passwordlessClient.CreateRegisterTokenAsync(
-                        new RegisterOptions(user.Id, user.DisplayName)
-                        {
-                            Aliases = [user.Email],
-                            AliasHashing = false,
-                        }
-                    );
-
-                    return Results.Ok(new ResetPasskeyResponse(tokenResponse.Token, user.Email));
+                    await SignIn(ctx, user);
+                    string[] roles = user.IsAdmin ? ["authenticated", "admin"] : ["authenticated"];
+                    return Results.Ok(new UserInfo(user.Id, user.DisplayName, roles));
                 }
             )
-            .WithName("ResetPasskey")
+            .WithName("Login")
             .WithTags("Auth")
-            .RequireAuthorization()
-            .Produces<ResetPasskeyResponse>();
+            .RequireRateLimiting("login")
+            .Produces<UserInfo>();
 
         app.MapPost(
-                "/api/auth/recover",
+                "/api/auth/forgot-password",
                 async (
-                    RecoverRequest req,
+                    ForgotPasswordRequest req,
                     AppDbContext db,
-                    IPasswordlessClient passwordlessClient,
+                    IEmailService emailService,
                     IConfiguration config
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(req.Email))
+                        return Results.BadRequest(new { error = "E-mailadres is verplicht." });
+
                     var email = req.Email.Trim().ToLowerInvariant();
                     var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
 
                     if (user != null)
                     {
-                        var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
-                        await passwordlessClient.SendMagicLinkAsync(
-                            new SendMagicLinkRequest(
-                                user.Email,
-                                $"{baseUrl}/magic-link?token=$TOKEN",
-                                user.Id,
-                                TimeSpan.FromHours(1)
-                            )
+                        var tokenBytes = RandomNumberGenerator.GetBytes(32);
+                        var token = Convert.ToHexString(tokenBytes);
+                        var tokenHash = Convert.ToHexString(
+                            System.Security.Cryptography.SHA256.HashData(tokenBytes)
                         );
+                        user.PasswordResetToken = tokenHash;
+                        user.PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(24);
+                        await db.SaveChangesAsync();
+
+                        var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
+                        var resetUrl = $"{baseUrl}/reset-password?token={token}";
+                        await emailService.SendPasswordResetAsync(user.Email, resetUrl);
                     }
 
                     return Results.Ok(
@@ -211,9 +145,66 @@ public static class AuthRoutes
                     );
                 }
             )
-            .WithName("RequestRecovery")
+            .WithName("ForgotPassword")
             .WithTags("Auth")
+            .RequireRateLimiting("forgotPassword")
             .Produces<MessageResponse>();
+
+        app.MapPost(
+                "/api/auth/reset-password",
+                async (ResetPasswordRequest req, AppDbContext db, HttpContext ctx) =>
+                {
+                    if (
+                        string.IsNullOrWhiteSpace(req.Token)
+                        || string.IsNullOrWhiteSpace(req.NewPassword)
+                    )
+                        return Results.BadRequest(
+                            new { error = "Token en nieuw wachtwoord zijn verplicht." }
+                        );
+
+                    string incomingHash;
+                    try
+                    {
+                        incomingHash = Convert.ToHexString(
+                            System.Security.Cryptography.SHA256.HashData(
+                                Convert.FromHexString(req.Token)
+                            )
+                        );
+                    }
+                    catch (FormatException)
+                    {
+                        return Results.BadRequest(
+                            new { error = "Ongeldige of verlopen herstelcode." }
+                        );
+                    }
+
+                    var user = await db.AppUsers.FirstOrDefaultAsync(u =>
+                        u.PasswordResetToken == incomingHash
+                    );
+
+                    if (
+                        user == null
+                        || !user.PasswordResetTokenExpiry.HasValue
+                        || user.PasswordResetTokenExpiry.Value < DateTimeOffset.UtcNow
+                    )
+                        return Results.BadRequest(
+                            new { error = "Ongeldige of verlopen herstelcode." }
+                        );
+
+                    user.PasswordHash = PasswordHelper.Hash(req.NewPassword);
+                    user.PasswordResetToken = null;
+                    user.PasswordResetTokenExpiry = null;
+                    await db.SaveChangesAsync();
+
+                    await SignIn(ctx, user);
+                    string[] roles = user.IsAdmin ? ["authenticated", "admin"] : ["authenticated"];
+                    return Results.Ok(new UserInfo(user.Id, user.DisplayName, roles));
+                }
+            )
+            .WithName("ResetPassword")
+            .WithTags("Auth")
+            .RequireRateLimiting("resetPassword")
+            .Produces<UserInfo>();
 
         app.MapGet(
                 "/api/auth/logout",
@@ -265,23 +256,7 @@ public static class AuthRoutes
 
                     await db.SaveChangesAsync();
 
-                    var claims = new List<Claim>
-                    {
-                        new(ClaimTypes.NameIdentifier, user.Id),
-                        new(ClaimTypes.Name, displayName),
-                        new(ClaimTypes.Role, "authenticated"),
-                    };
-                    if (user.IsAdmin)
-                        claims.Add(new Claim(ClaimTypes.Role, "admin"));
-                    var identity = new ClaimsIdentity(
-                        claims,
-                        CookieAuthenticationDefaults.AuthenticationScheme
-                    );
-                    await ctx.SignInAsync(
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                        new ClaimsPrincipal(identity)
-                    );
-
+                    await SignIn(ctx, user);
                     string[] roles = user.IsAdmin ? ["authenticated", "admin"] : ["authenticated"];
                     return Results.Ok(new UserInfo(user.Id, displayName, roles));
                 }
@@ -292,17 +267,41 @@ public static class AuthRoutes
             .Produces<UserInfo>();
     }
 
-    private sealed record RegisterRequest(string Email, string DisplayName, string? InviteCode);
+    private static async Task SignIn(HttpContext ctx, AppUser user)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Name, user.DisplayName),
+            new(ClaimTypes.Role, "authenticated"),
+        };
+        if (user.IsAdmin)
+            claims.Add(new Claim(ClaimTypes.Role, "admin"));
 
-    private sealed record VerifyRequest(string Token);
+        var identity = new ClaimsIdentity(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+        await ctx.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity)
+        );
+    }
 
-    private sealed record RecoverRequest(string Email);
+    private sealed record RegisterRequest(
+        string Email,
+        string DisplayName,
+        string Password,
+        string? InviteCode
+    );
+
+    private sealed record LoginRequest(string Email, string Password);
+
+    private sealed record ForgotPasswordRequest(string Email);
+
+    private sealed record ResetPasswordRequest(string Token, string NewPassword);
 
     private sealed record UpdateProfileRequest(string DisplayName);
-
-    private sealed record RegisterTokenResponse(string Token);
-
-    private sealed record ResetPasskeyResponse(string Token, string Email);
 
     private sealed record MessageResponse(string Message);
 }

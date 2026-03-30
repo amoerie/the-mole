@@ -30,10 +30,6 @@ export interface AdminUserResponse {
   isAdmin: boolean
 }
 
-export interface AppConfig {
-  passwordlessApiKey: string
-}
-
 export interface CreateEpisodeRequest {
   deadline: string
   /** @nullable */
@@ -51,7 +47,8 @@ export interface Episode {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   number?: number | string
   deadline?: string
-  eliminatedContestantIds?: string[]
+  /** @nullable */
+  eliminatedContestantIds?: string[] | null
 }
 
 export interface EpisodeScore {
@@ -63,6 +60,10 @@ export interface EpisodeScore {
   rankGiven?: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   totalContestants?: number | string
+}
+
+export interface ForgotPasswordRequest {
+  email: string
 }
 
 export interface Game {
@@ -98,6 +99,11 @@ export interface LeaderboardEntry {
   episodeScores?: EpisodeScore[]
 }
 
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
 export interface MessageResponse {
   message: string
 }
@@ -119,24 +125,17 @@ export interface Ranking {
   submittedAt?: string
 }
 
-export interface RecoverRequest {
-  email: string
-}
-
 export interface RegisterRequest {
   email: string
   displayName: string
+  password: string
   /** @nullable */
   inviteCode: string | null
 }
 
-export interface RegisterTokenResponse {
+export interface ResetPasswordRequest {
   token: string
-}
-
-export interface ResetPasskeyResponse {
-  token: string
-  email: string
+  newPassword: string
 }
 
 export interface RevealMoleRequest {
@@ -171,29 +170,25 @@ export interface UserInfo {
   roles: string[]
 }
 
-export interface VerifyRequest {
-  token: string
-}
-
-export type registerPasskeyResponse200 = {
-  data: RegisterTokenResponse
+export type registerResponse200 = {
+  data: UserInfo
   status: 200
 }
 
-export type registerPasskeyResponseSuccess = registerPasskeyResponse200 & {
+export type registerResponseSuccess = registerResponse200 & {
   headers: Headers
 }
-export type registerPasskeyResponse = registerPasskeyResponseSuccess
+export type registerResponse = registerResponseSuccess
 
-export const getRegisterPasskeyUrl = () => {
+export const getRegisterUrl = () => {
   return `/api/auth/register`
 }
 
-export const registerPasskey = async (
+export const register = async (
   registerRequest: RegisterRequest,
   options?: RequestInit,
-): Promise<registerPasskeyResponse> => {
-  return fetcher<registerPasskeyResponse>(getRegisterPasskeyUrl(), {
+): Promise<registerResponse> => {
+  return fetcher<registerResponse>(getRegisterUrl(), {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -201,76 +196,81 @@ export const registerPasskey = async (
   })
 }
 
-export type verifyPasskeyResponse200 = {
+export type loginResponse200 = {
   data: UserInfo
   status: 200
 }
 
-export type verifyPasskeyResponseSuccess = verifyPasskeyResponse200 & {
+export type loginResponseSuccess = loginResponse200 & {
   headers: Headers
 }
-export type verifyPasskeyResponse = verifyPasskeyResponseSuccess
+export type loginResponse = loginResponseSuccess
 
-export const getVerifyPasskeyUrl = () => {
-  return `/api/auth/verify`
+export const getLoginUrl = () => {
+  return `/api/auth/login`
 }
 
-export const verifyPasskey = async (
-  verifyRequest: VerifyRequest,
+export const login = async (
+  loginRequest: LoginRequest,
   options?: RequestInit,
-): Promise<verifyPasskeyResponse> => {
-  return fetcher<verifyPasskeyResponse>(getVerifyPasskeyUrl(), {
+): Promise<loginResponse> => {
+  return fetcher<loginResponse>(getLoginUrl(), {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(verifyRequest),
+    body: JSON.stringify(loginRequest),
   })
 }
 
-export type resetPasskeyResponse200 = {
-  data: ResetPasskeyResponse
-  status: 200
-}
-
-export type resetPasskeyResponseSuccess = resetPasskeyResponse200 & {
-  headers: Headers
-}
-export type resetPasskeyResponse = resetPasskeyResponseSuccess
-
-export const getResetPasskeyUrl = () => {
-  return `/api/auth/reset-passkey`
-}
-
-export const resetPasskey = async (options?: RequestInit): Promise<resetPasskeyResponse> => {
-  return fetcher<resetPasskeyResponse>(getResetPasskeyUrl(), {
-    ...options,
-    method: 'POST',
-  })
-}
-
-export type requestRecoveryResponse200 = {
+export type forgotPasswordResponse200 = {
   data: MessageResponse
   status: 200
 }
 
-export type requestRecoveryResponseSuccess = requestRecoveryResponse200 & {
+export type forgotPasswordResponseSuccess = forgotPasswordResponse200 & {
   headers: Headers
 }
-export type requestRecoveryResponse = requestRecoveryResponseSuccess
+export type forgotPasswordResponse = forgotPasswordResponseSuccess
 
-export const getRequestRecoveryUrl = () => {
-  return `/api/auth/recover`
+export const getForgotPasswordUrl = () => {
+  return `/api/auth/forgot-password`
 }
 
-export const requestRecovery = async (
-  recoverRequest: RecoverRequest,
+export const forgotPassword = async (
+  forgotPasswordRequest: ForgotPasswordRequest,
   options?: RequestInit,
-): Promise<requestRecoveryResponse> => {
-  return fetcher<requestRecoveryResponse>(getRequestRecoveryUrl(), {
+): Promise<forgotPasswordResponse> => {
+  return fetcher<forgotPasswordResponse>(getForgotPasswordUrl(), {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(recoverRequest),
+    body: JSON.stringify(forgotPasswordRequest),
+  })
+}
+
+export type resetPasswordResponse200 = {
+  data: UserInfo
+  status: 200
+}
+
+export type resetPasswordResponseSuccess = resetPasswordResponse200 & {
+  headers: Headers
+}
+export type resetPasswordResponse = resetPasswordResponseSuccess
+
+export const getResetPasswordUrl = () => {
+  return `/api/auth/reset-password`
+}
+
+export const resetPassword = async (
+  resetPasswordRequest: ResetPasswordRequest,
+  options?: RequestInit,
+): Promise<resetPasswordResponse> => {
+  return fetcher<resetPasswordResponse>(getResetPasswordUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resetPasswordRequest),
   })
 }
 
@@ -386,6 +386,30 @@ export const getGame = async (gameId: string, options?: RequestInit): Promise<ge
   return fetcher<getGameResponse>(getGetGameUrl(gameId), {
     ...options,
     method: 'GET',
+  })
+}
+
+export type deleteGameResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteGameResponseSuccess = deleteGameResponse204 & {
+  headers: Headers
+}
+export type deleteGameResponse = deleteGameResponseSuccess
+
+export const getDeleteGameUrl = (gameId: string) => {
+  return `/api/games/${gameId}`
+}
+
+export const deleteGame = async (
+  gameId: string,
+  options?: RequestInit,
+): Promise<deleteGameResponse> => {
+  return fetcher<deleteGameResponse>(getDeleteGameUrl(gameId), {
+    ...options,
+    method: 'DELETE',
   })
 }
 
@@ -529,21 +553,6 @@ export const getUpdateEpisodeUrl = (gameId: string, episodeNumber: number) => {
   return `/api/games/${gameId}/episodes/${episodeNumber}`
 }
 
-export const getDeleteEpisodeUrl = (gameId: string, episodeNumber: number) => {
-  return `/api/games/${gameId}/episodes/${episodeNumber}`
-}
-
-export const deleteEpisode = async (
-  gameId: string,
-  episodeNumber: number,
-  options?: RequestInit,
-): Promise<{ status: 204; headers: Headers }> => {
-  return fetcher<{ status: 204; headers: Headers }>(getDeleteEpisodeUrl(gameId, episodeNumber), {
-    ...options,
-    method: 'DELETE',
-  })
-}
-
 export const updateEpisode = async (
   gameId: string,
   episodeNumber: number,
@@ -555,6 +564,31 @@ export const updateEpisode = async (
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateEpisodeRequest),
+  })
+}
+
+export type deleteEpisodeResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteEpisodeResponseSuccess = deleteEpisodeResponse204 & {
+  headers: Headers
+}
+export type deleteEpisodeResponse = deleteEpisodeResponseSuccess
+
+export const getDeleteEpisodeUrl = (gameId: string, episodeNumber: number) => {
+  return `/api/games/${gameId}/episodes/${episodeNumber}`
+}
+
+export const deleteEpisode = async (
+  gameId: string,
+  episodeNumber: number,
+  options?: RequestInit,
+): Promise<deleteEpisodeResponse> => {
+  return fetcher<deleteEpisodeResponse>(getDeleteEpisodeUrl(gameId, episodeNumber), {
+    ...options,
+    method: 'DELETE',
   })
 }
 
@@ -776,27 +810,6 @@ export const getListUsersUrl = () => {
 
 export const listUsers = async (options?: RequestInit): Promise<listUsersResponse> => {
   return fetcher<listUsersResponse>(getListUsersUrl(), {
-    ...options,
-    method: 'GET',
-  })
-}
-
-export type getConfigResponse200 = {
-  data: AppConfig
-  status: 200
-}
-
-export type getConfigResponseSuccess = getConfigResponse200 & {
-  headers: Headers
-}
-export type getConfigResponse = getConfigResponseSuccess
-
-export const getGetConfigUrl = () => {
-  return `/api/config`
-}
-
-export const getConfig = async (options?: RequestInit): Promise<getConfigResponse> => {
-  return fetcher<getConfigResponse>(getGetConfigUrl(), {
     ...options,
     method: 'GET',
   })

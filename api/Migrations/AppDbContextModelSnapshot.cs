@@ -33,6 +33,16 @@ namespace Api.Migrations
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("PasswordResetTokenExpiry")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")

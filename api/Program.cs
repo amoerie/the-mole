@@ -1,8 +1,11 @@
+using System.Threading.RateLimiting;
 using Api.Data;
 using Api.Routes;
+using Api.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Passwordless;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,14 +25,74 @@ builder
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddPasswordlessSdk(options =>
+builder.Services.AddRateLimiter(options =>
 {
-    options.ApiKey = builder.Configuration["Passwordless:ApiKey"] ?? "";
-    options.ApiSecret = builder.Configuration["Passwordless:ApiSecret"] ?? "";
+    static RateLimitPartition<string> FixedWindow(string key, int permitLimit, TimeSpan window) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            key,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = window,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            }
+        );
+
+    // Auth endpoints: keyed by IP so limits apply per caller, not globally
+    options.AddPolicy(
+        "login",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 10,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
+        "register",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 5,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
+        "forgotPassword",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 5,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
+        "resetPassword",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 5,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
+        "inviteCode",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 20,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 var dbPath = builder.Configuration["DatabasePath"] ?? "themole.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IEmailService, MailerSendEmailService>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -84,6 +147,16 @@ if (!app.Environment.IsDevelopment())
 if (app.Environment.IsDevelopment())
     app.UseCors();
 
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+};
+forwardedOptions.KnownIPNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
+
+if (!app.Environment.IsEnvironment("Test"))
+    app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

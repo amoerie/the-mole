@@ -186,7 +186,8 @@ public static class EpisodeRoutes
                 }
             )
             .WithName("DeleteEpisode")
-            .WithTags("Episodes");
+            .WithTags("Episodes")
+            .Produces(StatusCodes.Status204NoContent);
 
         app.MapPost(
                 "/api/games/{gameId}/reveal-mole",

@@ -388,4 +388,77 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task DeleteGame_AsAdmin_Returns204()
+    {
+        var game = CreateGame(adminUserId: "test-user-id");
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.DeleteAsync($"/api/games/{game.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteGame_AsNonAdmin_ReturnsForbidden()
+    {
+        var game = CreateGame(adminUserId: "other-user");
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+
+        var response = await client.DeleteAsync($"/api/games/{game.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteGame_NotFound_Returns404()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.DeleteAsync("/api/games/nonexistent");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteGame_CascadesPlayersAndRankings()
+    {
+        var game = CreateGame(adminUserId: "test-user-id");
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(
+                new Player
+                {
+                    Id = "player-1",
+                    GameId = game.Id,
+                    UserId = "test-user-id",
+                    DisplayName = "Test User",
+                }
+            );
+            db.Rankings.Add(
+                new Ranking
+                {
+                    Id = "ranking-1",
+                    GameId = game.Id,
+                    EpisodeNumber = 1,
+                    UserId = "test-user-id",
+                    ContestantIds = ["c1", "c2"],
+                }
+            );
+        });
+        var client = CreateClient();
+
+        await client.DeleteAsync($"/api/games/{game.Id}");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Null(await db.Games.FindAsync(game.Id));
+        Assert.Empty(db.Players.Where(p => p.GameId == game.Id));
+        Assert.Empty(db.Rankings.Where(r => r.GameId == game.Id));
+    }
 }

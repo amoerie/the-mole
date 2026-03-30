@@ -10,21 +10,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
-vi.mock('../lib/passwordless', () => ({
-  passwordlessClient: {
-    signinWithAlias: vi.fn(),
-    register: vi.fn(),
-  },
-}))
-
 vi.mock('../api/client', () => ({
   api: {
-    verifyPasskey: vi.fn(),
-    resetPasskey: vi.fn(),
+    login: vi.fn(),
+    joinGame: vi.fn(),
   },
 }))
 
-import { passwordlessClient } from '../lib/passwordless'
 import { api } from '../api/client'
 
 const mockSetUser = vi.fn()
@@ -44,16 +36,21 @@ describe('LoginPage', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the login form', () => {
+  it('renders email and password fields', () => {
     renderLoginPage()
     expect(screen.getByLabelText('E-mailadres')).toBeInTheDocument()
-    expect(screen.getByText('Inloggen met passkey')).toBeInTheDocument()
+    expect(screen.getByLabelText('Wachtwoord')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Inloggen' })).toBeInTheDocument()
+  })
+
+  it('shows forgot password link', () => {
+    renderLoginPage()
+    expect(screen.getByText('Wachtwoord vergeten?')).toBeInTheDocument()
   })
 
   it('does not show register link without invite code', () => {
     renderLoginPage()
     expect(screen.queryByText('Nieuw account aanmaken →')).not.toBeInTheDocument()
-    expect(screen.getByText('Kan niet inloggen?')).toBeInTheDocument()
   })
 
   it('shows register link when invite code is in state', () => {
@@ -69,129 +66,54 @@ describe('LoginPage', () => {
     expect(screen.getByText('Nieuw account aanmaken →')).toBeInTheDocument()
   })
 
-  it('shows recovery UI when recovered=true', () => {
-    renderLoginPage('/login?recovered=true')
-    expect(screen.getByText('Nieuwe passkey instellen')).toBeInTheDocument()
-    expect(screen.getByText('Nieuwe passkey aanmaken')).toBeInTheDocument()
-    expect(screen.queryByLabelText('E-mailadres')).not.toBeInTheDocument()
-  })
-
-  it('does not show recovery UI when recovered is not set', () => {
+  it('shows validation error when fields are empty', async () => {
     renderLoginPage()
-    expect(screen.queryByText('Nieuwe passkey instellen')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('E-mailadres')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
+    expect(await screen.findByText('Voer je e-mailadres en wachtwoord in.')).toBeInTheDocument()
   })
 
-  it('calls resetPasskey and navigates home on recovery setup', async () => {
-    vi.mocked(api.resetPasskey).mockResolvedValueOnce({ token: 'reg-tok', email: 'me@test.com' })
-    vi.mocked(passwordlessClient.register).mockResolvedValueOnce({ error: undefined })
-    renderLoginPage('/login?recovered=true')
-    fireEvent.click(screen.getByText('Nieuwe passkey aanmaken'))
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
-  })
-
-  it('shows error when resetPasskey fails on recovery', async () => {
-    vi.mocked(api.resetPasskey).mockRejectedValueOnce(new Error('Reset mislukt'))
-    renderLoginPage('/login?recovered=true')
-    fireEvent.click(screen.getByText('Nieuwe passkey aanmaken'))
-    expect(await screen.findByText('Reset mislukt')).toBeInTheDocument()
-  })
-
-  it('shows error when email is empty and login clicked', async () => {
+  it('shows validation error when only email is filled', async () => {
     renderLoginPage()
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
-    expect(await screen.findByText('Voer je e-mailadres in.')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
+    expect(await screen.findByText('Voer je e-mailadres en wachtwoord in.')).toBeInTheDocument()
   })
 
   it('navigates home on successful login', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockResolvedValueOnce({
-      token: 'tok',
-      error: undefined,
-    })
-    vi.mocked(api.verifyPasskey).mockResolvedValueOnce({
-      userId: '1',
-      displayName: 'Test',
-      roles: [],
-    })
+    vi.mocked(api.login).mockResolvedValueOnce({ userId: '1', displayName: 'Alice', roles: [] })
     renderLoginPage()
-    fireEvent.change(screen.getByLabelText('E-mailadres'), {
-      target: { value: 'test@test.com' },
-    })
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Wachtwoord'), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
-    expect(mockSetUser).toHaveBeenCalledWith({ userId: '1', displayName: 'Test', roles: [] })
+    expect(mockSetUser).toHaveBeenCalledWith({ userId: '1', displayName: 'Alice', roles: [] })
   })
 
-  it('shows error when passkey signin returns error', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockResolvedValueOnce({
-      token: undefined as unknown as string,
-      error: { title: 'Passkey mislukt', type: 'err', status: 400, detail: '' },
-    })
+  it('shows error on failed login', async () => {
+    vi.mocked(api.login).mockRejectedValueOnce(new Error('Unauthorized'))
     renderLoginPage()
-    fireEvent.change(screen.getByLabelText('E-mailadres'), {
-      target: { value: 'test@test.com' },
-    })
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
-    expect(await screen.findByText('Passkey mislukt')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Wachtwoord'), { target: { value: 'wrong' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
+    expect(await screen.findByText('E-mailadres of wachtwoord is onjuist.')).toBeInTheDocument()
   })
 
-  it('shows fallback error when passkey error has no title', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockResolvedValueOnce({
-      token: undefined as unknown as string,
-      error: { title: undefined as unknown as string, type: 'err', status: 400, detail: '' },
-    })
+  it('submits on Enter key in password field', async () => {
+    vi.mocked(api.login).mockResolvedValueOnce({ userId: '1', displayName: 'Alice', roles: [] })
     renderLoginPage()
-    fireEvent.change(screen.getByLabelText('E-mailadres'), {
-      target: { value: 'test@test.com' },
-    })
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
-    expect(await screen.findByText('Inloggen mislukt.')).toBeInTheDocument()
-  })
-
-  it('shows error on thrown exception', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockRejectedValueOnce(new Error('Netwerkfout'))
-    renderLoginPage()
-    fireEvent.change(screen.getByLabelText('E-mailadres'), {
-      target: { value: 'test@test.com' },
-    })
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
-    expect(await screen.findByText('Netwerkfout')).toBeInTheDocument()
-  })
-
-  it('shows generic error for non-Error exception', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockRejectedValueOnce('string error')
-    renderLoginPage()
-    fireEvent.change(screen.getByLabelText('E-mailadres'), {
-      target: { value: 'test@test.com' },
-    })
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
-    expect(await screen.findByText('Inloggen mislukt.')).toBeInTheDocument()
-  })
-
-  it('submits on Enter key press in email field', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockResolvedValueOnce({
-      token: 'tok',
-      error: undefined,
-    })
-    vi.mocked(api.verifyPasskey).mockResolvedValueOnce({
-      userId: '1',
-      displayName: 'Test',
-      roles: [],
-    })
-    renderLoginPage()
-    const input = screen.getByLabelText('E-mailadres')
-    fireEvent.change(input, { target: { value: 'test@test.com' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    const pwd = screen.getByLabelText('Wachtwoord')
+    fireEvent.change(pwd, { target: { value: 'secret' } })
+    fireEvent.keyDown(pwd, { key: 'Enter' })
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
   })
 
-  it('shows loading state while signing in', async () => {
-    vi.mocked(passwordlessClient.signinWithAlias).mockReturnValueOnce(new Promise(() => {}))
+  it('shows loading state while logging in', async () => {
+    vi.mocked(api.login).mockReturnValueOnce(new Promise(() => {}))
     renderLoginPage()
-    fireEvent.change(screen.getByLabelText('E-mailadres'), {
-      target: { value: 'test@test.com' },
-    })
-    fireEvent.click(screen.getByText('Inloggen met passkey'))
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Wachtwoord'), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
     expect(await screen.findByText('Bezig...')).toBeInTheDocument()
   })
 })

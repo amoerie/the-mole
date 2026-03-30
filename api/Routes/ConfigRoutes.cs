@@ -4,16 +4,7 @@ public static class ConfigRoutes
 {
     public static void MapConfigRoutes(this WebApplication app)
     {
-        app.MapGet(
-                "/api/config",
-                (IConfiguration config) =>
-                    Results.Ok(new AppConfig(config["Passwordless:ApiKey"] ?? ""))
-            )
-            .WithName("GetConfig")
-            .WithTags("Config")
-            .AllowAnonymous()
-            .Produces<AppConfig>();
+        // Intentionally empty — kept for forward compatibility.
+        // Previously exposed the Passwordless API key; no longer needed.
     }
-
-    private sealed record AppConfig(string PasswordlessApiKey);
 }
