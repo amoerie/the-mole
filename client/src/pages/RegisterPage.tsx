@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { passwordlessClient } from '../lib/passwordless'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/button'
@@ -20,6 +19,8 @@ import { Loader2, AlertCircle } from 'lucide-react'
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { setUser } = useAuth()
@@ -40,24 +41,18 @@ export default function RegisterPage() {
   }, [inviteCode, adminBypass, navigate])
 
   async function handleRegister() {
-    if (!email.trim() || !displayName.trim()) {
-      setError('E-mailadres en naam zijn verplicht.')
+    if (!email.trim() || !displayName.trim() || !password) {
+      setError('E-mailadres, naam en wachtwoord zijn verplicht.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('Wachtwoorden komen niet overeen.')
       return
     }
     setLoading(true)
     setError('')
     try {
-      const { token } = await api.registerPasskey(email.trim(), displayName.trim(), inviteCode)
-      const registerResult = await passwordlessClient.register(token, email.trim())
-      if (registerResult.error) {
-        throw new Error(registerResult.error.title)
-      }
-      const signinResult = await passwordlessClient.signinWithAlias(email.trim())
-      if (signinResult.error) {
-        navigate('/login', { state: location.state })
-        return
-      }
-      const user = await api.verifyPasskey(signinResult.token)
+      const user = await api.register(email.trim(), displayName.trim(), password, inviteCode)
       setUser(user)
       if (gameId && inviteCode) {
         await api.joinGame(gameId, inviteCode)
@@ -84,7 +79,7 @@ export default function RegisterPage() {
         <Card>
           <CardHeader className="pb-4">
             <CardTitle>Registreren</CardTitle>
-            <CardDescription>Maak een nieuw account aan met een passkey.</CardDescription>
+            <CardDescription>Maak een nieuw account aan met een wachtwoord.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-0">
             {gameName && (
@@ -116,8 +111,28 @@ export default function RegisterPage() {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
                 placeholder="Zichtbaar voor andere spelers"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Wachtwoord</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Wachtwoord bevestigen</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                placeholder="••••••••"
               />
             </div>
             <Button onClick={handleRegister} disabled={loading}>

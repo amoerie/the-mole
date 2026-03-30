@@ -12,8 +12,8 @@ import {
   addContestants as _addContestants,
   createEpisode as _createEpisode,
   deleteEpisode as _deleteEpisode,
+  deleteGame as _deleteGame,
   createGame as _createGame,
-  getConfig as _getConfig,
   getGame as _getGame,
   getGameByInvite as _getGameByInvite,
   getEpisodeRankings as _getEpisodeRankings,
@@ -26,14 +26,14 @@ import {
   grantAdmin as _grantAdmin,
   joinGame as _joinGame,
   listUsers as _listUsers,
-  registerPasskey as _registerPasskey,
-  requestRecovery as _requestRecovery,
-  resetPasskey as _resetPasskey,
+  login as _login,
+  register as _register,
+  forgotPassword as _forgotPassword,
+  resetPassword as _resetPassword,
   revealMole as _revealMole,
   submitRanking as _submitRanking,
   updateEpisode as _updateEpisode,
   updateProfile as _updateProfile,
-  verifyPasskey as _verifyPasskey,
 } from './generated'
 import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
 import type {
@@ -49,12 +49,6 @@ import type {
 export type { AdminUser, Game, LeaderboardEntry, NewContestant, PlayerRanking, Ranking, UserInfo }
 
 export const api = {
-  // Config
-  async getConfig() {
-    const { data } = await _getConfig()
-    return data!
-  },
-
   // Admin
   async listUsers(): Promise<AdminUser[]> {
     const { data } = await _listUsers()
@@ -77,24 +71,34 @@ export const api = {
     return mapUserInfo(data!)
   },
 
-  async registerPasskey(email: string, displayName: string, inviteCode?: string) {
-    const { data } = await _registerPasskey({ email, displayName, inviteCode: inviteCode ?? null })
-    return data
-  },
-
-  async resetPasskey() {
-    const { data } = await _resetPasskey()
-    return data!
-  },
-
-  async verifyPasskey(token: string): Promise<UserInfo> {
-    const { data } = await _verifyPasskey({ token })
+  async login(email: string, password: string): Promise<UserInfo> {
+    const { data } = await _login({ email, password })
     return mapUserInfo(data!)
   },
 
-  async requestRecovery(email: string) {
-    const { data } = await _requestRecovery({ email })
+  async register(
+    email: string,
+    displayName: string,
+    password: string,
+    inviteCode?: string,
+  ): Promise<UserInfo> {
+    const { data } = await _register({
+      email,
+      displayName,
+      password,
+      inviteCode: inviteCode ?? null,
+    })
+    return mapUserInfo(data!)
+  },
+
+  async forgotPassword(email: string) {
+    const { data } = await _forgotPassword({ email })
     return data
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<UserInfo> {
+    const { data } = await _resetPassword({ token, newPassword })
+    return mapUserInfo(data!)
   },
 
   // Games
@@ -121,6 +125,10 @@ export const api = {
   async joinGame(gameId: string, inviteCode: string) {
     const { data } = await _joinGame(gameId, { inviteCode })
     return data
+  },
+
+  async deleteGame(gameId: string) {
+    await _deleteGame(gameId)
   },
 
   async addContestants(gameId: string, contestants: NewContestant[]): Promise<Game> {

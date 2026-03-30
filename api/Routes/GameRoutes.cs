@@ -168,6 +168,36 @@ public static class GameRoutes
             .WithTags("Games")
             .Produces<List<Game>>();
 
+        app.MapDelete(
+                "/api/games/{gameId}",
+                async (HttpContext ctx, AppDbContext db, string gameId) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound();
+
+                    if (game.AdminUserId != user.UserId)
+                        return Results.Forbid();
+
+                    var rankings = await db.Rankings.Where(r => r.GameId == gameId).ToListAsync();
+                    db.Rankings.RemoveRange(rankings);
+
+                    var players = await db.Players.Where(p => p.GameId == gameId).ToListAsync();
+                    db.Players.RemoveRange(players);
+
+                    db.Games.Remove(game);
+                    await db.SaveChangesAsync();
+
+                    return Results.NoContent();
+                }
+            )
+            .WithName("DeleteGame")
+            .WithTags("Games");
+
         app.MapPost(
                 "/api/games/{gameId}/contestants",
                 async (

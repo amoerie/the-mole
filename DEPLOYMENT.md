@@ -6,16 +6,14 @@ De Mol Ranking Game is deployed as a single Docker container on **Fly.io** (free
 
 - **Single container**: ASP.NET Core 10 serves both the API and the React SPA
 - **Database**: SQLite stored on a Fly.io persistent volume at `/data/themole.db`
-- **Auth**: GitHub OAuth (cookie-based sessions)
+- **Auth**: Email + password (cookie-based sessions), password reset via MailerSend
 - **CI/CD**: GitHub Actions builds the Docker image, pushes to GitHub Container Registry (GHCR), then deploys to Fly.io
 
 ## Prerequisites
 
 - [Fly.io account](https://fly.io/app/sign-up) (free)
 - [flyctl CLI](https://fly.io/docs/hands-on/install-flyctl/)
-- A [GitHub OAuth App](https://github.com/settings/developers) with:
-  - Homepage URL: `https://your-app.fly.dev`
-  - Callback URL: `https://your-app.fly.dev/signin-github`
+- A [MailerSend account](https://www.mailersend.com/) (free tier: 3,000 emails/month) with a verified sending domain
 
 ## First-time Setup
 
@@ -30,8 +28,10 @@ flyctl volumes create the_mole_data --region ams --size 1
 ### 2. Set secrets
 
 ```sh
-flyctl secrets set GitHub__ClientId=<your-client-id>
-flyctl secrets set GitHub__ClientSecret=<your-client-secret>
+flyctl secrets set AdminEmail=you@yourdomain.com
+flyctl secrets set MailerSend__ApiKey=<your-mailersend-api-key>
+flyctl secrets set MailerSend__FromEmail=noreply@yourdomain.com
+flyctl secrets set MailerSend__FromName="De Mol"
 ```
 
 ### 3. Add GitHub Actions secrets
@@ -65,20 +65,19 @@ Run `start-local.cmd` — it starts:
 - **API** (`dotnet watch run`): `http://localhost:5000`
 - **Frontend** (Vite dev server): `http://localhost:5173`
 
-Vite proxies `/api` and `/auth` requests to the .NET API automatically.
+Vite proxies `/api` requests to the .NET API automatically.
 
-### GitHub OAuth for local dev
+### Local dev configuration
 
-Create a **separate** GitHub OAuth App for local development:
-- Callback URL: `http://localhost:5000/signin-github`
-
-Add credentials to `api/appsettings.Development.json`:
+Add to `api/appsettings.Development.json`:
 
 ```json
 {
-  "GitHub": {
-    "ClientId": "your-dev-client-id",
-    "ClientSecret": "your-dev-client-secret"
+  "AdminEmail": "your@email.com",
+  "MailerSend": {
+    "ApiKey": "your-mailersend-api-key",
+    "FromEmail": "noreply@yourdomain.com",
+    "FromName": "De Mol"
   }
 }
 ```
@@ -87,6 +86,6 @@ Or use [.NET user secrets](https://learn.microsoft.com/en-us/aspnet/core/securit
 
 ```sh
 cd api
-dotnet user-secrets set "GitHub:ClientId" "your-dev-client-id"
-dotnet user-secrets set "GitHub:ClientSecret" "your-dev-client-secret"
+dotnet user-secrets set "MailerSend:ApiKey" "your-api-key"
+dotnet user-secrets set "MailerSend:FromEmail" "noreply@yourdomain.com"
 ```

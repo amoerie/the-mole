@@ -1,9 +1,9 @@
+using Api.Auth;
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Passwordless;
 
 namespace Api.Tests;
 
@@ -27,6 +27,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     private void PrepareDb(Action<AppDbContext>? seed = null)
     {
         _factory.ResetDb();
+        _factory.EmailService.SentEmails.Clear();
         if (seed == null)
             return;
         using var scope = _factory.Services.CreateScope();
@@ -35,25 +36,32 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         db.SaveChanges();
     }
 
+    // ── Register ────────────────────────────────────────────────────────────
+
     [Fact]
-    public async Task Register_WithValidEmailAndName_ReturnsOkWithToken()
+    public async Task Register_AdminEmail_WithPassword_ReturnsOkWithUserInfo()
     {
         PrepareDb();
         var client = CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "admin@test.com", displayName = "Alice" }
+            new
+            {
+                email = "admin@test.com",
+                displayName = "Alice",
+                password = "P@ssw0rd!",
+            }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
         Assert.NotNull(body);
-        Assert.Equal("fake-register-token", body!.RootElement.GetProperty("token").GetString());
+        Assert.Equal("Alice", body!.RootElement.GetProperty("displayName").GetString());
     }
 
     [Fact]
-    public async Task Register_WithValidInviteCode_ReturnsOkWithToken()
+    public async Task Register_WithValidInviteCode_ReturnsOk()
     {
         PrepareDb(db =>
         {
@@ -73,8 +81,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
             "/api/auth/register",
             new
             {
-                email = "test@example.com",
+                email = "alice@example.com",
                 displayName = "Alice",
+                password = "P@ssw0rd!",
                 inviteCode = "VALIDCODE",
             }
         );
@@ -90,7 +99,12 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "test@example.com", displayName = "Alice" }
+            new
+            {
+                email = "alice@example.com",
+                displayName = "Alice",
+                password = "P@ssw0rd!",
+            }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -106,8 +120,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
             "/api/auth/register",
             new
             {
-                email = "test@example.com",
+                email = "alice@example.com",
                 displayName = "Alice",
+                password = "P@ssw0rd!",
                 inviteCode = "BADCODE",
             }
         );
@@ -123,28 +138,38 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "", displayName = "Alice" }
+            new
+            {
+                email = "",
+                displayName = "Alice",
+                password = "P@ssw0rd!",
+            }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task Register_WithMissingDisplayName_ReturnsBadRequest()
+    public async Task Register_WithMissingPassword_ReturnsBadRequest()
     {
         PrepareDb();
         var client = CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "admin@test.com", displayName = "" }
+            new
+            {
+                email = "admin@test.com",
+                displayName = "Alice",
+                password = "",
+            }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task Register_ExistingUser_UpdatesDisplayNameAndReturnsToken()
+    public async Task Register_DuplicateEmail_ReturnsConflict()
     {
         PrepareDb(db =>
         {
@@ -154,6 +179,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     Id = "existing-id",
                     Email = "admin@test.com",
                     DisplayName = "Old Name",
+                    PasswordHash = PasswordHelper.Hash("oldpass"),
                 }
             );
         });
@@ -161,100 +187,235 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
-            new { email = "admin@test.com", displayName = "New Name" }
+            new
+            {
+                email = "admin@test.com",
+                displayName = "New Name",
+                password = "P@ssw0rd!",
+            }
         );
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    // ── Login ───────────────────────────────────────────────────────────────
+
     [Fact]
-    public async Task Verify_WithValidToken_ReturnsOkWithUserInfo()
+    public async Task Login_WithCorrectCredentials_ReturnsOkWithUserInfo()
     {
         PrepareDb(db =>
         {
             db.AppUsers.Add(
                 new AppUser
                 {
-                    Id = "test-user-id",
-                    Email = "test@example.com",
-                    DisplayName = "Test User",
+                    Id = "user-1",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("correctpass"),
                 }
             );
         });
         var client = CreateClient();
 
         var response = await client.PostAsJsonAsync(
-            "/api/auth/verify",
-            new { token = "valid-token" }
+            "/api/auth/login",
+            new { email = "alice@test.com", password = "correctpass" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
         Assert.NotNull(body);
-        Assert.Equal("test-user-id", body!.RootElement.GetProperty("userId").GetString());
+        Assert.Equal("Alice", body!.RootElement.GetProperty("displayName").GetString());
     }
 
     [Fact]
-    public async Task Verify_WithInvalidToken_ReturnsUnauthorized()
-    {
-        PrepareDb();
-        var fake = (FakePasswordlessClient)
-            _factory.Services.GetRequiredService<IPasswordlessClient>();
-        fake.VerifySuccess = false;
-        try
-        {
-            var client = CreateClient();
-
-            var response = await client.PostAsJsonAsync(
-                "/api/auth/verify",
-                new { token = "bad-token" }
-            );
-
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            fake.VerifySuccess = true;
-        }
-    }
-
-    [Fact]
-    public async Task Recover_WithKnownEmail_ReturnsOk()
+    public async Task Login_WithWrongPassword_ReturnsUnauthorized()
     {
         PrepareDb(db =>
         {
             db.AppUsers.Add(
                 new AppUser
                 {
-                    Id = "test-user-id",
-                    Email = "test@example.com",
-                    DisplayName = "Test User",
+                    Id = "user-1",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("correctpass"),
                 }
             );
         });
         var client = CreateClient();
 
         var response = await client.PostAsJsonAsync(
-            "/api/auth/recover",
-            new { email = "test@example.com" }
+            "/api/auth/login",
+            new { email = "alice@test.com", password = "wrongpass" }
         );
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task Recover_WithUnknownEmail_StillReturnsOk()
+    public async Task Login_WithUnknownEmail_ReturnsUnauthorized()
     {
         PrepareDb();
         var client = CreateClient();
 
         var response = await client.PostAsJsonAsync(
-            "/api/auth/recover",
-            new { email = "unknown@example.com" }
+            "/api/auth/login",
+            new { email = "nobody@test.com", password = "anypass" }
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_WithMissingFields_ReturnsBadRequest()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "", password = "" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // ── Forgot Password ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ForgotPassword_WithKnownEmail_ReturnsOkAndSendsEmail()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "user-1",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("pass"),
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new { email = "alice@test.com" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(_factory.EmailService.SentEmails);
+        Assert.Equal("alice@test.com", _factory.EmailService.SentEmails[0].ToEmail);
     }
+
+    [Fact]
+    public async Task ForgotPassword_WithUnknownEmail_StillReturnsOkButNoEmail()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new { email = "nobody@test.com" }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(_factory.EmailService.SentEmails);
+    }
+
+    // ── Reset Password ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ResetPassword_WithValidToken_ReturnsOkAndUpdatesPassword()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "user-1",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("oldpass"),
+                    PasswordResetToken = "validtoken",
+                    PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(1),
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new { token = "validtoken", newPassword = "NewP@ss123" }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.AppUsers.FindAsync("user-1");
+        Assert.True(PasswordHelper.Verify("NewP@ss123", user!.PasswordHash));
+        Assert.Null(user.PasswordResetToken);
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithExpiredToken_ReturnsBadRequest()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "user-1",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("oldpass"),
+                    PasswordResetToken = "expiredtoken",
+                    PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(-1),
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new { token = "expiredtoken", newPassword = "NewP@ss123" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithInvalidToken_ReturnsBadRequest()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new { token = "badtoken", newPassword = "NewP@ss123" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithMissingFields_ReturnsBadRequest()
+    {
+        PrepareDb();
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new { token = "", newPassword = "" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // ── Logout ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Logout_ReturnsRedirectToRoot()
@@ -267,6 +428,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/", response.Headers.Location?.OriginalString);
     }
+
+    // ── GetMe ────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetMe_WhenAuthenticated_ReturnsUserInfo()
@@ -282,50 +445,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal("test-user-id", body!.RootElement.GetProperty("userId").GetString());
     }
 
-    [Fact]
-    public async Task ResetPasskey_WhenAuthenticated_ReturnsTokenAndEmail()
-    {
-        PrepareDb(db =>
-        {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "test-user-id",
-                    Email = "test@example.com",
-                    DisplayName = "Test User",
-                }
-            );
-        });
-        var client = CreateClient();
-
-        var response = await client.PostAsync("/api/auth/reset-passkey", null);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
-        Assert.NotNull(body);
-        Assert.Equal("fake-register-token", body!.RootElement.GetProperty("token").GetString());
-        Assert.Equal("test@example.com", body!.RootElement.GetProperty("email").GetString());
-    }
-
-    [Fact]
-    public async Task ResetPasskey_WhenNotAuthenticated_ReturnsUnauthorized()
-    {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
-
-            var response = await client.PostAsync("/api/auth/reset-passkey", null);
-
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
-    }
+    // ── UpdateProfile ────────────────────────────────────────────────────────
 
     [Fact]
     public async Task UpdateProfile_WithValidName_ReturnsOkWithUpdatedUserInfo()
@@ -336,8 +456,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 new AppUser
                 {
                     Id = "test-user-id",
-                    Email = "test@example.com",
+                    Email = "alice@test.com",
                     DisplayName = "Old Name",
+                    PasswordHash = PasswordHelper.Hash("pass"),
                 }
             );
         });
@@ -360,8 +481,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 new AppUser
                 {
                     Id = "test-user-id",
-                    Email = "test@example.com",
+                    Email = "alice@test.com",
                     DisplayName = "Old Name",
+                    PasswordHash = PasswordHelper.Hash("pass"),
                 }
             );
         });
@@ -381,8 +503,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 new AppUser
                 {
                     Id = "test-user-id",
-                    Email = "test@example.com",
+                    Email = "alice@test.com",
                     DisplayName = "Old Name",
+                    PasswordHash = PasswordHelper.Hash("pass"),
                 }
             );
             db.Games.Add(

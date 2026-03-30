@@ -1,8 +1,10 @@
+using System.Threading.RateLimiting;
 using Api.Data;
 using Api.Routes;
+using Api.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Passwordless;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,14 +24,36 @@ builder
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddPasswordlessSdk(options =>
+builder.Services.AddRateLimiter(options =>
 {
-    options.ApiKey = builder.Configuration["Passwordless:ApiKey"] ?? "";
-    options.ApiSecret = builder.Configuration["Passwordless:ApiSecret"] ?? "";
+    options.AddFixedWindowLimiter(
+        "login",
+        o =>
+        {
+            o.Window = TimeSpan.FromMinutes(1);
+            o.PermitLimit = 10;
+            o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            o.QueueLimit = 0;
+        }
+    );
+    options.AddFixedWindowLimiter(
+        "inviteCode",
+        o =>
+        {
+            o.Window = TimeSpan.FromMinutes(1);
+            o.PermitLimit = 20;
+            o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            o.QueueLimit = 0;
+        }
+    );
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 var dbPath = builder.Configuration["DatabasePath"] ?? "themole.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IEmailService, MailerSendEmailService>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -84,6 +108,7 @@ if (!app.Environment.IsDevelopment())
 if (app.Environment.IsDevelopment())
     app.UseCors();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

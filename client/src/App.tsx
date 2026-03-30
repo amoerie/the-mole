@@ -1,27 +1,19 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import { useEffect } from 'react'
 import { AuthContext, useAuthProvider } from './hooks/useAuth'
 import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
-import RecoveryPage from './pages/RecoveryPage'
-import MagicLinkPage from './pages/MagicLinkPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
 import Footer from './components/Footer'
 import { Button } from './components/ui/button'
-import { api } from './api/client'
-
-import { initPasswordlessClient } from './lib/passwordless'
 
 function App() {
   const auth = useAuthProvider()
-
-  useEffect(() => {
-    api.getConfig().then((config) => initPasswordlessClient(config.passwordlessApiKey))
-  }, [])
 
   return (
     <AuthContext.Provider value={auth}>
@@ -51,8 +43,8 @@ function App() {
             <Route path="/join" element={<JoinPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/recover" element={<RecoveryPage />} />
-            <Route path="/magic-link" element={<MagicLinkPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/game/:gameId" element={<GamePage />} />
             <Route path="/game/:gameId/leaderboard" element={<LeaderboardPage />} />

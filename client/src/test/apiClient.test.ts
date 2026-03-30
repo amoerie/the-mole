@@ -104,41 +104,61 @@ describe('API client', () => {
     )
   })
 
-  it('registerPasskey sends POST with email and displayName', async () => {
-    mockResponse({ token: 'reg-token' })
-    const result = await api.registerPasskey('alice@test.com', 'Alice')
-    expect(result).toEqual({ token: 'reg-token' })
+  it('login sends POST with email and password', async () => {
+    const user = { userId: '1', displayName: 'Alice', roles: [] }
+    mockResponse(user)
+    const result = await api.login('alice@test.com', 'secret')
+    expect(result).toEqual(user)
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/auth/login',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'alice@test.com', password: 'secret' }),
+      }),
+    )
+  })
+
+  it('register sends POST with email, displayName, password', async () => {
+    const user = { userId: '1', displayName: 'Alice', roles: [] }
+    mockResponse(user)
+    const result = await api.register('alice@test.com', 'Alice', 'secret')
+    expect(result).toEqual(user)
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/auth/register',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice', inviteCode: null }),
+        body: JSON.stringify({
+          email: 'alice@test.com',
+          displayName: 'Alice',
+          password: 'secret',
+          inviteCode: null,
+        }),
       }),
     )
   })
 
-  it('verifyPasskey sends POST with token', async () => {
-    const user = { userId: '1', displayName: 'Alice', roles: [] }
-    mockResponse(user)
-    const result = await api.verifyPasskey('auth-token')
-    expect(result).toEqual(user)
-    expect(mockFetch).toHaveBeenCalledWith(
-      '/api/auth/verify',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ token: 'auth-token' }),
-      }),
-    )
-  })
-
-  it('requestRecovery sends POST with email', async () => {
+  it('forgotPassword sends POST with email', async () => {
     mockResponse({ message: 'ok' })
-    await api.requestRecovery('user@test.com')
+    await api.forgotPassword('user@test.com')
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/auth/recover',
+      '/api/auth/forgot-password',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ email: 'user@test.com' }),
+      }),
+    )
+  })
+
+  it('resetPassword sends POST with token and newPassword', async () => {
+    const user = { userId: '1', displayName: 'Alice', roles: [] }
+    mockResponse(user)
+    const result = await api.resetPassword('mytoken', 'newpass')
+    expect(result).toEqual(user)
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/auth/reset-password',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ token: 'mytoken', newPassword: 'newpass' }),
       }),
     )
   })

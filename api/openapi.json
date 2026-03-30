@@ -15,42 +15,12 @@
         "tags": [
           "Auth"
         ],
-        "operationId": "RegisterPasskey",
+        "operationId": "Register",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RegisterRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterTokenResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/verify": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "operationId": "VerifyPasskey",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyRequest"
               }
             }
           },
@@ -70,19 +40,29 @@
         }
       }
     },
-    "/api/auth/reset-passkey": {
+    "/api/auth/login": {
       "post": {
         "tags": [
           "Auth"
         ],
-        "operationId": "ResetPasskey",
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResetPasskeyResponse"
+                  "$ref": "#/components/schemas/UserInfo"
                 }
               }
             }
@@ -90,17 +70,17 @@
         }
       }
     },
-    "/api/auth/recover": {
+    "/api/auth/forgot-password": {
       "post": {
         "tags": [
           "Auth"
         ],
-        "operationId": "RequestRecovery",
+        "operationId": "ForgotPassword",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecoverRequest"
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
               }
             }
           },
@@ -113,6 +93,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "ResetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInfo"
                 }
               }
             }
@@ -237,6 +247,27 @@
                 }
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Games"
+        ],
+        "operationId": "DeleteGame",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -825,26 +856,6 @@
           }
         }
       }
-    },
-    "/api/config": {
-      "get": {
-        "tags": [
-          "Config"
-        ],
-        "operationId": "GetConfig",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppConfig"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -886,17 +897,6 @@
           },
           "isAdmin": {
             "type": "boolean"
-          }
-        }
-      },
-      "AppConfig": {
-        "required": [
-          "passwordlessApiKey"
-        ],
-        "type": "object",
-        "properties": {
-          "passwordlessApiKey": {
-            "type": "string"
           }
         }
       },
@@ -1040,6 +1040,17 @@
           }
         }
       },
+      "ForgotPasswordRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
       "Game": {
         "type": "object",
         "properties": {
@@ -1147,6 +1158,21 @@
           }
         }
       },
+      "LoginRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
       "MessageResponse": {
         "required": [
           "message"
@@ -1217,21 +1243,11 @@
           }
         }
       },
-      "RecoverRequest": {
-        "required": [
-          "email"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
-          }
-        }
-      },
       "RegisterRequest": {
         "required": [
           "email",
           "displayName",
+          "password",
           "inviteCode"
         ],
         "type": "object",
@@ -1242,6 +1258,9 @@
           "displayName": {
             "type": "string"
           },
+          "password": {
+            "type": "string"
+          },
           "inviteCode": {
             "type": [
               "null",
@@ -1250,28 +1269,17 @@
           }
         }
       },
-      "RegisterTokenResponse": {
-        "required": [
-          "token"
-        ],
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string"
-          }
-        }
-      },
-      "ResetPasskeyResponse": {
+      "ResetPasswordRequest": {
         "required": [
           "token",
-          "email"
+          "newPassword"
         ],
         "type": "object",
         "properties": {
           "token": {
             "type": "string"
           },
-          "email": {
+          "newPassword": {
             "type": "string"
           }
         }
@@ -1379,17 +1387,6 @@
             }
           }
         }
-      },
-      "VerifyRequest": {
-        "required": [
-          "token"
-        ],
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string"
-          }
-        }
       }
     }
   },
@@ -1411,9 +1408,6 @@
     },
     {
       "name": "Admin"
-    },
-    {
-      "name": "Config"
     }
   ]
 }
