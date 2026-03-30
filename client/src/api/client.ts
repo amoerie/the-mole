@@ -39,9 +39,11 @@ import {
   getUnreadMessageCount as _getUnreadMessageCount,
   markMessagesRead as _markMessagesRead,
   getGamePlayers as _getGamePlayers,
+  getSuspectStats as _getSuspectStats,
 } from './generated'
 import {
   mapAdminUser,
+  mapEpisodeStat,
   mapGame,
   mapGamePlayer,
   mapLeaderboardEntry,
@@ -52,6 +54,7 @@ import {
 } from './mappers'
 import type {
   AdminUser,
+  EpisodeStat,
   Game,
   GameMessage,
   GamePlayer,
@@ -65,6 +68,7 @@ import type {
 
 export type {
   AdminUser,
+  EpisodeStat,
   Game,
   GameMessage,
   GamePlayer,
@@ -259,5 +263,10 @@ export const api = {
   async getGamePlayers(gameId: string): Promise<GamePlayer[]> {
     const { data } = await _getGamePlayers(gameId)
     return (data ?? []).map(mapGamePlayer)
+  },
+
+  async getSuspectStats(gameId: string): Promise<EpisodeStat[]> {
+    const { data } = await _getSuspectStats(gameId)
+    return (data ?? []).map(mapEpisodeStat)
   },
 }

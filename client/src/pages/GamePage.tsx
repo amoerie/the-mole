@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Separator } from '../components/ui/separator'
-import { AlertCircle, Trophy } from 'lucide-react'
+import { AlertCircle, BarChart2, Trophy } from 'lucide-react'
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -177,12 +177,20 @@ export default function GamePage() {
             </Badge>
           </div>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to={`/game/${game.id}/leaderboard`}>
-            <Trophy className="size-4" />
-            Klassement
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/game/${game.id}/leaderboard`}>
+              <Trophy className="size-4" />
+              Klassement
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/game/${game.id}/suspect-charts`}>
+              <BarChart2 className="size-4" />
+              Verdachtheid
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error && (

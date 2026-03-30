@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   mapAdminUser,
   mapContestant,
+  mapEpisodeStat,
   mapGame,
+  mapGamePlayer,
   mapLeaderboardEntry,
   mapMessage,
   mapMessagesPage,
@@ -12,11 +14,14 @@ import {
 import type {
   AdminUserResponse as RawAdminUser,
   Contestant as RawContestant,
+  ContestantStats as RawContestantStats,
   EpisodeScore as RawEpisodeScore,
+  EpisodeStats as RawEpisodeStats,
   Game as RawGame,
   LeaderboardEntry as RawLeaderboardEntry,
   Message as RawMessage,
   MessagesResponse as RawMessagesPage,
+  Player as RawPlayer,
   Ranking as RawRanking,
   UserInfo as RawUserInfo,
 } from '../api/generated'
@@ -319,5 +324,73 @@ describe('mapMessagesPage', () => {
     expect(result.items[0].id).toBe('m2')
     expect(result.items[0].displayName).toBe('Bob')
     expect(result.items[0].content).toBe('')
+  })
+})
+
+describe('mapGamePlayer', () => {
+  it('maps all fields', () => {
+    const raw: RawPlayer = {
+      id: 'p1',
+      gameId: 'g1',
+      userId: 'u1',
+      displayName: 'Alice',
+      joinedAt: '2025-01-01T00:00:00Z',
+    }
+    expect(mapGamePlayer(raw)).toEqual({
+      id: 'p1',
+      gameId: 'g1',
+      userId: 'u1',
+      displayName: 'Alice',
+      joinedAt: '2025-01-01T00:00:00Z',
+    })
+  })
+
+  it('uses empty string defaults for missing fields', () => {
+    const result = mapGamePlayer({})
+    expect(result.id).toBe('')
+    expect(result.gameId).toBe('')
+    expect(result.userId).toBe('')
+    expect(result.displayName).toBe('')
+    expect(result.joinedAt).toBe('')
+  })
+})
+
+describe('mapEpisodeStat', () => {
+  const rawStat: RawContestantStats = {
+    contestantId: 'c1',
+    name: 'Alice',
+    avgRank: 1.5,
+    rankingCount: 3,
+  }
+  const rawEpisode: RawEpisodeStats = { episodeNumber: 2, stats: [rawStat] }
+
+  it('maps all fields', () => {
+    const result = mapEpisodeStat(rawEpisode)
+    expect(result.episodeNumber).toBe(2)
+    expect(result.stats).toHaveLength(1)
+    expect(result.stats[0]).toEqual({
+      contestantId: 'c1',
+      name: 'Alice',
+      avgRank: 1.5,
+      rankingCount: 3,
+    })
+  })
+
+  it('converts string numeric fields to numbers', () => {
+    const raw: RawEpisodeStats = {
+      episodeNumber: '2' as unknown as number,
+      stats: [
+        {
+          contestantId: 'c1',
+          name: 'Alice',
+          avgRank: '1.5' as unknown as number,
+          rankingCount: '3' as unknown as number,
+        },
+      ],
+    }
+    const result = mapEpisodeStat(raw)
+    expect(result.episodeNumber).toBe(2)
+    expect(result.stats[0].avgRank).toBe(1.5)
+    expect(result.stats[0].rankingCount).toBe(3)
   })
 })

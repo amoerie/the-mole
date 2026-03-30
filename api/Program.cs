@@ -180,6 +180,7 @@ app.MapRankingRoutes();
 app.MapLeaderboardRoutes();
 app.MapMessageRoutes();
 app.MapPlayerRoutes();
+app.MapSuspectStatsRoutes();
 app.MapAdminRoutes();
 app.MapConfigRoutes();
 
