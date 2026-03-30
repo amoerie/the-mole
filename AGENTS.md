@@ -72,9 +72,7 @@ Before opening a pull request, run the coverage commands for both backend and fr
 - **Run tests:** `dotnet test api.tests/Api.Tests.csproj`
 - **Check coverage:**
   ```powershell
-  dotnet test api.tests/Api.Tests.csproj --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Threshold=80
-  ```
-- **Exclude migrations:** The CI excludes `[*]*.Migrations.*` from coverage calculations.
+  dotnet test api.tests/Api.Tests.csproj --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="[*]*.Migrations.*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdType=line DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdStat=total DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Threshold=80
 
 ### Frontend (React/Vite)
 - **Run tests:** `npm run test` (in `client/`)
