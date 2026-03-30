@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  mapAdminUser,
   mapContestant,
   mapGame,
   mapLeaderboardEntry,
@@ -7,6 +8,7 @@ import {
   mapUserInfo,
 } from '../api/mappers'
 import type {
+  AdminUserResponse as RawAdminUser,
   Contestant as RawContestant,
   EpisodeScore as RawEpisodeScore,
   Game as RawGame,
@@ -14,6 +16,23 @@ import type {
   Ranking as RawRanking,
   UserInfo as RawUserInfo,
 } from '../api/generated'
+
+describe('mapAdminUser', () => {
+  it('maps an admin user', () => {
+    const raw: RawAdminUser = { id: 'u1', email: 'a@b.com', displayName: 'Alice', isAdmin: true }
+    expect(mapAdminUser(raw)).toEqual({
+      id: 'u1',
+      email: 'a@b.com',
+      displayName: 'Alice',
+      isAdmin: true,
+    })
+  })
+
+  it('maps a non-admin user', () => {
+    const raw: RawAdminUser = { id: 'u2', email: 'b@c.com', displayName: 'Bob', isAdmin: false }
+    expect(mapAdminUser(raw).isAdmin).toBe(false)
+  })
+})
 
 describe('mapUserInfo', () => {
   it('maps all fields', () => {

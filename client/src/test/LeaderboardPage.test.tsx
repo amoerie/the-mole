@@ -80,4 +80,71 @@ describe('LeaderboardPage', () => {
     renderPage()
     expect(await screen.findByText('Netwerkfout')).toBeInTheDocument()
   })
+
+  it('shows generic error when game fails to load with non-Error', async () => {
+    vi.mocked(api.getGame).mockRejectedValue('oops')
+    renderPage()
+    expect(await screen.findByText('Fout bij laden')).toBeInTheDocument()
+  })
+
+  it('shows not-found alert when game is null after loading', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(null as unknown as Game)
+    renderPage()
+    expect(await screen.findByText('Spel niet gevonden')).toBeInTheDocument()
+  })
+
+  it('shows error when what-if leaderboard fails', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getWhatIfLeaderboard).mockRejectedValue(new Error('Ophalen mislukt'))
+    renderPage()
+    await screen.findByLabelText(/wat als de mol is/i)
+    await userEvent.selectOptions(screen.getByLabelText(/wat als de mol is/i), 'c1')
+    expect(await screen.findByText('Ophalen mislukt')).toBeInTheDocument()
+  })
+
+  it('shows leaderboard table with episode scores', async () => {
+    const gameWithEpisode = {
+      ...mockGame,
+      episodes: [
+        {
+          number: 1,
+          deadline: new Date(Date.now() - 1000).toISOString(),
+          eliminatedContestantIds: [],
+        },
+      ],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(gameWithEpisode)
+    vi.mocked(api.getLeaderboard).mockResolvedValue([
+      {
+        userId: 'u1',
+        displayName: 'Alice',
+        totalScore: 10,
+        episodeScores: [{ episodeNumber: 1, score: 10, rankGiven: 1, totalContestants: 3 }],
+      },
+      {
+        userId: 'u2',
+        displayName: 'Bob',
+        totalScore: 5,
+        episodeScores: [],
+      },
+    ])
+    renderPage()
+    expect(await screen.findAllByText('Alice')).not.toHaveLength(0)
+    expect(screen.getAllByText('Bob')).not.toHaveLength(0)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('shows empty state message when leaderboard is empty and mole is not revealed', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    renderPage()
+    expect(
+      await screen.findByText('Selecteer een kandidaat om het hypothetisch klassement te zien.'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows empty state message when leaderboard is empty and mole is revealed', async () => {
+    vi.mocked(api.getGame).mockResolvedValue({ ...mockGame, moleContestantId: 'c1' })
+    renderPage()
+    expect(await screen.findByText('Nog geen scores beschikbaar.')).toBeInTheDocument()
+  })
 })

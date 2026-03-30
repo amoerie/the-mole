@@ -116,4 +116,31 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
     expect(await screen.findByText('Bezig...')).toBeInTheDocument()
   })
+
+  it('joins game and navigates to it after login when gameId and inviteCode are in state', async () => {
+    vi.mocked(api.login).mockResolvedValueOnce({ userId: '1', displayName: 'Alice', roles: [] })
+    vi.mocked(api.joinGame).mockResolvedValueOnce(undefined)
+    render(
+      <AuthContext.Provider
+        value={{ user: null, loading: false, error: null, setUser: mockSetUser }}
+      >
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: '/login',
+              state: { gameId: 'g1', inviteCode: 'abc', gameName: 'Testspel' },
+            },
+          ]}
+        >
+          <LoginPage />
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+    expect(screen.getByText('Testspel')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Wachtwoord'), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inloggen' }))
+    await waitFor(() => expect(api.joinGame).toHaveBeenCalledWith('g1', 'abc'))
+    expect(mockNavigate).toHaveBeenCalledWith('/game/g1')
+  })
 })

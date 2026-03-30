@@ -99,4 +99,23 @@ describe('RankingBoard', () => {
     })
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('renders with disabled prop without crashing', () => {
+    render(<RankingBoard contestants={contestants} onChange={() => {}} disabled />)
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('Bob')).toBeInTheDocument()
+  })
+
+  it('skips items whose id is not in the contestants list', () => {
+    render(
+      <RankingBoard
+        contestants={contestants}
+        initialOrder={['1', 'ghost-id', '2']}
+        onChange={() => {}}
+      />,
+    )
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('Bob')).toBeInTheDocument()
+    expect(screen.queryByText('ghost-id')).not.toBeInTheDocument()
+  })
 })
