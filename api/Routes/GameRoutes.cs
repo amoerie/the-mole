@@ -144,6 +144,7 @@ public static class GameRoutes
             )
             .WithName("GetGameByInvite")
             .WithTags("Games")
+            .RequireRateLimiting("inviteCode")
             .Produces<GameSummaryResponse>();
 
         app.MapGet(

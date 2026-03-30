@@ -26,25 +26,63 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter(
+    static RateLimitPartition<string> FixedWindow(string key, int permitLimit, TimeSpan window) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            key,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = window,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            }
+        );
+
+    // Auth endpoints: keyed by IP so limits apply per caller, not globally
+    options.AddPolicy(
         "login",
-        o =>
-        {
-            o.Window = TimeSpan.FromMinutes(1);
-            o.PermitLimit = 10;
-            o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            o.QueueLimit = 0;
-        }
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 10,
+                window: TimeSpan.FromMinutes(1)
+            )
     );
-    options.AddFixedWindowLimiter(
+    options.AddPolicy(
+        "register",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 5,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
+        "forgotPassword",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 5,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
+        "resetPassword",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 5,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
+    options.AddPolicy(
         "inviteCode",
-        o =>
-        {
-            o.Window = TimeSpan.FromMinutes(1);
-            o.PermitLimit = 20;
-            o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            o.QueueLimit = 0;
-        }
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 20,
+                window: TimeSpan.FromMinutes(1)
+            )
     );
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
@@ -108,7 +146,8 @@ if (!app.Environment.IsDevelopment())
 if (app.Environment.IsDevelopment())
     app.UseCors();
 
-app.UseRateLimiter();
+if (!app.Environment.IsEnvironment("Test"))
+    app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -76,6 +76,7 @@ public static class AuthRoutes
             )
             .WithName("Register")
             .WithTags("Auth")
+            .RequireRateLimiting("register")
             .Produces<UserInfo>();
 
         app.MapPost(
@@ -139,6 +140,7 @@ public static class AuthRoutes
             )
             .WithName("ForgotPassword")
             .WithTags("Auth")
+            .RequireRateLimiting("forgotPassword")
             .Produces<MessageResponse>();
 
         app.MapPost(
@@ -174,6 +176,7 @@ public static class AuthRoutes
             )
             .WithName("ResetPassword")
             .WithTags("Auth")
+            .RequireRateLimiting("resetPassword")
             .Produces<UserInfo>();
 
         app.MapGet(

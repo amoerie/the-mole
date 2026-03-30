@@ -94,6 +94,6 @@ MailerSend email. Add full game deletion. Add rate limiting to login and invite-
 | Password hashing | `Rfc2898DeriveBytes.Pbkdf2` — built into .NET, no extra package |
 | Email provider | MailerSend (3,000 free emails/month, official .NET SDK) |
 | Password reset token | Cryptographically random 32-byte token, stored hashed, 24h expiry |
-| Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting` (ASP.NET Core 7+, no extra NuGet) |
+| Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting`; per-IP keyed fixed-window policies; disabled in Test env |
 | Register flow | Admin email: no invite code needed. Others: must supply valid invite code |
 | Existing users | Migration adds nullable `PasswordHash` — existing users must re-register |
