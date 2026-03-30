@@ -29,16 +29,27 @@ public static class MessageRoutes
                     if (!isPlayer)
                         return Results.Unauthorized();
 
-                    var allMessages = (
-                        await db.Messages.Where(m => m.GameId == gameId).ToListAsync()
+                    // Clamp negative skip values to 0
+                    var normalizedSkip = Math.Max(0, skip);
+
+                    // SQLite does not support ORDER BY on DateTimeOffset columns via EF Core,
+                    // so we sort in memory. The PageSize+1 trick avoids a separate count query.
+                    var candidates = (
+                        await db
+                            .Messages.AsNoTracking()
+                            .Where(m => m.GameId == gameId)
+                            .ToListAsync()
                     )
                         .OrderBy(m => m.PostedAt)
+                        .Skip(normalizedSkip)
+                        .Take(PageSize + 1)
                         .ToList();
 
-                    var total = allMessages.Count;
-                    var page = allMessages.Skip(skip).Take(PageSize).ToList();
+                    var hasMore = candidates.Count > PageSize;
+                    if (hasMore)
+                        candidates.RemoveAt(PageSize);
 
-                    return Results.Ok(new MessagesResponse(page, total > skip + PageSize));
+                    return Results.Ok(new MessagesResponse(candidates, hasMore));
                 }
             )
             .WithName("GetMessages")
@@ -63,10 +74,13 @@ public static class MessageRoutes
                     if (!isPlayer)
                         return Results.Unauthorized();
 
-                    if (string.IsNullOrWhiteSpace(body.Content))
+                    // Trim first so validation reflects what will actually be stored
+                    var trimmed = body.Content?.Trim() ?? string.Empty;
+
+                    if (trimmed.Length == 0)
                         return Results.BadRequest(new { error = "Content is required." });
 
-                    if (body.Content.Length > 500)
+                    if (trimmed.Length > 500)
                         return Results.BadRequest(
                             new { error = "Content must be 500 characters or fewer." }
                         );
@@ -76,7 +90,7 @@ public static class MessageRoutes
                         GameId = gameId,
                         UserId = user.UserId,
                         DisplayName = user.DisplayName,
-                        Content = body.Content.Trim(),
+                        Content = trimmed,
                     };
 
                     db.Messages.Add(message);

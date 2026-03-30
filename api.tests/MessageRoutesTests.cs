@@ -222,6 +222,36 @@ public sealed class MessageRoutesTests : IClassFixture<CustomWebApplicationFacto
         Assert.False(body!.RootElement.GetProperty("hasMore").GetBoolean());
     }
 
+    [Fact]
+    public async Task GetMessages_WithNegativeSkip_ClampsToZero()
+    {
+        var game = CreateGame();
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+            db.Messages.Add(
+                new Message
+                {
+                    GameId = game.Id,
+                    UserId = "test-user-id",
+                    DisplayName = "Test User",
+                    Content = "Hello",
+                    PostedAt = DateTimeOffset.UtcNow,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.GetAsync($"/api/games/{game.Id}/messages?skip=-5");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.Equal(1, body!.RootElement.GetProperty("items").GetArrayLength());
+        Assert.False(body!.RootElement.GetProperty("hasMore").GetBoolean());
+    }
+
     // ── POST ──────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -298,6 +328,25 @@ public sealed class MessageRoutesTests : IClassFixture<CustomWebApplicationFacto
         );
         Assert.Equal("test-user-id", body!.RootElement.GetProperty("userId").GetString());
         Assert.Equal("Test User", body!.RootElement.GetProperty("displayName").GetString());
+    }
+
+    [Fact]
+    public async Task PostMessage_WithWhitespaceOnlyContent_ReturnsBadRequest()
+    {
+        var game = CreateGame();
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/games/{game.Id}/messages",
+            new { content = "   " }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

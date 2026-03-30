@@ -127,7 +127,7 @@ describe('MessageBoardPage', () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     vi.mocked(api.getMessages).mockResolvedValue({ items: [mockMsg], hasMore: true })
     renderPage()
-    expect(await screen.findByText('Laad oudere berichten')).toBeInTheDocument()
+    expect(await screen.findByText('Laad meer berichten')).toBeInTheDocument()
   })
 
   it('does not show "load more" when hasMore is false', async () => {
@@ -135,7 +135,7 @@ describe('MessageBoardPage', () => {
     vi.mocked(api.getMessages).mockResolvedValue({ items: [mockMsg], hasMore: false })
     renderPage()
     await screen.findByText('Hallo!')
-    expect(screen.queryByText('Laad oudere berichten')).not.toBeInTheDocument()
+    expect(screen.queryByText('Laad meer berichten')).not.toBeInTheDocument()
   })
 
   it('loads more messages when "load more" is clicked', async () => {
@@ -145,10 +145,10 @@ describe('MessageBoardPage', () => {
       .mockResolvedValueOnce({ items: [mockMsg], hasMore: true })
       .mockResolvedValueOnce({ items: [newMsg], hasMore: false })
     renderPage()
-    await screen.findByText('Laad oudere berichten')
-    await userEvent.click(screen.getByText('Laad oudere berichten'))
+    await screen.findByText('Laad meer berichten')
+    await userEvent.click(screen.getByText('Laad meer berichten'))
     await waitFor(() => expect(screen.getByText('Nieuw bericht')).toBeInTheDocument())
-    expect(screen.queryByText('Laad oudere berichten')).not.toBeInTheDocument()
+    expect(screen.queryByText('Laad meer berichten')).not.toBeInTheDocument()
   })
 
   it('submits a new message and appends it to the list', async () => {

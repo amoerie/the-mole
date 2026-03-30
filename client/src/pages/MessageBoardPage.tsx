@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '../components/ui/alert'
 import { Skeleton } from '../components/ui/skeleton'
 import { AlertCircle, ArrowLeft, Send } from 'lucide-react'
 
-const PAGE_SIZE = 20
+const MAX_MESSAGE_LENGTH = 500
 
 function formatTime(isoDate: string): string {
   const date = new Date(isoDate)
@@ -134,7 +134,7 @@ export default function MessageBoardPage() {
           {hasMore && (
             <div className="flex justify-center">
               <Button variant="ghost" size="sm" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? 'Laden...' : `Laad oudere berichten`}
+                {loadingMore ? 'Laden...' : 'Laad meer berichten'}
               </Button>
             </div>
           )}
@@ -180,7 +180,7 @@ export default function MessageBoardPage() {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Schrijf een bericht..."
-            maxLength={PAGE_SIZE * 25}
+            maxLength={MAX_MESSAGE_LENGTH}
             rows={2}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Bericht"
@@ -194,7 +194,9 @@ export default function MessageBoardPage() {
             <Send className="size-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground text-right">{content.length}/500</p>
+        <p className="text-xs text-muted-foreground text-right">
+          {content.length}/{MAX_MESSAGE_LENGTH}
+        </p>
       </form>
     </main>
   )
