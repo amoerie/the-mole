@@ -103,9 +103,91 @@ public static class MessageRoutes
             .WithTags("Messages")
             .RequireRateLimiting("postMessage")
             .Produces<Message>(StatusCodes.Status201Created);
+        app.MapGet(
+                "/api/games/{gameId}/messages/unread-count",
+                async (HttpContext ctx, AppDbContext db, string gameId) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound();
+
+                    var isPlayer = await db.Players.AnyAsync(p =>
+                        p.GameId == gameId && p.UserId == user.UserId
+                    );
+                    if (!isPlayer)
+                        return Results.Unauthorized();
+
+                    var lastRead = await db.MessageReads.FindAsync(user.UserId, gameId);
+                    var lastReadAt = lastRead?.LastReadAt ?? DateTimeOffset.MinValue;
+
+                    // SQLite cannot translate DateTimeOffset comparisons via EF Core,
+                    // so load the game's message timestamps into memory and count in-process.
+                    var count = (
+                        await db
+                            .Messages.AsNoTracking()
+                            .Where(m => m.GameId == gameId)
+                            .Select(m => m.PostedAt)
+                            .ToListAsync()
+                    ).Count(postedAt => postedAt > lastReadAt);
+
+                    return Results.Ok(new UnreadCountResponse(count));
+                }
+            )
+            .WithName("GetUnreadMessageCount")
+            .WithTags("Messages")
+            .Produces<UnreadCountResponse>();
+
+        app.MapPost(
+                "/api/games/{gameId}/messages/mark-read",
+                async (HttpContext ctx, AppDbContext db, string gameId) =>
+                {
+                    var user = AuthHelper.GetUserInfo(ctx);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound();
+
+                    var isPlayer = await db.Players.AnyAsync(p =>
+                        p.GameId == gameId && p.UserId == user.UserId
+                    );
+                    if (!isPlayer)
+                        return Results.Unauthorized();
+
+                    var existing = await db.MessageReads.FindAsync(user.UserId, gameId);
+                    if (existing == null)
+                    {
+                        db.MessageReads.Add(
+                            new MessageRead
+                            {
+                                UserId = user.UserId,
+                                GameId = gameId,
+                                LastReadAt = DateTimeOffset.UtcNow,
+                            }
+                        );
+                    }
+                    else
+                    {
+                        existing.LastReadAt = DateTimeOffset.UtcNow;
+                    }
+
+                    await db.SaveChangesAsync();
+                    return Results.NoContent();
+                }
+            )
+            .WithName("MarkMessagesRead")
+            .WithTags("Messages")
+            .Produces(StatusCodes.Status204NoContent);
     }
 
     private sealed record PostMessageRequest(string? Content);
 
     private sealed record MessagesResponse(List<Message> Items, bool HasMore);
+
+    private sealed record UnreadCountResponse(int Count);
 }

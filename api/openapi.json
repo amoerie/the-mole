@@ -885,6 +885,59 @@
         }
       }
     },
+    "/api/games/{gameId}/messages/unread-count": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "operationId": "GetUnreadMessageCount",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}/messages/mark-read": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "operationId": "MarkMessagesRead",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/admin/users/{userId}/grant-admin": {
       "post": {
         "tags": [
@@ -1464,6 +1517,22 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "UnreadCountResponse": {
+        "required": [
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

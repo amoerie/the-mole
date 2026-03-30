@@ -36,6 +36,8 @@ import {
   updateProfile as _updateProfile,
   getMessages as _getMessages,
   postMessage as _postMessage,
+  getUnreadMessageCount as _getUnreadMessageCount,
+  markMessagesRead as _markMessagesRead,
 } from './generated'
 import {
   mapAdminUser,
@@ -239,5 +241,14 @@ export const api = {
   async postMessage(gameId: string, content: string): Promise<GameMessage> {
     const { data } = await _postMessage(gameId, { content })
     return mapMessage(data!)
+  },
+
+  async getUnreadMessageCount(gameId: string): Promise<number> {
+    const { data } = await _getUnreadMessageCount(gameId)
+    return data?.count ?? 0
+  },
+
+  async markMessagesRead(gameId: string): Promise<void> {
+    await _markMessagesRead(gameId)
   },
 }

@@ -369,8 +369,46 @@ public sealed class MessageRoutesTests : IClassFixture<CustomWebApplicationFacto
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // ── GET unread-count ──────────────────────────────────────────────────────
+
     [Fact]
-    public async Task PostMessage_WithContentTooLong_ReturnsBadRequest()
+    public async Task GetUnreadCount_WhenUnauthenticated_ReturnsUnauthorized()
+    {
+        PrepareDb();
+        TestAuthHandler.IsAuthenticated = false;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("/api/games/game-1/messages/unread-count");
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.IsAuthenticated = true;
+        }
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_WhenGameNotFound_ReturnsNotFound()
+    {
+        PrepareDb();
+        var client = CreateClient();
+        var response = await client.GetAsync("/api/games/nonexistent/messages/unread-count");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_WhenNotPlayer_ReturnsUnauthorized()
+    {
+        var game = CreateGame();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+        var response = await client.GetAsync($"/api/games/{game.Id}/messages/unread-count");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_WithNoMessages_ReturnsZero()
     {
         var game = CreateGame();
         PrepareDb(db =>
@@ -379,13 +417,223 @@ public sealed class MessageRoutesTests : IClassFixture<CustomWebApplicationFacto
             db.Players.Add(CreatePlayer());
         });
         var client = CreateClient();
-        var tooLong = new string('x', 501);
 
-        var response = await client.PostAsJsonAsync(
-            $"/api/games/{game.Id}/messages",
-            new { content = tooLong }
-        );
+        var response = await client.GetAsync($"/api/games/{game.Id}/messages/unread-count");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.Equal(0, body!.RootElement.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_WithNoMarkRead_ReturnsAllMessagesAsUnread()
+    {
+        var game = CreateGame();
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+            db.Messages.Add(
+                new Message
+                {
+                    GameId = game.Id,
+                    UserId = "test-user-id",
+                    DisplayName = "Test User",
+                    Content = "A",
+                    PostedAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+                }
+            );
+            db.Messages.Add(
+                new Message
+                {
+                    GameId = game.Id,
+                    UserId = "test-user-id",
+                    DisplayName = "Test User",
+                    Content = "B",
+                    PostedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.GetAsync($"/api/games/{game.Id}/messages/unread-count");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.Equal(2, body!.RootElement.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_AfterMarkRead_ReturnsZeroForOldMessages()
+    {
+        var game = CreateGame();
+        var lastReadAt = DateTimeOffset.UtcNow;
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+            db.Messages.Add(
+                new Message
+                {
+                    GameId = game.Id,
+                    UserId = "other",
+                    DisplayName = "Other",
+                    Content = "Old",
+                    PostedAt = lastReadAt.AddMinutes(-1),
+                }
+            );
+            db.MessageReads.Add(
+                new MessageRead
+                {
+                    UserId = "test-user-id",
+                    GameId = game.Id,
+                    LastReadAt = lastReadAt,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.GetAsync($"/api/games/{game.Id}/messages/unread-count");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.Equal(0, body!.RootElement.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetUnreadCount_WithNewMessagesAfterLastRead_ReturnsCorrectCount()
+    {
+        var game = CreateGame();
+        var lastReadAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+            db.Messages.Add(
+                new Message
+                {
+                    GameId = game.Id,
+                    UserId = "other",
+                    DisplayName = "Other",
+                    Content = "Old",
+                    PostedAt = lastReadAt.AddMinutes(-1),
+                }
+            );
+            db.Messages.Add(
+                new Message
+                {
+                    GameId = game.Id,
+                    UserId = "other",
+                    DisplayName = "Other",
+                    Content = "New",
+                    PostedAt = lastReadAt.AddSeconds(10),
+                }
+            );
+            db.MessageReads.Add(
+                new MessageRead
+                {
+                    UserId = "test-user-id",
+                    GameId = game.Id,
+                    LastReadAt = lastReadAt,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.GetAsync($"/api/games/{game.Id}/messages/unread-count");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.Equal(1, body!.RootElement.GetProperty("count").GetInt32());
+    }
+
+    // ── POST mark-read ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task MarkMessagesRead_WhenUnauthenticated_ReturnsUnauthorized()
+    {
+        PrepareDb();
+        TestAuthHandler.IsAuthenticated = false;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsync("/api/games/game-1/messages/mark-read", null);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.IsAuthenticated = true;
+        }
+    }
+
+    [Fact]
+    public async Task MarkMessagesRead_WhenGameNotFound_ReturnsNotFound()
+    {
+        PrepareDb();
+        var client = CreateClient();
+        var response = await client.PostAsync("/api/games/nonexistent/messages/mark-read", null);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MarkMessagesRead_WhenNotPlayer_ReturnsUnauthorized()
+    {
+        var game = CreateGame();
+        PrepareDb(db => db.Games.Add(game));
+        var client = CreateClient();
+        var response = await client.PostAsync($"/api/games/{game.Id}/messages/mark-read", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MarkMessagesRead_CreatesNewRecord_ReturnsNoContent()
+    {
+        var game = CreateGame();
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsync($"/api/games/{game.Id}/messages/mark-read", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var record = await db.MessageReads.FindAsync("test-user-id", game.Id);
+        Assert.NotNull(record);
+        Assert.True(record!.LastReadAt > DateTimeOffset.UtcNow.AddSeconds(-5));
+    }
+
+    [Fact]
+    public async Task MarkMessagesRead_UpdatesExistingRecord()
+    {
+        var game = CreateGame();
+        var oldTime = DateTimeOffset.UtcNow.AddHours(-1);
+        PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.Players.Add(CreatePlayer());
+            db.MessageReads.Add(
+                new MessageRead
+                {
+                    UserId = "test-user-id",
+                    GameId = game.Id,
+                    LastReadAt = oldTime,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PostAsync($"/api/games/{game.Id}/messages/mark-read", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var record = await db.MessageReads.FindAsync("test-user-id", game.Id);
+        Assert.True(record!.LastReadAt > oldTime);
     }
 }

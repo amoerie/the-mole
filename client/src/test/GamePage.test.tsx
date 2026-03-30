@@ -61,6 +61,10 @@ vi.mock('../components/AdminEpisodeManager', () => ({
   ),
 }))
 
+vi.mock('../components/MessageBoard', () => ({
+  default: () => <div data-testid="message-board" />,
+}))
+
 vi.mock('../api/client', () => ({
   api: {
     getGame: vi.fn(),

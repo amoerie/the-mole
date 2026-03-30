@@ -134,6 +134,10 @@ export interface PostMessageRequest {
   content: string | null
 }
 
+export interface UnreadCountResponse {
+  count?: number
+}
+
 export interface Ranking {
   id?: string
   gameId?: string
@@ -857,6 +861,54 @@ export const postMessage = async (
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(postMessageRequest),
+  })
+}
+
+export type getUnreadMessageCountResponse200 = {
+  data: UnreadCountResponse
+  status: 200
+}
+
+export type getUnreadMessageCountResponseSuccess = getUnreadMessageCountResponse200 & {
+  headers: Headers
+}
+export type getUnreadMessageCountResponse = getUnreadMessageCountResponseSuccess
+
+export const getGetUnreadMessageCountUrl = (gameId: string) => {
+  return `/api/games/${gameId}/messages/unread-count`
+}
+
+export const getUnreadMessageCount = async (
+  gameId: string,
+  options?: RequestInit,
+): Promise<getUnreadMessageCountResponse> => {
+  return fetcher<getUnreadMessageCountResponse>(getGetUnreadMessageCountUrl(gameId), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type markMessagesReadResponse204 = {
+  data: void
+  status: 204
+}
+
+export type markMessagesReadResponseSuccess = markMessagesReadResponse204 & {
+  headers: Headers
+}
+export type markMessagesReadResponse = markMessagesReadResponseSuccess
+
+export const getMarkMessagesReadUrl = (gameId: string) => {
+  return `/api/games/${gameId}/messages/mark-read`
+}
+
+export const markMessagesRead = async (
+  gameId: string,
+  options?: RequestInit,
+): Promise<markMessagesReadResponse> => {
+  return fetcher<markMessagesReadResponse>(getMarkMessagesReadUrl(gameId), {
+    ...options,
+    method: 'POST',
   })
 }
 
