@@ -10,7 +10,7 @@ The project is a web game for "De Mol" (The Mole), where players rank contestant
 
 ### Key Logic: Scoring
 Scores are calculated after the mole is revealed. Each episode is worth 0–100 points based on how high the player ranked the actual mole.
-`Score = round(((N - R) / (N - 1)) × 100)`
+`Score = round(((N - R) / (N - 1)) × 100, 2)` (rounded to two decimal places)
 
 ---
 
