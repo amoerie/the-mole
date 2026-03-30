@@ -6,9 +6,20 @@ import GamePage from '../pages/GamePage'
 import type { UserInfo, Game, Ranking } from '../types'
 
 vi.mock('../components/EpisodeCard', () => ({
-  default: ({ onSubmit }: { onSubmit: (ids: string[]) => Promise<void> }) => (
+  default: ({
+    activeContestants,
+    onSubmit,
+  }: {
+    activeContestants: { id: string; name: string }[]
+    onSubmit: (ids: string[]) => Promise<void>
+  }) => (
     <div data-testid="episode-card">
       <button onClick={() => onSubmit(['c1', 'c2'])}>Submit ranking</button>
+      {activeContestants.map((c) => (
+        <span key={c.id} data-testid="active-contestant">
+          {c.name}
+        </span>
+      ))}
     </div>
   ),
 }))
@@ -96,6 +107,15 @@ const mockGame: Game = {
 const mockGameWithEpisode: Game = {
   ...mockGame,
   episodes: [{ number: 1, deadline: futureDeadline, eliminatedContestantIds: [] }],
+}
+
+const mockGameWithEliminatedContestant: Game = {
+  ...mockGame,
+  contestants: [
+    { id: 'c1', name: 'Alice', age: 30, photoUrl: '' },
+    { id: 'c2', name: 'Bob', age: 25, photoUrl: '', eliminatedInEpisode: 1 },
+  ],
+  episodes: [{ number: 1, deadline: futureDeadline, eliminatedContestantIds: ['c2'] }],
 }
 
 const emptyRankings: Ranking[] = []
@@ -214,6 +234,15 @@ describe('GamePage', () => {
     expect(api.getGame).toHaveBeenCalledTimes(2)
   })
 
+  it('excludes contestants eliminated in the current episode from the ranking board', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEliminatedContestant)
+    renderWithAuth(mockUser)
+    await screen.findByTestId('episode-card')
+    const activeNames = screen.getAllByTestId('active-contestant').map((el) => el.textContent)
+    expect(activeNames).toContain('Alice')
+    expect(activeNames).not.toContain('Bob')
+  })
+
   it('shows mole revealed alert when moleContestantId is set', async () => {
     const gameWithMole = { ...mockGame, moleContestantId: 'c1' }
     vi.mocked(api.getGame).mockResolvedValue(gameWithMole)
@@ -287,5 +316,42 @@ describe('GamePage', () => {
     screen.getByText('Load season 14').click()
     await waitFor(() => expect(api.addContestants).toHaveBeenCalled())
     expect(api.getGame).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows error when load season 14 fails', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.addContestants).mockRejectedValue(new Error('Laden mislukt'))
+    renderWithAuth(mockAdmin)
+    await screen.findByTestId('admin-contestant-manager')
+    screen.getByText('Load season 14').click()
+    expect(await screen.findByText('Laden mislukt')).toBeInTheDocument()
+  })
+
+  it('shows error with default message when load season 14 fails with non-Error', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.addContestants).mockRejectedValue('oops')
+    renderWithAuth(mockAdmin)
+    await screen.findByTestId('admin-contestant-manager')
+    screen.getByText('Load season 14').click()
+    expect(await screen.findByText('Fout bij laden seizoen 14')).toBeInTheDocument()
+  })
+
+  it('falls back to empty rankings when getMyRankings fails', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getMyRankings).mockRejectedValue(new Error('unauthorized'))
+    renderWithAuth(mockUser)
+    expect(await screen.findByText('Testspel')).toBeInTheDocument()
+  })
+
+  it('fetches episode rankings when last episode deadline has passed', async () => {
+    const pastDeadline = new Date(Date.now() - 1000).toISOString()
+    const gameWithPastDeadline = {
+      ...mockGame,
+      episodes: [{ number: 1, deadline: pastDeadline, eliminatedContestantIds: [] }],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(gameWithPastDeadline)
+    vi.mocked(api.getEpisodeRankings).mockResolvedValue([])
+    renderWithAuth(mockUser)
+    await waitFor(() => expect(api.getEpisodeRankings).toHaveBeenCalledWith('game-1', 1))
   })
 })

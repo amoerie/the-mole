@@ -91,7 +91,7 @@ export default function GamePage() {
     ? game.contestants.filter(
         (c) =>
           !game.episodes.some(
-            (e) => e.number < currentEpisode.number && e.eliminatedContestantIds.includes(c.id),
+            (e) => e.number <= currentEpisode.number && e.eliminatedContestantIds.includes(c.id),
           ),
       )
     : game.contestants

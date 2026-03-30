@@ -119,11 +119,13 @@ export default function LeaderboardPage() {
             className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Selecteer een kandidaat</option>
-            {game.contestants.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            {game.contestants
+              .filter((c) => !c.eliminatedInEpisode)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
           </select>
         </div>
       )}

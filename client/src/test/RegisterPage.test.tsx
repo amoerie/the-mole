@@ -134,4 +134,31 @@ describe('RegisterPage', () => {
     fireEvent.keyDown(confirm, { key: 'Enter' })
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
   })
+
+  it('does not redirect when adminBypass is true without an inviteCode', () => {
+    renderRegisterPage({ adminBypass: true })
+    expect(mockNavigate).not.toHaveBeenCalledWith('/join', expect.anything())
+    expect(screen.getByRole('button', { name: 'Account aanmaken' })).toBeInTheDocument()
+  })
+
+  it('redirects to /join when neither inviteCode nor adminBypass is provided', () => {
+    renderRegisterPage({})
+    expect(mockNavigate).toHaveBeenCalledWith('/join', { replace: true })
+  })
+
+  it('joins game and navigates to it after registration when gameId and inviteCode are in state', async () => {
+    vi.mocked(api.register).mockResolvedValueOnce({ userId: '1', displayName: 'Alice', roles: [] })
+    vi.mocked(api.joinGame).mockResolvedValueOnce(undefined)
+    renderRegisterPage({ inviteCode: 'CODE123', gameId: 'game-1', gameName: 'Testspel' })
+    expect(screen.getByText('Testspel')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('E-mailadres'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Naam'), { target: { value: 'Alice' } })
+    fireEvent.change(screen.getByLabelText('Wachtwoord'), { target: { value: 'secret' } })
+    fireEvent.change(screen.getByLabelText('Wachtwoord bevestigen'), {
+      target: { value: 'secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Account aanmaken' }))
+    await waitFor(() => expect(api.joinGame).toHaveBeenCalledWith('game-1', 'CODE123'))
+    expect(mockNavigate).toHaveBeenCalledWith('/game/game-1')
+  })
 })
