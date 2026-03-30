@@ -6,9 +6,20 @@ import GamePage from '../pages/GamePage'
 import type { UserInfo, Game, Ranking } from '../types'
 
 vi.mock('../components/EpisodeCard', () => ({
-  default: ({ onSubmit }: { onSubmit: (ids: string[]) => Promise<void> }) => (
+  default: ({
+    activeContestants,
+    onSubmit,
+  }: {
+    activeContestants: { id: string; name: string }[]
+    onSubmit: (ids: string[]) => Promise<void>
+  }) => (
     <div data-testid="episode-card">
       <button onClick={() => onSubmit(['c1', 'c2'])}>Submit ranking</button>
+      {activeContestants.map((c) => (
+        <span key={c.id} data-testid="active-contestant">
+          {c.name}
+        </span>
+      ))}
     </div>
   ),
 }))
@@ -96,6 +107,15 @@ const mockGame: Game = {
 const mockGameWithEpisode: Game = {
   ...mockGame,
   episodes: [{ number: 1, deadline: futureDeadline, eliminatedContestantIds: [] }],
+}
+
+const mockGameWithEliminatedContestant: Game = {
+  ...mockGame,
+  contestants: [
+    { id: 'c1', name: 'Alice', age: 30, photoUrl: '' },
+    { id: 'c2', name: 'Bob', age: 25, photoUrl: '', eliminatedInEpisode: 1 },
+  ],
+  episodes: [{ number: 1, deadline: futureDeadline, eliminatedContestantIds: ['c2'] }],
 }
 
 const emptyRankings: Ranking[] = []
@@ -212,6 +232,15 @@ describe('GamePage', () => {
     screen.getByText('Reveal mole').click()
     await waitFor(() => expect(api.revealMole).toHaveBeenCalledWith('game-1', 'c1'))
     expect(api.getGame).toHaveBeenCalledTimes(2)
+  })
+
+  it('excludes contestants eliminated in the current episode from the ranking board', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameWithEliminatedContestant)
+    renderWithAuth(mockUser)
+    await screen.findByTestId('episode-card')
+    const activeNames = screen.getAllByTestId('active-contestant').map((el) => el.textContent)
+    expect(activeNames).toContain('Alice')
+    expect(activeNames).not.toContain('Bob')
   })
 
   it('shows mole revealed alert when moleContestantId is set', async () => {
