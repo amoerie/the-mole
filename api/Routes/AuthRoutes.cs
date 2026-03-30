@@ -284,7 +284,8 @@ public static class AuthRoutes
         );
         await ctx.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity)
+            new ClaimsPrincipal(identity),
+            new AuthenticationProperties { IsPersistent = true }
         );
     }
 
