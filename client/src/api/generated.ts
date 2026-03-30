@@ -30,6 +30,15 @@ export interface AdminUserResponse {
   isAdmin: boolean
 }
 
+export interface ContestantStats {
+  contestantId: string
+  name: string
+  /** @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$ */
+  avgRank: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  rankingCount: number | string
+}
+
 export interface CreateEpisodeRequest {
   deadline: string
   /** @nullable */
@@ -60,6 +69,12 @@ export interface EpisodeScore {
   rankGiven?: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   totalContestants?: number | string
+}
+
+export interface EpisodeStats {
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  episodeNumber: number | string
+  stats: ContestantStats[]
 }
 
 export interface ForgotPasswordRequest {
@@ -940,6 +955,30 @@ export const getGamePlayers = async (
   options?: RequestInit,
 ): Promise<getGamePlayersResponse> => {
   return fetcher<getGamePlayersResponse>(getGetGamePlayersUrl(gameId), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type getSuspectStatsResponse200 = {
+  data: EpisodeStats[]
+  status: 200
+}
+
+export type getSuspectStatsResponseSuccess = getSuspectStatsResponse200 & {
+  headers: Headers
+}
+export type getSuspectStatsResponse = getSuspectStatsResponseSuccess
+
+export const getGetSuspectStatsUrl = (gameId: string) => {
+  return `/api/games/${gameId}/suspect-stats`
+}
+
+export const getSuspectStats = async (
+  gameId: string,
+  options?: RequestInit,
+): Promise<getSuspectStatsResponse> => {
+  return fetcher<getSuspectStatsResponse>(getGetSuspectStatsUrl(gameId), {
     ...options,
     method: 'GET',
   })

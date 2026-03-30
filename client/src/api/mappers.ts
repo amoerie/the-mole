@@ -10,8 +10,10 @@
 import type {
   AdminUserResponse as RawAdminUser,
   Contestant as RawContestant,
+  ContestantStats as RawContestantStats,
   Episode as RawEpisode,
   EpisodeScore as RawEpisodeScore,
+  EpisodeStats as RawEpisodeStats,
   Game as RawGame,
   LeaderboardEntry as RawLeaderboardEntry,
   Message as RawMessage,
@@ -23,8 +25,10 @@ import type {
 import type {
   AdminUser,
   Contestant,
+  ContestantStat,
   Episode,
   EpisodeScore,
+  EpisodeStat,
   Game,
   GameMessage,
   GamePlayer,
@@ -136,5 +140,21 @@ export function mapRanking(raw: RawRanking): Ranking {
     userId: raw.userId ?? '',
     contestantIds: raw.contestantIds ?? [],
     submittedAt: raw.submittedAt ?? '',
+  }
+}
+
+function mapContestantStat(raw: RawContestantStats): ContestantStat {
+  return {
+    contestantId: raw.contestantId,
+    name: raw.name,
+    avgRank: Number(raw.avgRank),
+    rankingCount: Number(raw.rankingCount),
+  }
+}
+
+export function mapEpisodeStat(raw: RawEpisodeStats): EpisodeStat {
+  return {
+    episodeNumber: Number(raw.episodeNumber),
+    stats: raw.stats.map(mapContestantStat),
   }
 }

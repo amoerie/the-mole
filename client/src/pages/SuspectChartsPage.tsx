@@ -112,7 +112,7 @@ export default function SuspectChartsPage() {
                     {episode.stats.map((entry, index) => (
                       <Cell
                         key={entry.contestantId}
-                        fill={rankColor(index + 1, episode.stats.length)}
+                        fill={rankColor(episode.stats.length - index, episode.stats.length)}
                       />
                     ))}
                   </Bar>
