@@ -79,7 +79,7 @@ Before opening a pull request, run the coverage commands for both backend and fr
 ### Frontend (React/Vite)
 - **Run tests:** `npm run test` (in `client/`)
 - **Check coverage:** `npm run test:coverage` (in `client/`)
-- **Thresholds:** Configured in `client/vite.config.ts` (80% for lines, functions, and branches).
+- **Thresholds:** Configured in `client/vite.config.ts` (80% for lines, statements, functions, and branches).
 - **Exclusions:** `client/src/api/generated.ts` is excluded from coverage as it is auto-generated.
 
 ## 📖 OpenAPI & Client Generation
