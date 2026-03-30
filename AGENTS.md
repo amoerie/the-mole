@@ -55,7 +55,7 @@ Scores are calculated after the mole is revealed. Each episode is worth 0–100 
 ### Frontend Unit/Component Tests (`client/src/test/`)
 - Use **Vitest** + **React Testing Library**.
 - Mock the API: `vi.mock('../api/client', ...)` to isolate component logic.
-- Use `renderWithAuth` (custom helper) to provide the necessary context.
+- Provide auth/context wrappers in your test setup (many tests define a local `renderWithAuth` helper in the test file to do this).
 - Assert using `screen.getByText`, `expect(...).toBeInTheDocument()`, etc.
 - Use `fireEvent` or `userEvent` to simulate interactions.
 
