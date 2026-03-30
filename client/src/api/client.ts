@@ -48,10 +48,12 @@ import {
   mapRanking,
   mapUserInfo,
 } from './mappers'
+import { fetcher } from './fetcher'
 import type {
   AdminUser,
   Game,
   GameMessage,
+  GamePlayer,
   MessagesPage,
   LeaderboardEntry,
   NewContestant,
@@ -64,6 +66,7 @@ export type {
   AdminUser,
   Game,
   GameMessage,
+  GamePlayer,
   MessagesPage,
   LeaderboardEntry,
   NewContestant,
@@ -250,5 +253,12 @@ export const api = {
 
   async markMessagesRead(gameId: string): Promise<void> {
     await _markMessagesRead(gameId)
+  },
+
+  async getGamePlayers(gameId: string): Promise<GamePlayer[]> {
+    const result = await fetcher<{ data: GamePlayer[] }>(`/api/games/${gameId}/players`, {
+      method: 'GET',
+    })
+    return result.data ?? []
   },
 }
