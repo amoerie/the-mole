@@ -101,7 +101,6 @@ export interface EpisodeStat {
   stats: ContestantStat[]
 }
 
-
 export interface AdminUser {
   id: string
   email: string
