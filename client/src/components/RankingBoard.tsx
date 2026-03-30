@@ -91,7 +91,14 @@ export default function RankingBoard({
   disabled,
 }: RankingBoardProps) {
   const [orderedIds, setOrderedIds] = useState<string[]>(() => {
-    if (initialOrder?.length) return initialOrder
+    const activeIds = new Set(contestants.map((c) => c.id))
+    if (initialOrder?.length) {
+      // Keep only IDs still active, then append any new active contestants not yet ranked
+      const filtered = initialOrder.filter((id) => activeIds.has(id))
+      const ranked = new Set(filtered)
+      const unranked = contestants.map((c) => c.id).filter((id) => !ranked.has(id))
+      return [...filtered, ...unranked]
+    }
     return contestants.map((c) => c.id)
   })
 

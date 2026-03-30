@@ -118,4 +118,33 @@ describe('RankingBoard', () => {
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.queryByText('ghost-id')).not.toBeInTheDocument()
   })
+
+  it('excludes eliminated contestants from onChange when initialOrder contains stale IDs', () => {
+    // initialOrder has 3 IDs but contestants only has 2 — '2' (Bob) was eliminated
+    const activeContestants = contestants.filter((c) => c.id !== '2')
+    const onChange = vi.fn()
+    render(
+      <RankingBoard
+        contestants={activeContestants}
+        initialOrder={['1', '2', '3']}
+        onChange={onChange}
+      />,
+    )
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '1' }, over: { id: '3' } } as DragEndEvent)
+    })
+    // Submitted IDs must not include the eliminated contestant '2'
+    expect(onChange).toHaveBeenCalledWith(['3', '1'])
+  })
+
+  it('appends contestants missing from initialOrder to the end', () => {
+    // initialOrder only has '1' and '2' — '3' (Charlie) was added after the ranking was saved
+    const onChange = vi.fn()
+    render(<RankingBoard contestants={contestants} initialOrder={['2', '1']} onChange={onChange} />)
+    act(() => {
+      capturedOnDragEnd!({ active: { id: '2' }, over: { id: '1' } } as DragEndEvent)
+    })
+    // '3' should be appended; drag moved '2' after '1'
+    expect(onChange).toHaveBeenCalledWith(['1', '2', '3'])
+  })
 })
