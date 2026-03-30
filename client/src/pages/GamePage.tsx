@@ -221,9 +221,6 @@ export default function GamePage() {
         </CardContent>
       </Card>
 
-      {user && <MessageBoard gameId={game.id} />}
-      {user && <GroupMembers game={game} />}
-
       {currentEpisode && !game.moleContestantId && (
         <EpisodeCard
           episode={currentEpisode}
@@ -238,6 +235,9 @@ export default function GamePage() {
       {!currentEpisode && !game.moleContestantId && (
         <p className="text-sm text-muted-foreground">Nog geen aflevering gestart.</p>
       )}
+
+      {user && <MessageBoard gameId={game.id} />}
+      {user && <GroupMembers game={game} />}
 
       {isAdmin && (
         <>
