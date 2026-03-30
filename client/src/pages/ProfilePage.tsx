@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
-import { passwordlessClient } from '../lib/passwordless'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -30,10 +29,6 @@ export default function ProfilePage() {
   const [nameLoading, setNameLoading] = useState(false)
   const [nameError, setNameError] = useState('')
   const [nameSuccess, setNameSuccess] = useState(false)
-
-  const [passkeyLoading, setPasskeyLoading] = useState(false)
-  const [passkeyError, setPasskeyError] = useState('')
-  const [passkeySuccess, setPasskeySuccess] = useState(false)
 
   const {
     data: games,
@@ -63,22 +58,6 @@ export default function ProfilePage() {
       setNameError(err instanceof Error ? err.message : 'Opslaan mislukt.')
     } finally {
       setNameLoading(false)
-    }
-  }
-
-  async function handleResetPasskey() {
-    setPasskeyLoading(true)
-    setPasskeyError('')
-    setPasskeySuccess(false)
-    try {
-      const { token, email } = await api.resetPasskey()
-      const result = await passwordlessClient.register(token, email)
-      if (result.error) throw new Error(result.error.title)
-      setPasskeySuccess(true)
-    } catch (err) {
-      setPasskeyError(err instanceof Error ? err.message : 'Passkey aanmaken mislukt.')
-    } finally {
-      setPasskeyLoading(false)
     }
   }
 
@@ -187,43 +166,6 @@ export default function ProfilePage() {
               </div>
             )}
           </CardContent>
-        </Card>
-
-        {/* Passkey */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle>Passkey</CardTitle>
-            <CardDescription>
-              Vervang je huidige passkey door een nieuwe. Je wordt gevraagd een nieuwe passkey aan
-              te maken in je browser.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 pt-0">
-            {passkeyError && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{passkeyError}</AlertDescription>
-              </Alert>
-            )}
-            {passkeySuccess && (
-              <Alert>
-                <CheckCircle2 className="size-4" />
-                <AlertDescription>Nieuwe passkey aangemaakt.</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" onClick={handleResetPasskey} disabled={passkeyLoading}>
-              {passkeyLoading ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Bezig...
-                </>
-              ) : (
-                'Passkey opnieuw instellen'
-              )}
-            </Button>
-          </CardFooter>
         </Card>
       </div>
     </div>
