@@ -16,9 +16,11 @@ builder
     .Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
+        options.Cookie.Name = "__Host-Mollenjagers";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.Path = "/";
         options.ExpireTimeSpan = TimeSpan.FromDays(365);
         options.SlidingExpiration = true;
         options.Events.OnRedirectToLogin = ctx =>
