@@ -15,6 +15,8 @@ const SEASON_14_CONTESTANTS = [
   { name: 'Maxim', age: 26, photoUrl: '/contestants/maxim.png' },
   { name: 'Julie', age: 26, photoUrl: '/contestants/julie.png' },
   { name: 'Kristof', age: 40, photoUrl: '/contestants/kristof.png' },
+  { name: 'Yana', age: 33, photoUrl: '/contestants/yana.png' },
+  { name: 'Yannis', age: 36, photoUrl: '/contestants/yannis.png' },
 ]
 
 interface Props {
