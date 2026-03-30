@@ -36,9 +36,12 @@ import {
   updateProfile as _updateProfile,
 } from './generated'
 import { mapAdminUser, mapGame, mapLeaderboardEntry, mapRanking, mapUserInfo } from './mappers'
+import { fetcher } from './fetcher'
 import type {
   AdminUser,
   Game,
+  GameMessage,
+  MessagesPage,
   LeaderboardEntry,
   NewContestant,
   PlayerRanking,
@@ -46,7 +49,17 @@ import type {
   UserInfo,
 } from '../types'
 
-export type { AdminUser, Game, LeaderboardEntry, NewContestant, PlayerRanking, Ranking, UserInfo }
+export type {
+  AdminUser,
+  Game,
+  GameMessage,
+  MessagesPage,
+  LeaderboardEntry,
+  NewContestant,
+  PlayerRanking,
+  Ranking,
+  UserInfo,
+}
 
 export const api = {
   // Admin
@@ -207,5 +220,21 @@ export const api = {
   async getWhatIfLeaderboard(gameId: string, contestantId: string): Promise<LeaderboardEntry[]> {
     const { data } = await _getWhatIfLeaderboard(gameId, contestantId)
     return (data ?? []).map(mapLeaderboardEntry)
+  },
+
+  async getMessages(gameId: string, skip = 0): Promise<MessagesPage> {
+    const result = await fetcher<{ data: MessagesPage }>(
+      `/api/games/${gameId}/messages?skip=${skip}`,
+      { method: 'GET' },
+    )
+    return result.data ?? { items: [], hasMore: false }
+  },
+
+  async postMessage(gameId: string, content: string): Promise<GameMessage> {
+    const result = await fetcher<{ data: GameMessage }>(`/api/games/${gameId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    })
+    return result.data!
   },
 }

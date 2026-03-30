@@ -87,6 +87,15 @@ builder.Services.AddRateLimiter(options =>
                 window: TimeSpan.FromMinutes(1)
             )
     );
+    options.AddPolicy(
+        "postMessage",
+        ctx =>
+            FixedWindow(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                permitLimit: 30,
+                window: TimeSpan.FromMinutes(1)
+            )
+    );
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
@@ -169,6 +178,7 @@ app.MapGameRoutes();
 app.MapEpisodeRoutes();
 app.MapRankingRoutes();
 app.MapLeaderboardRoutes();
+app.MapMessageRoutes();
 app.MapAdminRoutes();
 app.MapConfigRoutes();
 
