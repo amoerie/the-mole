@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Game, GameMessage } from '../types'
@@ -34,8 +34,6 @@ export default function MessageBoardPage() {
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     if (!gameId) return
     Promise.all([api.getGame(gameId), api.getMessages(gameId, 0)])
@@ -47,10 +45,6 @@ export default function MessageBoardPage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Fout bij laden'))
       .finally(() => setLoading(false))
   }, [gameId])
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   async function loadMore() {
     if (!gameId) return
@@ -131,14 +125,6 @@ export default function MessageBoardPage() {
 
       <Card>
         <CardContent className="p-4 flex flex-col gap-3 min-h-48 max-h-[28rem] overflow-y-auto">
-          {hasMore && (
-            <div className="flex justify-center">
-              <Button variant="ghost" size="sm" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? 'Laden...' : 'Laad meer berichten'}
-              </Button>
-            </div>
-          )}
-
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center my-auto">
               Nog geen berichten. Wees de eerste!
@@ -164,7 +150,14 @@ export default function MessageBoardPage() {
               )
             })
           )}
-          <div ref={bottomRef} />
+
+          {hasMore && (
+            <div className="flex justify-center pt-1">
+              <Button variant="ghost" size="sm" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? 'Laden...' : 'Laad oudere berichten'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

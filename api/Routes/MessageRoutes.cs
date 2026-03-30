@@ -40,7 +40,7 @@ public static class MessageRoutes
                             .Where(m => m.GameId == gameId)
                             .ToListAsync()
                     )
-                        .OrderBy(m => m.PostedAt)
+                        .OrderByDescending(m => m.PostedAt)
                         .Skip(normalizedSkip)
                         .Take(PageSize + 1)
                         .ToList();

@@ -24,9 +24,6 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 import { api } from '../api/client'
 
-// jsdom doesn't implement scrollIntoView
-Element.prototype.scrollIntoView = vi.fn()
-
 const mockGame: Game = {
   id: 'game-1',
   name: 'Testspel',
@@ -123,32 +120,32 @@ describe('MessageBoardPage', () => {
     expect(screen.queryByText('Alice')).not.toBeInTheDocument()
   })
 
-  it('shows "load more" button when hasMore is true', async () => {
+  it('shows "load older" button when hasMore is true', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     vi.mocked(api.getMessages).mockResolvedValue({ items: [mockMsg], hasMore: true })
     renderPage()
-    expect(await screen.findByText('Laad meer berichten')).toBeInTheDocument()
+    expect(await screen.findByText('Laad oudere berichten')).toBeInTheDocument()
   })
 
-  it('does not show "load more" when hasMore is false', async () => {
+  it('does not show "load older" when hasMore is false', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     vi.mocked(api.getMessages).mockResolvedValue({ items: [mockMsg], hasMore: false })
     renderPage()
     await screen.findByText('Hallo!')
-    expect(screen.queryByText('Laad meer berichten')).not.toBeInTheDocument()
+    expect(screen.queryByText('Laad oudere berichten')).not.toBeInTheDocument()
   })
 
-  it('loads more messages when "load more" is clicked', async () => {
-    const newMsg: GameMessage = { ...mockMsg, id: 'msg-3', content: 'Nieuw bericht' }
+  it('loads older messages when "load older" is clicked', async () => {
+    const olderMsg: GameMessage = { ...mockMsg, id: 'msg-3', content: 'Oud bericht' }
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     vi.mocked(api.getMessages)
       .mockResolvedValueOnce({ items: [mockMsg], hasMore: true })
-      .mockResolvedValueOnce({ items: [newMsg], hasMore: false })
+      .mockResolvedValueOnce({ items: [olderMsg], hasMore: false })
     renderPage()
-    await screen.findByText('Laad meer berichten')
-    await userEvent.click(screen.getByText('Laad meer berichten'))
-    await waitFor(() => expect(screen.getByText('Nieuw bericht')).toBeInTheDocument())
-    expect(screen.queryByText('Laad meer berichten')).not.toBeInTheDocument()
+    await screen.findByText('Laad oudere berichten')
+    await userEvent.click(screen.getByText('Laad oudere berichten'))
+    await waitFor(() => expect(screen.getByText('Oud bericht')).toBeInTheDocument())
+    expect(screen.queryByText('Laad oudere berichten')).not.toBeInTheDocument()
   })
 
   it('submits a new message and appends it to the list', async () => {

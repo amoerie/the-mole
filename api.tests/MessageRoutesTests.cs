@@ -152,8 +152,9 @@ public sealed class MessageRoutesTests : IClassFixture<CustomWebApplicationFacto
         Assert.NotNull(body);
         var items = body!.RootElement.GetProperty("items");
         Assert.Equal(2, items.GetArrayLength());
-        Assert.Equal("First", items[0].GetProperty("content").GetString());
-        Assert.Equal("Second", items[1].GetProperty("content").GetString());
+        // Descending order: most recent first
+        Assert.Equal("Second", items[0].GetProperty("content").GetString());
+        Assert.Equal("First", items[1].GetProperty("content").GetString());
     }
 
     [Fact]
