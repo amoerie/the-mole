@@ -6,6 +6,7 @@ import type { Game, PlayerRanking, Ranking } from '../types'
 import ContestantCard from '../components/ContestantCard'
 import EpisodeCard from '../components/EpisodeCard'
 import MessageBoard from '../components/MessageBoard'
+import GroupMembers from '../components/GroupMembers'
 import AdminContestantManager from '../components/AdminContestantManager'
 import AdminEpisodeManager from '../components/AdminEpisodeManager'
 import { Button } from '../components/ui/button'
@@ -221,6 +222,7 @@ export default function GamePage() {
       </Card>
 
       {user && <MessageBoard gameId={game.id} />}
+      {user && <GroupMembers game={game} />}
 
       {currentEpisode && !game.moleContestantId && (
         <EpisodeCard
