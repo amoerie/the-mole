@@ -9,7 +9,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { Skeleton } from '../components/ui/skeleton'
 import { Separator } from '../components/ui/separator'
-import { AlertCircle, ChevronRight, Gamepad2, Users } from 'lucide-react'
+import { AlertCircle, ChevronRight, Gamepad2, Trash2, Users } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../components/ui/alert-dialog'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -66,6 +77,23 @@ export default function HomePage() {
       navigate('/join')
     }
   }, [loading, user, navigate])
+
+  async function handleDeleteGame(gameId: string) {
+    setError('')
+    try {
+      await api.deleteGame(gameId)
+      setGames((prev) => prev.filter((g) => g.id !== gameId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fout bij verwijderen')
+      return
+    }
+    try {
+      const ids = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[]
+      localStorage.setItem('myGameIds', JSON.stringify(ids.filter((id) => id !== gameId)))
+    } catch {
+      // localStorage errors don't affect the deletion result
+    }
+  }
 
   async function handleCreateGame() {
     if (!gameName.trim()) return
@@ -172,23 +200,56 @@ export default function HomePage() {
         ) : (
           <div className="flex flex-col gap-2">
             {games.map((game) => (
-              <button
-                key={game.id}
-                className="flex items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-                onClick={() => navigate(`/game/${game.id}`)}
-              >
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">{game.name}</span>
-                  <span className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Users className="size-3" />
-                      {game.contestants.length} kandidaten
+              <div key={game.id} className="flex items-center gap-2">
+                <button
+                  className="flex flex-1 items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => navigate(`/game/${game.id}`)}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">{game.name}</span>
+                    <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Users className="size-3" />
+                        {game.contestants.length} kandidaten
+                      </span>
+                      <span>{game.episodes.length} afleveringen</span>
                     </span>
-                    <span>{game.episodes.length} afleveringen</span>
-                  </span>
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </button>
+                  </div>
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </button>
+                {user && game.adminUserId === user.userId && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Spel verwijderen"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Spel verwijderen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Dit verwijdert <strong>{game.name}</strong> inclusief alle spelers en
+                          ranglijsten. Dit kan niet ongedaan worden gemaakt.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleDeleteGame(game.id)}
+                        >
+                          Verwijderen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             ))}
           </div>
         )}
