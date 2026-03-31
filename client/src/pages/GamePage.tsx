@@ -246,7 +246,7 @@ export default function GamePage() {
                 {game.contestants.length} kandidaten · {displayEliminatedIds.size} afgevallen
               </CardDescription>
             </div>
-            {latestEliminatedIds.size > 0 && (
+            {currentEpisode && (
               <Button variant="ghost" size="sm" onClick={toggleSpoilerFreeMode} className="-mt-1">
                 {spoilerFreeMode ? (
                   <>

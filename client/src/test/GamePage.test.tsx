@@ -394,7 +394,7 @@ describe('GamePage - spoiler-free mode', () => {
     expect(await screen.findByRole('button', { name: /spoilervrij/i })).toBeInTheDocument()
   })
 
-  it('does not show spoiler-free toggle when latest episode has no eliminations', async () => {
+  it('still shows spoiler-free toggle when latest episode has no eliminations', async () => {
     const gameNoLatestElim = {
       ...mockGameTwoEpisodes,
       episodes: [
@@ -403,6 +403,12 @@ describe('GamePage - spoiler-free mode', () => {
       ],
     }
     vi.mocked(api.getGame).mockResolvedValue(gameNoLatestElim)
+    renderWithAuth(mockUser)
+    expect(await screen.findByRole('button', { name: /spoilervrij/i })).toBeInTheDocument()
+  })
+
+  it('does not show spoiler-free toggle when no episodes exist', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
     renderWithAuth(mockUser)
     await screen.findByText('Testspel')
     expect(screen.queryByRole('button', { name: /spoilervrij/i })).not.toBeInTheDocument()
