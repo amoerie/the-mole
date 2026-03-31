@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Separator } from '../components/ui/separator'
-import { AlertCircle, BarChart2, Trophy } from 'lucide-react'
+import { AlertCircle, BarChart2, Eye, EyeOff, Trophy } from 'lucide-react'
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -26,6 +26,7 @@ export default function GamePage() {
   const [episodeRankings, setEpisodeRankings] = useState<PlayerRanking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [spoilerFreeMode, setSpoilerFreeMode] = useState(true)
 
   const loadGame = useCallback(async () => {
     if (!gameId) return
@@ -55,6 +56,42 @@ export default function GamePage() {
   useEffect(() => {
     loadGame()
   }, [loadGame])
+
+  useEffect(() => {
+    if (!gameId || !game) return
+    const key = `spoilerFree_${gameId}`
+    const stored = localStorage.getItem(key)
+    if (!stored) {
+      setSpoilerFreeMode(true)
+      return
+    }
+    try {
+      const { disabledForEpisodeCount } = JSON.parse(stored) as { disabledForEpisodeCount: number }
+      if (disabledForEpisodeCount === game.episodes.length) {
+        setSpoilerFreeMode(false)
+      } else {
+        setSpoilerFreeMode(true)
+        localStorage.removeItem(key)
+      }
+    } catch {
+      setSpoilerFreeMode(true)
+      localStorage.removeItem(key)
+    }
+  }, [gameId, game])
+
+  function toggleSpoilerFreeMode() {
+    if (!gameId || !game) return
+    const next = !spoilerFreeMode
+    setSpoilerFreeMode(next)
+    if (!next) {
+      localStorage.setItem(
+        `spoilerFree_${gameId}`,
+        JSON.stringify({ disabledForEpisodeCount: game.episodes.length }),
+      )
+    } else {
+      localStorage.removeItem(`spoilerFree_${gameId}`)
+    }
+  }
 
   if (loading) {
     return (
@@ -88,7 +125,11 @@ export default function GamePage() {
 
   const isAdmin = user?.roles.includes('admin') ?? false
   const currentEpisode = game.episodes.length > 0 ? game.episodes[game.episodes.length - 1] : null
-  const eliminatedIds = new Set(game.episodes.flatMap((e) => e.eliminatedContestantIds))
+  const allEliminatedIds = new Set(game.episodes.flatMap((e) => e.eliminatedContestantIds))
+  const latestEliminatedIds = new Set(currentEpisode?.eliminatedContestantIds ?? [])
+  const displayEliminatedIds = spoilerFreeMode
+    ? new Set([...allEliminatedIds].filter((id) => !latestEliminatedIds.has(id)))
+    : allEliminatedIds
   const activeContestants = currentEpisode
     ? game.contestants.filter(
         (c) =>
@@ -211,10 +252,29 @@ export default function GamePage() {
 
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle>Kandidaten</CardTitle>
-          <CardDescription>
-            {game.contestants.length} kandidaten · {eliminatedIds.size} afgevallen
-          </CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle>Kandidaten</CardTitle>
+              <CardDescription>
+                {game.contestants.length} kandidaten · {displayEliminatedIds.size} afgevallen
+              </CardDescription>
+            </div>
+            {currentEpisode && (
+              <Button variant="ghost" size="sm" onClick={toggleSpoilerFreeMode} className="-mt-1">
+                {spoilerFreeMode ? (
+                  <>
+                    <EyeOff className="size-4" />
+                    Spoilervrij
+                  </>
+                ) : (
+                  <>
+                    <Eye className="size-4" />
+                    Spoilers zichtbaar
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {game.contestants.length === 0 ? (
@@ -222,7 +282,11 @@ export default function GamePage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {game.contestants.map((c) => (
-                <ContestantCard key={c.id} contestant={c} eliminated={eliminatedIds.has(c.id)} />
+                <ContestantCard
+                  key={c.id}
+                  contestant={c}
+                  eliminated={displayEliminatedIds.has(c.id)}
+                />
               ))}
             </div>
           )}
