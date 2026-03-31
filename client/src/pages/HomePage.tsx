@@ -83,10 +83,15 @@ export default function HomePage() {
     try {
       await api.deleteGame(gameId)
       setGames((prev) => prev.filter((g) => g.id !== gameId))
-      const ids = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[]
-      localStorage.setItem('myGameIds', JSON.stringify(ids.filter((id) => id !== gameId)))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fout bij verwijderen')
+      return
+    }
+    try {
+      const ids = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[]
+      localStorage.setItem('myGameIds', JSON.stringify(ids.filter((id) => id !== gameId)))
+    } catch {
+      // localStorage errors don't affect the deletion result
     }
   }
 
