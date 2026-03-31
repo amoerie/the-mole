@@ -59,10 +59,23 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!gameId || !game) return
-    const stored = localStorage.getItem(`spoilerFree_${gameId}`)
-    if (stored) {
+    const key = `spoilerFree_${gameId}`
+    const stored = localStorage.getItem(key)
+    if (!stored) {
+      setSpoilerFreeMode(true)
+      return
+    }
+    try {
       const { disabledForEpisodeCount } = JSON.parse(stored) as { disabledForEpisodeCount: number }
-      setSpoilerFreeMode(disabledForEpisodeCount !== game.episodes.length)
+      if (disabledForEpisodeCount === game.episodes.length) {
+        setSpoilerFreeMode(false)
+      } else {
+        setSpoilerFreeMode(true)
+        localStorage.removeItem(key)
+      }
+    } catch {
+      setSpoilerFreeMode(true)
+      localStorage.removeItem(key)
     }
   }, [gameId, game])
 

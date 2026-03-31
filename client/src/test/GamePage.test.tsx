@@ -471,6 +471,23 @@ describe('GamePage - spoiler-free mode', () => {
     expect(await screen.findByText(/2 afgevallen/)).toBeInTheDocument()
   })
 
+  it('treats malformed localStorage value as spoiler-free enabled and removes the key', async () => {
+    localStorage.setItem('spoilerFree_game-1', 'not-valid-json')
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    const { container } = renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    expect(container.querySelectorAll('.eliminated')).toHaveLength(1)
+    expect(localStorage.getItem('spoilerFree_game-1')).toBeNull()
+  })
+
+  it('clears stale localStorage entry on auto-reset', async () => {
+    localStorage.setItem('spoilerFree_game-1', JSON.stringify({ disabledForEpisodeCount: 1 }))
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    expect(localStorage.getItem('spoilerFree_game-1')).toBeNull()
+  })
+
   it('removes localStorage entry when re-enabling spoiler-free mode', async () => {
     localStorage.setItem('spoilerFree_game-1', JSON.stringify({ disabledForEpisodeCount: 2 }))
     vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
