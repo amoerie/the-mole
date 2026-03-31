@@ -7,11 +7,20 @@ afterEach(() => {
 })
 
 describe('Footer', () => {
-  it('renders nothing when no env vars are set', () => {
+  it('renders nothing when no env vars are set and not in dev mode', () => {
     vi.stubEnv('VITE_BUILD_DATE', '')
     vi.stubEnv('VITE_COMMIT_SHA', '')
+    vi.stubEnv('DEV', false)
     const { container } = render(<Footer />)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('renders "dev" label in dev mode when no env vars are set', () => {
+    vi.stubEnv('VITE_BUILD_DATE', '')
+    vi.stubEnv('VITE_COMMIT_SHA', '')
+    vi.stubEnv('DEV', true)
+    render(<Footer />)
+    expect(screen.getByText('dev')).toBeInTheDocument()
   })
 
   it('renders the short commit SHA when only VITE_COMMIT_SHA is set', () => {
