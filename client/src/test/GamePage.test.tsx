@@ -359,3 +359,118 @@ describe('GamePage', () => {
     await waitFor(() => expect(api.getEpisodeRankings).toHaveBeenCalledWith('game-1', 1))
   })
 })
+
+describe('GamePage - spoiler-free mode', () => {
+  const pastDeadline = new Date(Date.now() - 1000).toISOString()
+
+  // c3 eliminated in ep1 (old news), c4 eliminated in ep2 (latest = spoiler)
+  const mockGameTwoEpisodes: Game = {
+    id: 'game-1',
+    name: 'Testspel',
+    inviteCode: 'ABC123',
+    adminUserId: 'admin-1',
+    contestants: [
+      { id: 'c1', name: 'Alice', age: 30, photoUrl: '' },
+      { id: 'c2', name: 'Bob', age: 25, photoUrl: '' },
+      { id: 'c3', name: 'Carol', age: 28, photoUrl: '' },
+      { id: 'c4', name: 'Dave', age: 32, photoUrl: '' },
+    ],
+    episodes: [
+      { number: 1, deadline: pastDeadline, eliminatedContestantIds: ['c3'] },
+      { number: 2, deadline: futureDeadline, eliminatedContestantIds: ['c4'] },
+    ],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(api.getMyRankings).mockResolvedValue(emptyRankings)
+    vi.mocked(api.getEpisodeRankings).mockResolvedValue([])
+    localStorage.clear()
+  })
+
+  it('shows spoiler-free toggle button when latest episode has eliminations', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    renderWithAuth(mockUser)
+    expect(await screen.findByRole('button', { name: /spoilervrij/i })).toBeInTheDocument()
+  })
+
+  it('does not show spoiler-free toggle when latest episode has no eliminations', async () => {
+    const gameNoLatestElim = {
+      ...mockGameTwoEpisodes,
+      episodes: [
+        { number: 1, deadline: pastDeadline, eliminatedContestantIds: ['c3'] },
+        { number: 2, deadline: futureDeadline, eliminatedContestantIds: [] },
+      ],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(gameNoLatestElim)
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    expect(screen.queryByRole('button', { name: /spoilervrij/i })).not.toBeInTheDocument()
+  })
+
+  it('hides eliminated style for latest episode contestant by default (spoiler-free on)', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    const { container } = renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    const eliminatedCards = container.querySelectorAll('.eliminated')
+    expect(eliminatedCards).toHaveLength(1)
+    expect(eliminatedCards[0]).toHaveTextContent('Carol')
+  })
+
+  it('shows all eliminated contestants after disabling spoiler-free mode', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    const { container } = renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    screen.getByRole('button', { name: /spoilervrij/i }).click()
+    await waitFor(() => expect(container.querySelectorAll('.eliminated')).toHaveLength(2))
+  })
+
+  it('saves disabled state to localStorage with current episode count', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    screen.getByRole('button', { name: /spoilervrij/i }).click()
+    const stored = JSON.parse(localStorage.getItem('spoilerFree_game-1') ?? '{}')
+    expect(stored.disabledForEpisodeCount).toBe(2)
+  })
+
+  it('restores disabled state from localStorage when episode count matches', async () => {
+    localStorage.setItem('spoilerFree_game-1', JSON.stringify({ disabledForEpisodeCount: 2 }))
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    const { container } = renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilers zichtbaar/i })
+    expect(container.querySelectorAll('.eliminated')).toHaveLength(2)
+  })
+
+  it('resets to spoiler-free mode when a new episode has been added since last visit', async () => {
+    localStorage.setItem('spoilerFree_game-1', JSON.stringify({ disabledForEpisodeCount: 1 }))
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    const { container } = renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    expect(container.querySelectorAll('.eliminated')).toHaveLength(1)
+  })
+
+  it('shows reduced eliminated count in spoiler-free mode', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    expect(screen.getByText(/1 afgevallen/)).toBeInTheDocument()
+  })
+
+  it('shows full eliminated count after disabling spoiler-free mode', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilervrij/i })
+    screen.getByRole('button', { name: /spoilervrij/i }).click()
+    expect(await screen.findByText(/2 afgevallen/)).toBeInTheDocument()
+  })
+
+  it('removes localStorage entry when re-enabling spoiler-free mode', async () => {
+    localStorage.setItem('spoilerFree_game-1', JSON.stringify({ disabledForEpisodeCount: 2 }))
+    vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
+    renderWithAuth(mockUser)
+    await screen.findByRole('button', { name: /spoilers zichtbaar/i })
+    screen.getByRole('button', { name: /spoilers zichtbaar/i }).click()
+    expect(localStorage.getItem('spoilerFree_game-1')).toBeNull()
+  })
+})
