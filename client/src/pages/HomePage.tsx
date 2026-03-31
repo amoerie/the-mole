@@ -218,6 +218,7 @@ export default function HomePage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Spel verwijderen"
                         className="shrink-0 text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="size-4" />

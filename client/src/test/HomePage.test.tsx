@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../hooks/useAuth'
@@ -14,6 +14,7 @@ vi.mock('../api/client', () => ({
     getGame: vi.fn(),
     getGameByInvite: vi.fn(),
     joinGame: vi.fn(),
+    deleteGame: vi.fn(),
   },
 }))
 
@@ -195,5 +196,66 @@ describe('HomePage', () => {
     const gameButton = await screen.findByText('Testspel')
     fireEvent.click(gameButton)
     expect(mockNavigate).toHaveBeenCalledWith('/game/game-1')
+  })
+
+  it('shows delete button only for games the user owns', async () => {
+    const ownedGame = { ...mockGame, id: 'game-own', adminUserId: 'user-123' }
+    const otherGame = {
+      ...mockGame,
+      id: 'game-other',
+      name: 'Anderspel',
+      adminUserId: 'other-user',
+    }
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([ownedGame, otherGame])
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    // one delete button for owned game, none for the other
+    const deleteButtons = screen.getAllByRole('button', { name: /spel verwijderen/i })
+    expect(deleteButtons).toHaveLength(1)
+  })
+
+  it('shows confirmation dialog when delete button is clicked', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    fireEvent.click(screen.getByRole('button', { name: /spel verwijderen/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText('Spel verwijderen?')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Testspel/)).toBeInTheDocument()
+  })
+
+  it('deletes game and removes it from list on confirmation', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    vi.mocked(api.deleteGame).mockResolvedValueOnce(undefined)
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    fireEvent.click(screen.getByRole('button', { name: /spel verwijderen/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByText('Verwijderen'))
+    await waitFor(() => expect(screen.queryByText('Testspel')).not.toBeInTheDocument())
+    expect(api.deleteGame).toHaveBeenCalledWith('game-1')
+  })
+
+  it('keeps game in list when deletion is cancelled', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    fireEvent.click(screen.getByRole('button', { name: /spel verwijderen/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByText('Annuleren'))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByText('Testspel')).toBeInTheDocument()
+    expect(api.deleteGame).not.toHaveBeenCalled()
+  })
+
+  it('shows error when delete fails', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    vi.mocked(api.deleteGame).mockRejectedValueOnce(new Error('Verwijderen mislukt'))
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    fireEvent.click(screen.getByRole('button', { name: /spel verwijderen/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByText('Verwijderen'))
+    expect(await screen.findByText('Verwijderen mislukt')).toBeInTheDocument()
   })
 })
