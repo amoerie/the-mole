@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services;
 
-public sealed class ReminderEmailBackgroundService(
+public sealed partial class ReminderEmailBackgroundService(
     IServiceScopeFactory scopeFactory,
     IConfiguration config,
     ILogger<ReminderEmailBackgroundService> logger
 ) : BackgroundService
 {
+    private readonly ILogger<ReminderEmailBackgroundService> _logger = logger;
+
     // In-memory guard: the date (in Brussels time) on which reminders were last sent.
     // Prevents double-sending if the service restarts within the send window.
     private DateOnly? _lastSentDate;
@@ -19,8 +21,6 @@ public sealed class ReminderEmailBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Align with the next 30-minute mark before entering the loop so the
-        // first tick happens at a predictable time.
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
@@ -31,7 +31,7 @@ public sealed class ReminderEmailBackgroundService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error while sending ranking reminder emails");
+                LogSendError(ex);
             }
         }
     }
@@ -51,14 +51,11 @@ public sealed class ReminderEmailBackgroundService(
 
         if (_lastSentDate == todayBelgium)
         {
-            logger.LogDebug(
-                "Ranking reminders already sent today ({Date}), skipping",
-                todayBelgium
-            );
+            LogAlreadySent(todayBelgium);
             return;
         }
 
-        logger.LogInformation("Sending Sunday ranking reminders ({Date})", todayBelgium);
+        LogStartingSend(todayBelgium);
 
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -84,7 +81,7 @@ public sealed class ReminderEmailBackgroundService(
 
         if (openGames.Count == 0)
         {
-            logger.LogDebug("No open episodes found, skipping reminders");
+            LogNoOpenEpisodes();
             return;
         }
 
@@ -115,7 +112,7 @@ public sealed class ReminderEmailBackgroundService(
 
         if (remindersByUser.Count == 0)
         {
-            logger.LogInformation("All players have submitted rankings, no reminders needed");
+            LogAllSubmitted();
             _lastSentDate = todayBelgium;
             return;
         }
@@ -149,19 +146,15 @@ public sealed class ReminderEmailBackgroundService(
                     gameLinks
                 );
                 sent++;
-                logger.LogDebug(
-                    "Sent ranking reminder to {UserId} for {Count} game(s)",
-                    user.Id,
-                    gameLinks.Count
-                );
+                LogReminderSent(user.Id, gameLinks.Count);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to send ranking reminder to {UserId}", user.Id);
+                LogReminderFailed(ex, user.Id);
             }
         }
 
-        logger.LogInformation("Sent {Count} ranking reminder email(s)", sent);
+        LogSendComplete(sent);
         _lastSentDate = todayBelgium;
     }
 
@@ -178,4 +171,43 @@ public sealed class ReminderEmailBackgroundService(
         }
         return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error while sending ranking reminder emails")]
+    private partial void LogSendError(Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Ranking reminders already sent today ({Date}), skipping"
+    )]
+    private partial void LogAlreadySent(DateOnly date);
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Sending Sunday ranking reminders ({Date})"
+    )]
+    private partial void LogStartingSend(DateOnly date);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "No open episodes found, skipping reminders")]
+    private partial void LogNoOpenEpisodes();
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "All players have submitted rankings, no reminders needed"
+    )]
+    private partial void LogAllSubmitted();
+
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Sent ranking reminder to {UserId} for {Count} game(s)"
+    )]
+    private partial void LogReminderSent(string userId, int count);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to send ranking reminder to {UserId}")]
+    private partial void LogReminderFailed(Exception ex, string userId);
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Sent {Count} ranking reminder email(s)"
+    )]
+    private partial void LogSendComplete(int count);
 }
