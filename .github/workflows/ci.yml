@@ -45,11 +45,7 @@ jobs:
           --configuration Release --no-build --verbosity normal
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
-          --
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*]*.Migrations.*"
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Threshold=80
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdType=line
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdStat=Total
+          --settings coverage.runsettings
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
