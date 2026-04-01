@@ -137,7 +137,7 @@ builder.Services.AddOpenApi(
         options.AddDocumentTransformer(
             (document, _, _) =>
             {
-                document.Info.Title = "De Mol API";
+                document.Info.Title = "Mollenjagers API";
                 document.Info.Version = "v1";
                 document.Servers = [new() { Url = "/" }];
                 return Task.CompletedTask;

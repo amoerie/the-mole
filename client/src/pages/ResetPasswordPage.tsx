@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="flex w-full max-w-md flex-col gap-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">🕵️ De Mol</h1>
+          <h1 className="text-3xl font-bold tracking-tight">🕵️ Mollenjagers</h1>
           <p className="mt-2 text-sm text-muted-foreground">Nieuw wachtwoord instellen</p>
         </div>
         <Card>

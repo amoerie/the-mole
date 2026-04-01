@@ -32,7 +32,7 @@ public sealed class MailerSendEmailService(
         var text =
             $"Hallo {displayName},\n\nKlik op de volgende link om je wachtwoord te herstellen:\n\n{resetUrl}\n\nDeze link is 24 uur geldig.";
 
-        await SendAsync(toEmail, "Wachtwoord herstellen — De Mol", text, html);
+        await SendAsync(toEmail, "Wachtwoord herstellen — Mollenjagers", text, html);
     }
 
     public async Task SendRankingReminderAsync(
@@ -90,7 +90,7 @@ public sealed class MailerSendEmailService(
         var text =
             $"Hallo {displayName},\n\nJe hebt nog geen rangschikking ingediend voor de huidige aflevering in:\n\n{gameLines}\n\nJe kunt meldingen uitschakelen via {baseUrl}/profile.";
 
-        await SendAsync(toEmail, "Vergeet je rangschikking niet — De Mol", text, html);
+        await SendAsync(toEmail, "Vergeet je rangschikking niet — Mollenjagers", text, html);
     }
 
     private static string BuildEmailHtml(string baseUrl, string bodyContent) =>
@@ -111,7 +111,7 @@ public sealed class MailerSendEmailService(
                         <td style="background-color:#141414;border:1px solid #2a2a2a;border-bottom:none;border-radius:8px 8px 0 0;padding:20px 24px;text-align:center;">
                           <img src="{baseUrl}/favicon.ico" alt="" width="20" height="20"
                                style="vertical-align:middle;margin-right:8px;display:inline-block;">
-                          <span style="font-size:18px;font-weight:700;color:#00ff41;letter-spacing:0.08em;vertical-align:middle;">DE MOL</span>
+                          <span style="font-size:18px;font-weight:700;color:#00ff41;letter-spacing:0.08em;vertical-align:middle;">MOLLENJAGERS</span>
                         </td>
                       </tr>
                       <!-- Body -->
@@ -124,7 +124,7 @@ public sealed class MailerSendEmailService(
                       <tr>
                         <td style="background-color:#0f0f0f;border:1px solid #2a2a2a;border-top:none;border-radius:0 0 8px 8px;padding:14px 24px;text-align:center;">
                           <p style="margin:0;font-size:12px;color:#555;">
-                            © De Mol · <a href="{baseUrl}" style="color:#555;text-decoration:none;">{baseUrl}</a>
+                            © Mollenjagers · <a href="{baseUrl}" style="color:#555;text-decoration:none;">{baseUrl}</a>
                           </p>
                         </td>
                       </tr>
@@ -146,7 +146,7 @@ public sealed class MailerSendEmailService(
     {
         var apiKey = config["MailerSend:ApiKey"] ?? "";
         var fromEmail = config["MailerSend:FromEmail"] ?? "";
-        var fromName = config["MailerSend:FromName"] ?? "De Mol";
+        var fromName = config["MailerSend:FromName"] ?? "Mollenjagers";
 
         var body = new
         {
