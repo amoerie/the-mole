@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-title De Mol - Local Dev
+title Mollenjagers - Local Dev
 
 echo.
 echo  ==========================================
-echo   De Mol - Local Development Environment
+echo   Mollenjagers - Local Development Environment
 echo  ==========================================
 echo.
 
@@ -61,13 +61,7 @@ echo  ==========================================
 echo   Frontend: http://localhost:5173
 echo   API:      http://localhost:5000
 echo.
-echo   Login:    http://localhost:5173/auth/login/github
 echo   API me:   http://localhost:5000/api/me
-echo.
-echo   Set GitHub OAuth credentials in:
-echo   api\appsettings.Development.json
-echo   or as environment variables:
-echo     GitHub__ClientId and GitHub__ClientSecret
 echo  ==========================================
 echo.
 echo  Starting API in this window...
@@ -76,10 +70,10 @@ echo.
 echo  Press Ctrl+C to stop.
 echo.
 
-start "De Mol - Frontend (Vite)" cmd /k "cd /d "%~dp0client" && npm run dev"
+start "Mollenjagers - Frontend (Vite)" cmd /k "cd /d "%~dp0client" && npm run dev"
 
 cd /d "%~dp0"
-dotnet watch run --project api/Api.csproj
+dotnet watch run --project api/Api.csproj --non-interactive
 
 endlocal
 
