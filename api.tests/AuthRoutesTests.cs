@@ -578,4 +578,139 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
             TestAuthHandler.Roles = ["authenticated", "admin"];
         }
     }
+
+    // ── GetPreferences ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetPreferences_WhenAuthenticated_ReturnsReminderEmailsEnabled()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("pass"),
+                    ReminderEmailsEnabled = true,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/api/me/preferences");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.True(body!.RootElement.GetProperty("reminderEmailsEnabled").GetBoolean());
+    }
+
+    [Fact]
+    public async Task GetPreferences_WhenNotAuthenticated_ReturnsUnauthorized()
+    {
+        PrepareDb();
+        TestAuthHandler.IsAuthenticated = false;
+        try
+        {
+            var client = CreateClient();
+
+            var response = await client.GetAsync("/api/me/preferences");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.IsAuthenticated = true;
+            TestAuthHandler.Roles = ["authenticated", "admin"];
+        }
+    }
+
+    // ── UpdatePreferences ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdatePreferences_DisablesReminders()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("pass"),
+                    ReminderEmailsEnabled = true,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PatchAsJsonAsync(
+            "/api/me/preferences",
+            new { reminderEmailsEnabled = false }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        Assert.False(body!.RootElement.GetProperty("reminderEmailsEnabled").GetBoolean());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.AppUsers.FindAsync("test-user-id");
+        Assert.False(user!.ReminderEmailsEnabled);
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_ReEnablesReminders()
+    {
+        PrepareDb(db =>
+        {
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "alice@test.com",
+                    DisplayName = "Alice",
+                    PasswordHash = PasswordHelper.Hash("pass"),
+                    ReminderEmailsEnabled = false,
+                }
+            );
+        });
+        var client = CreateClient();
+
+        var response = await client.PatchAsJsonAsync(
+            "/api/me/preferences",
+            new { reminderEmailsEnabled = true }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.True(body!.RootElement.GetProperty("reminderEmailsEnabled").GetBoolean());
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_WhenNotAuthenticated_ReturnsUnauthorized()
+    {
+        PrepareDb();
+        TestAuthHandler.IsAuthenticated = false;
+        try
+        {
+            var client = CreateClient();
+
+            var response = await client.PatchAsJsonAsync(
+                "/api/me/preferences",
+                new { reminderEmailsEnabled = false }
+            );
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.IsAuthenticated = true;
+            TestAuthHandler.Roles = ["authenticated", "admin"];
+        }
+    }
 }

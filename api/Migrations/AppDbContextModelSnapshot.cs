@@ -44,7 +44,6 @@ namespace Api.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("ReminderEmailsEnabled")
-                        .ValueGeneratedOnAdd()
                         .HasDefaultValue(true)
                         .HasColumnType("INTEGER");
 
