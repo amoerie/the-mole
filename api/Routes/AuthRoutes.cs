@@ -135,7 +135,11 @@ public static class AuthRoutes
 
                         var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
                         var resetUrl = $"{baseUrl}/reset-password?token={token}";
-                        await emailService.SendPasswordResetAsync(user.Email, resetUrl);
+                        await emailService.SendPasswordResetAsync(
+                            user.Email,
+                            user.DisplayName,
+                            resetUrl
+                        );
                     }
 
                     return Results.Ok(
