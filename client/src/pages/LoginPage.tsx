@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/button'
@@ -24,12 +24,20 @@ export default function LoginPage() {
   const { setUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
 
   const { inviteCode, gameId, gameName } = (location.state ?? {}) as {
     inviteCode?: string
     gameId?: string
     gameName?: string
   }
+
+  // ?redirect=/some/path — only same-origin paths are accepted
+  const redirectParam = searchParams.get('redirect')
+  const safeRedirect =
+    redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+      ? redirectParam
+      : null
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -44,6 +52,8 @@ export default function LoginPage() {
       if (gameId && inviteCode) {
         await api.joinGame(gameId, inviteCode)
         navigate(`/game/${gameId}`)
+      } else if (safeRedirect) {
+        navigate(safeRedirect)
       } else {
         navigate('/')
       }
