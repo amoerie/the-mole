@@ -1,11 +1,9 @@
-using Api.Data;
-using Microsoft.EntityFrameworkCore;
-
 namespace Api.Services;
 
 public sealed partial class ReminderEmailBackgroundService(
     IServiceScopeFactory scopeFactory,
     IConfiguration config,
+    TimeProvider timeProvider,
     ILogger<ReminderEmailBackgroundService> logger
 ) : BackgroundService
 {
@@ -21,7 +19,7 @@ public sealed partial class ReminderEmailBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30));
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30), timeProvider);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
@@ -36,7 +34,7 @@ public sealed partial class ReminderEmailBackgroundService(
         }
     }
 
-    private async Task TrySendRemindersAsync(CancellationToken ct)
+    internal async Task TrySendRemindersAsync(CancellationToken ct)
     {
         var belgiumTime = GetBelgiumTime();
         var todayBelgium = DateOnly.FromDateTime(belgiumTime);
@@ -58,99 +56,35 @@ public sealed partial class ReminderEmailBackgroundService(
         LogStartingSend(todayBelgium);
 
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var query = scope.ServiceProvider.GetRequiredService<IPendingReminderQuery>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
         var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
-        var now = DateTimeOffset.UtcNow;
 
-        // Load all games that have at least one open episode (deadline in the future).
-        var games = await db.Games.Include(g => g.Episodes).ToListAsync(ct);
+        var recipients = await query.GetPendingRecipientsAsync(baseUrl, ct);
 
-        var openGames = games
-            .Select(g => new
-            {
-                g.Id,
-                g.Name,
-                OpenEpisode = g
-                    .Episodes.Where(e => e.Deadline > now)
-                    .OrderBy(e => e.Number)
-                    .FirstOrDefault(),
-            })
-            .Where(g => g.OpenEpisode != null)
-            .ToList();
-
-        if (openGames.Count == 0)
-        {
-            LogNoOpenEpisodes();
-            return;
-        }
-
-        var openGameIds = openGames.Select(g => g.Id).ToList();
-
-        // For each open game, find players who haven't submitted a ranking yet.
-        var submittedByGameAndUser = await db
-            .Rankings.Where(r =>
-                openGameIds.Contains(r.GameId)
-                && openGames
-                    .Where(g => g.Id == r.GameId)
-                    .Select(g => g.OpenEpisode!.Number)
-                    .Contains(r.EpisodeNumber)
-            )
-            .Select(r => new { r.GameId, r.UserId })
-            .ToListAsync(ct);
-
-        var submittedSet = submittedByGameAndUser.Select(x => (x.GameId, x.UserId)).ToHashSet();
-
-        // Load all players in open games.
-        var players = await db.Players.Where(p => openGameIds.Contains(p.GameId)).ToListAsync(ct);
-
-        // Group by user — collect games where they're missing a ranking.
-        var remindersByUser = players
-            .Where(p => !submittedSet.Contains((p.GameId, p.UserId)))
-            .GroupBy(p => p.UserId)
-            .ToDictionary(g => g.Key, g => g.Select(p => p.GameId).ToList());
-
-        if (remindersByUser.Count == 0)
+        if (recipients.Count == 0)
         {
             LogAllSubmitted();
             _lastSentDate = todayBelgium;
             return;
         }
 
-        // Load user details for those who need reminders and have opted in.
-        var userIds = remindersByUser.Keys.ToList();
-        var users = await db
-            .AppUsers.Where(u => userIds.Contains(u.Id) && u.ReminderEmailsEnabled)
-            .ToListAsync(ct);
-
         int sent = 0;
-        foreach (var user in users)
+        foreach (var recipient in recipients)
         {
-            if (!remindersByUser.TryGetValue(user.Id, out var missingGameIds))
-                continue;
-
-            var gameLinks = missingGameIds
-                .Select(gid => openGames.FirstOrDefault(g => g.Id == gid))
-                .Where(g => g != null)
-                .Select(g => (g!.Name, $"{baseUrl}/login?redirect=/game/{g.Id}"))
-                .ToList();
-
-            if (gameLinks.Count == 0)
-                continue;
-
             try
             {
                 await emailService.SendRankingReminderAsync(
-                    user.Email,
-                    user.DisplayName,
-                    gameLinks
+                    recipient.Email,
+                    recipient.DisplayName,
+                    recipient.Games
                 );
                 sent++;
-                LogReminderSent(user.Id, gameLinks.Count);
+                LogReminderSent(recipient.Email, recipient.Games.Count);
             }
             catch (Exception ex)
             {
-                LogReminderFailed(ex, user.Id);
+                LogReminderFailed(ex, recipient.Email);
             }
         }
 
@@ -158,7 +92,7 @@ public sealed partial class ReminderEmailBackgroundService(
         _lastSentDate = todayBelgium;
     }
 
-    private static DateTime GetBelgiumTime()
+    private DateTime GetBelgiumTime()
     {
         TimeZoneInfo tz;
         try
@@ -169,7 +103,7 @@ public sealed partial class ReminderEmailBackgroundService(
         {
             tz = TimeZoneInfo.FindSystemTimeZoneById("Romance Standard Time");
         }
-        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+        return TimeZoneInfo.ConvertTimeFromUtc(timeProvider.GetUtcNow().UtcDateTime, tz);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error while sending ranking reminder emails")]
@@ -198,12 +132,12 @@ public sealed partial class ReminderEmailBackgroundService(
 
     [LoggerMessage(
         Level = LogLevel.Debug,
-        Message = "Sent ranking reminder to {UserId} for {Count} game(s)"
+        Message = "Sent ranking reminder to {Email} for {Count} game(s)"
     )]
-    private partial void LogReminderSent(string userId, int count);
+    private partial void LogReminderSent(string email, int count);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to send ranking reminder to {UserId}")]
-    private partial void LogReminderFailed(Exception ex, string userId);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to send ranking reminder to {Email}")]
+    private partial void LogReminderFailed(Exception ex, string email);
 
     [LoggerMessage(
         Level = LogLevel.Information,
