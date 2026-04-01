@@ -115,6 +115,7 @@ builder
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IEmailService, MailerSendEmailService>();
+builder.Services.AddHostedService<ReminderEmailBackgroundService>();
 
 if (builder.Environment.IsDevelopment())
 {
