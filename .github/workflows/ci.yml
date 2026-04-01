@@ -31,13 +31,13 @@ jobs:
         run: dotnet restore api/Api.csproj
 
       - name: Build API
-        run: dotnet build api/Api.csproj --configuration Release --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
+        run: dotnet build api/Api.csproj --configuration Release --no-restore
 
       - name: Restore Tests
         run: dotnet restore api.tests/Api.Tests.csproj
 
       - name: Build Tests
-        run: dotnet build api.tests/Api.Tests.csproj --configuration Release --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
+        run: dotnet build api.tests/Api.Tests.csproj --configuration Release --no-restore
 
       - name: Run Unit Tests
         run: >
