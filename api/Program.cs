@@ -117,7 +117,8 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IEmailService, MailerSendEmailService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IPendingReminderQuery, PendingReminderQuery>();
-builder.Services.AddHostedService<ReminderEmailBackgroundService>();
+if (!builder.Environment.IsEnvironment("Test"))
+    builder.Services.AddHostedService<ReminderEmailBackgroundService>();
 
 if (builder.Environment.IsDevelopment())
 {

@@ -64,13 +64,15 @@ public sealed class PendingReminderQuery(AppDbContext db) : IPendingReminderQuer
             .AppUsers.Where(u => userIds.Contains(u.Id) && u.ReminderEmailsEnabled)
             .ToListAsync(ct);
 
+        var openGameById = openGames.ToDictionary(g => g.Id);
+
         return users
             .Select(user =>
             {
                 var gameLinks = missingByUser[user.Id]
-                    .Select(gid => openGames.FirstOrDefault(g => g.Id == gid))
-                    .Where(g => g != null)
-                    .Select(g => (g!.Name, $"{baseUrl}/login?redirect=/game/{g.Id}"))
+                    .Where(gid => openGameById.ContainsKey(gid))
+                    .Select(gid => openGameById[gid])
+                    .Select(g => (g.Name, $"{baseUrl}/login?redirect=/game/{g.Id}"))
                     .ToList<(string GameName, string GameUrl)>();
 
                 return new ReminderRecipient(user.Email, user.DisplayName, gameLinks);

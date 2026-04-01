@@ -1,3 +1,7 @@
+using Api.Data;
+using Api.Models;
+using Microsoft.EntityFrameworkCore;
+
 namespace Api.Services;
 
 public sealed partial class ReminderEmailBackgroundService(
@@ -9,9 +13,11 @@ public sealed partial class ReminderEmailBackgroundService(
 {
     private readonly ILogger<ReminderEmailBackgroundService> _logger = logger;
 
-    // In-memory guard: the date (in Brussels time) on which reminders were last sent.
-    // Prevents double-sending if the service restarts within the send window.
+    // In-process cache: avoids DB round-trips for repeated timer ticks within the same window.
+    // The authoritative record is persisted in AppSettings so it survives process restarts.
     private DateOnly? _lastSentDate;
+
+    private const string LastSentKey = "ReminderEmail:LastSentDate";
 
     // Send window: Sunday, 08:00–10:00 Brussels time.
     private static readonly TimeOnly WindowStart = new(8, 0);
@@ -47,15 +53,30 @@ public sealed partial class ReminderEmailBackgroundService(
         )
             return;
 
+        // Fast in-process check before hitting the DB.
         if (_lastSentDate == todayBelgium)
         {
             LogAlreadySent(todayBelgium);
             return;
         }
 
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Durable check: also compare against the persisted date so restarts within the window don't re-send.
+        var setting = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == LastSentKey, ct);
+        var persistedDate =
+            setting != null && DateOnly.TryParse(setting.Value, out var d) ? d : (DateOnly?)null;
+
+        if (persistedDate == todayBelgium)
+        {
+            _lastSentDate = todayBelgium; // sync in-process cache
+            LogAlreadySent(todayBelgium);
+            return;
+        }
+
         LogStartingSend(todayBelgium);
 
-        using var scope = scopeFactory.CreateScope();
         var query = scope.ServiceProvider.GetRequiredService<IPendingReminderQuery>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
         var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
@@ -64,8 +85,8 @@ public sealed partial class ReminderEmailBackgroundService(
 
         if (recipients.Count == 0)
         {
-            LogAllSubmitted();
-            _lastSentDate = todayBelgium;
+            LogNoRemindersNeeded();
+            await PersistLastSentDateAsync(db, setting, todayBelgium, ct);
             return;
         }
 
@@ -89,7 +110,29 @@ public sealed partial class ReminderEmailBackgroundService(
         }
 
         LogSendComplete(sent);
-        _lastSentDate = todayBelgium;
+        await PersistLastSentDateAsync(db, setting, todayBelgium, ct);
+    }
+
+    private async Task PersistLastSentDateAsync(
+        AppDbContext db,
+        AppSetting? existing,
+        DateOnly date,
+        CancellationToken ct
+    )
+    {
+        if (existing == null)
+            db.AppSettings.Add(
+                new AppSetting
+                {
+                    Key = LastSentKey,
+                    Value = date.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                }
+            );
+        else
+            existing.Value = date.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+
+        await db.SaveChangesAsync(ct);
+        _lastSentDate = date;
     }
 
     private DateTime GetBelgiumTime()
@@ -121,14 +164,8 @@ public sealed partial class ReminderEmailBackgroundService(
     )]
     private partial void LogStartingSend(DateOnly date);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "No open episodes found, skipping reminders")]
-    private partial void LogNoOpenEpisodes();
-
-    [LoggerMessage(
-        Level = LogLevel.Information,
-        Message = "All players have submitted rankings, no reminders needed"
-    )]
-    private partial void LogAllSubmitted();
+    [LoggerMessage(Level = LogLevel.Debug, Message = "No pending reminders to send")]
+    private partial void LogNoRemindersNeeded();
 
     [LoggerMessage(
         Level = LogLevel.Debug,
