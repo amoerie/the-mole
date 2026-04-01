@@ -5,6 +5,7 @@ namespace Api.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<Game> Games => Set<Game>();
     public DbSet<Player> Players => Set<Player>();
     public DbSet<Ranking> Rankings => Set<Ranking>();
@@ -15,6 +16,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AppSetting>(entity =>
+        {
+            entity.HasKey(s => s.Key);
+        });
+
         modelBuilder.Entity<AppUser>(entity =>
         {
             entity.HasIndex(u => u.Email).IsUnique();
