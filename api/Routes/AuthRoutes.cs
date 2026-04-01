@@ -236,6 +236,49 @@ public static class AuthRoutes
             .WithTags("Auth")
             .Produces<UserInfo>();
 
+        app.MapGet(
+                "/api/me/preferences",
+                async (HttpContext ctx, AppDbContext db) =>
+                {
+                    var userInfo = AuthHelper.GetUserInfo(ctx);
+                    if (userInfo == null)
+                        return Results.Unauthorized();
+
+                    var user = await db.AppUsers.FindAsync(userInfo.UserId);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    return Results.Ok(new UserPreferences(user.ReminderEmailsEnabled));
+                }
+            )
+            .WithName("GetPreferences")
+            .WithTags("Auth")
+            .RequireAuthorization()
+            .Produces<UserPreferences>();
+
+        app.MapPatch(
+                "/api/me/preferences",
+                async (HttpContext ctx, AppDbContext db, UpdatePreferencesRequest req) =>
+                {
+                    var userInfo = AuthHelper.GetUserInfo(ctx);
+                    if (userInfo == null)
+                        return Results.Unauthorized();
+
+                    var user = await db.AppUsers.FindAsync(userInfo.UserId);
+                    if (user == null)
+                        return Results.Unauthorized();
+
+                    user.ReminderEmailsEnabled = req.ReminderEmailsEnabled;
+                    await db.SaveChangesAsync();
+
+                    return Results.Ok(new UserPreferences(user.ReminderEmailsEnabled));
+                }
+            )
+            .WithName("UpdatePreferences")
+            .WithTags("Auth")
+            .RequireAuthorization()
+            .Produces<UserPreferences>();
+
         app.MapPatch(
                 "/api/me",
                 async (HttpContext ctx, AppDbContext db, UpdateProfileRequest req) =>
@@ -307,6 +350,10 @@ public static class AuthRoutes
     private sealed record ResetPasswordRequest(string Token, string NewPassword);
 
     private sealed record UpdateProfileRequest(string DisplayName);
+
+    private sealed record UserPreferences(bool ReminderEmailsEnabled);
+
+    private sealed record UpdatePreferencesRequest(bool ReminderEmailsEnabled);
 
     private sealed record MessageResponse(string Message);
 }
