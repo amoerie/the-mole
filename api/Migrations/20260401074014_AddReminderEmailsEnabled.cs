@@ -15,15 +15,14 @@ namespace Api.Migrations
                 table: "AppUsers",
                 type: "INTEGER",
                 nullable: false,
-                defaultValue: true);
+                defaultValue: true
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ReminderEmailsEnabled",
-                table: "AppUsers");
+            migrationBuilder.DropColumn(name: "ReminderEmailsEnabled", table: "AppUsers");
         }
     }
 }
