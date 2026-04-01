@@ -35,10 +35,12 @@ export default function ProfilePage() {
   const [nameSuccess, setNameSuccess] = useState(false)
 
   const [prefsLoading, setPrefsLoading] = useState(false)
-  const [prefsError, setPrefsError] = useState('')
-  const { data: preferences, loading: prefsInitLoading } = useQuery<Preferences>(() =>
-    api.getPreferences(),
-  )
+  const [prefsSaveError, setPrefsSaveError] = useState('')
+  const {
+    data: preferences,
+    loading: prefsInitLoading,
+    error: prefsLoadError,
+  } = useQuery<Preferences>(user ? () => api.getPreferences() : null)
   const [reminderEnabled, setReminderEnabled] = useState<boolean | null>(null)
 
   const {
@@ -57,14 +59,14 @@ export default function ProfilePage() {
 
   async function handleToggleReminder(enabled: boolean) {
     setReminderEnabled(enabled)
-    setPrefsError('')
+    setPrefsSaveError('')
     setPrefsLoading(true)
     try {
       const updated = await api.updatePreferences(enabled)
       setReminderEnabled(updated.reminderEmailsEnabled)
     } catch {
       setReminderEnabled(!enabled) // rollback
-      setPrefsError('Opslaan mislukt. Probeer het opnieuw.')
+      setPrefsSaveError('Opslaan mislukt. Probeer het opnieuw.')
     } finally {
       setPrefsLoading(false)
     }
@@ -162,13 +164,20 @@ export default function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            {prefsError && (
+            {prefsSaveError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="size-4" />
-                <AlertDescription>{prefsError}</AlertDescription>
+                <AlertDescription>{prefsSaveError}</AlertDescription>
               </Alert>
             )}
-            {prefsInitLoading ? (
+            {prefsLoadError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>
+                  Kon voorkeuren niet laden. Probeer de pagina te vernieuwen.
+                </AlertDescription>
+              </Alert>
+            ) : prefsInitLoading ? (
               <Skeleton className="h-8 w-48" />
             ) : (
               <label className="flex cursor-pointer items-center gap-3">
