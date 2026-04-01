@@ -9,6 +9,8 @@
  * Re-run `npm run generate` after changing the API, then fix any mapper errors.
  */
 import {
+  getPreferences as _getPreferences,
+  updatePreferences as _updatePreferences,
   addContestants as _addContestants,
   createEpisode as _createEpisode,
   deleteEpisode as _deleteEpisode,
@@ -101,6 +103,18 @@ export const api = {
   async updateProfile(displayName: string): Promise<UserInfo> {
     const { data } = await _updateProfile({ displayName })
     return mapUserInfo(data!)
+  },
+
+  async getPreferences(): Promise<{ reminderEmailsEnabled: boolean }> {
+    const { data } = await _getPreferences()
+    return { reminderEmailsEnabled: data!.reminderEmailsEnabled }
+  },
+
+  async updatePreferences(
+    reminderEmailsEnabled: boolean,
+  ): Promise<{ reminderEmailsEnabled: boolean }> {
+    const { data } = await _updatePreferences({ reminderEmailsEnabled })
+    return { reminderEmailsEnabled: data!.reminderEmailsEnabled }
   },
 
   async login(email: string, password: string): Promise<UserInfo> {

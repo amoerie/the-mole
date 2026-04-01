@@ -370,6 +370,61 @@ export const getMe = async (options?: RequestInit): Promise<getMeResponse> => {
   })
 }
 
+export interface UserPreferences {
+  reminderEmailsEnabled: boolean
+}
+
+export interface UpdatePreferencesRequest {
+  reminderEmailsEnabled: boolean
+}
+
+export type getPreferencesResponse200 = {
+  data: UserPreferences
+  status: 200
+}
+
+export type getPreferencesResponseSuccess = getPreferencesResponse200 & {
+  headers: Headers
+}
+export type getPreferencesResponse = getPreferencesResponseSuccess
+
+export const getGetPreferencesUrl = () => {
+  return `/api/me/preferences`
+}
+
+export const getPreferences = async (options?: RequestInit): Promise<getPreferencesResponse> => {
+  return fetcher<getPreferencesResponse>(getGetPreferencesUrl(), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type updatePreferencesResponse200 = {
+  data: UserPreferences
+  status: 200
+}
+
+export type updatePreferencesResponseSuccess = updatePreferencesResponse200 & {
+  headers: Headers
+}
+export type updatePreferencesResponse = updatePreferencesResponseSuccess
+
+export const getUpdatePreferencesUrl = () => {
+  return `/api/me/preferences`
+}
+
+export const updatePreferences = async (
+  updatePreferencesRequest: UpdatePreferencesRequest,
+  options?: RequestInit,
+): Promise<updatePreferencesResponse> => {
+  return fetcher<updatePreferencesResponse>(getUpdatePreferencesUrl(), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePreferencesRequest),
+  })
+}
+
 export type updateProfileResponse200 = {
   data: UserInfo
   status: 200

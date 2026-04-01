@@ -21,6 +21,10 @@ import { AlertCircle, CheckCircle2, Loader2, ArrowLeft, Gamepad2 } from 'lucide-
 import { useQuery } from '../hooks/useQuery'
 import type { Game } from '../types'
 
+interface Preferences {
+  reminderEmailsEnabled: boolean
+}
+
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
@@ -29,6 +33,13 @@ export default function ProfilePage() {
   const [nameLoading, setNameLoading] = useState(false)
   const [nameError, setNameError] = useState('')
   const [nameSuccess, setNameSuccess] = useState(false)
+
+  const [prefsLoading, setPrefsLoading] = useState(false)
+  const [prefsError, setPrefsError] = useState('')
+  const { data: preferences, loading: prefsInitLoading } = useQuery<Preferences>(() =>
+    api.getPreferences(),
+  )
+  const [reminderEnabled, setReminderEnabled] = useState<boolean | null>(null)
 
   const {
     data: games,
@@ -39,6 +50,24 @@ export default function ProfilePage() {
   if (!user) {
     navigate('/login')
     return null
+  }
+
+  // Keep local toggle state in sync with the fetched preferences
+  const currentReminderEnabled = reminderEnabled ?? preferences?.reminderEmailsEnabled ?? true
+
+  async function handleToggleReminder(enabled: boolean) {
+    setReminderEnabled(enabled)
+    setPrefsError('')
+    setPrefsLoading(true)
+    try {
+      const updated = await api.updatePreferences(enabled)
+      setReminderEnabled(updated.reminderEmailsEnabled)
+    } catch {
+      setReminderEnabled(!enabled) // rollback
+      setPrefsError('Opslaan mislukt. Probeer het opnieuw.')
+    } finally {
+      setPrefsLoading(false)
+    }
   }
 
   async function handleSaveName() {
@@ -121,6 +150,40 @@ export default function ProfilePage() {
               )}
             </Button>
           </CardFooter>
+        </Card>
+
+        {/* Email preferences */}
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle>E-mailmeldingen</CardTitle>
+            <CardDescription>
+              Ontvang elke zondagochtend een herinnering als je je rangschikking nog niet hebt
+              ingediend.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {prefsError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{prefsError}</AlertDescription>
+              </Alert>
+            )}
+            {prefsInitLoading ? (
+              <Skeleton className="h-8 w-48" />
+            ) : (
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={currentReminderEnabled}
+                  disabled={prefsLoading}
+                  onChange={(e) => handleToggleReminder(e.target.checked)}
+                  className="size-4 accent-primary"
+                />
+                <span className="text-sm">Zondagse herinneringsmail inschakelen</span>
+                {prefsLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+              </label>
+            )}
+          </CardContent>
         </Card>
 
         {/* Games */}
