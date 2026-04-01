@@ -13,7 +13,7 @@
           -->
           <Exclude>[*]*.Migrations.*;[Api]Program;[Api]Microsoft.AspNetCore.*;[Api]System.Runtime.*</Exclude>
           <Threshold>80</Threshold>
-          <ThresholdType>line</ThresholdType>
+          <ThresholdType>line,branch,method</ThresholdType>
           <ThresholdStat>Total</ThresholdStat>
         </Configuration>
       </DataCollector>

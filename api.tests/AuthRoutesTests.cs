@@ -713,4 +713,28 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
             TestAuthHandler.Roles = ["authenticated", "admin"];
         }
     }
+
+    [Fact]
+    public async Task UpdatePreferences_WithInvalidBody_ReturnsBadRequest()
+    {
+        PrepareDb(db =>
+            db.AppUsers.Add(
+                new AppUser
+                {
+                    Id = "test-user-id",
+                    Email = "user@test.com",
+                    DisplayName = "User",
+                    PasswordHash = "hash",
+                }
+            )
+        );
+        var client = CreateClient();
+
+        var response = await client.PatchAsync(
+            "/api/me/preferences",
+            new StringContent("not-valid-json", System.Text.Encoding.UTF8, "application/json")
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

@@ -16,7 +16,7 @@ Make transactional emails feel like a natural part of the app (dark spy aestheti
 
 - `IEmailService.SendPasswordResetAsync` gains a `displayName` parameter so the email can open with "Hallo {name},".
 - The HTML body is rebuilt with inline-CSS styling that mirrors the app's dark theme (`#0a0a0a` background, `#141414` card, `#00ff41` green accents, `#e0e0e0` body text).
-- The favicon (`{baseUrl}/favicon.ico`) is embedded as an `<img>` in the email header alongside the "DE MOL" brand name.
+- The favicon (`{baseUrl}/favicon.ico`) is embedded as an `<img>` in the email header alongside the "MOLLENJAGERS" brand name.
 - The call-to-action is a styled green button rather than a bare URL.
 - The `forgot-password` route passes `user.DisplayName` to the service.
 
@@ -34,7 +34,7 @@ On Sunday mornings (08:00–10:00 Brussels time), the background service sends o
 
 A user who plays in multiple games receives a **single** email listing all the games where a ranking is missing, each with a direct link to that game (`{baseUrl}/game/{gameId}`). Links are wrapped in a `/login?redirect=…` envelope so unauthenticated users land on the game page immediately after logging in.
 
-The service uses a `BackgroundService` with a 30-minute timer. It keeps the last-sent date in memory to guarantee at-most-one send per Sunday (safe for single-instance Fly.io deployments; a database-backed flag can be added later if needed).
+The service uses a `BackgroundService` with a 30-minute timer. It keeps the last-sent date in `AppSettings` (a persistent key-value store in the database) so that restarts within the send window do not cause duplicate sends. An in-process cache avoids unnecessary DB round-trips for repeated timer ticks.
 
 ### API
 
@@ -42,7 +42,7 @@ No new API endpoints — the background service runs entirely server-side.
 
 ### Email content (Dutch)
 
-- **Subject:** `Vergeet je rangschikking niet — De Mol`
+- **Subject:** `Vergeet je rangschikking niet — Mollenjagers`
 - Greeting with display name
 - One link per game with a missing ranking
 - Footer with link to `/profile` to manage notification preferences
@@ -89,7 +89,7 @@ Updates the current user's notification preferences.
 
 ### Frontend
 
-A new **"E-mailmeldingen"** card is added to `ProfilePage` below the display-name card. It contains a labelled toggle (shadcn/ui `Switch`) that reflects and updates `reminderEmailsEnabled`. The save is optimistic with error rollback.
+A new **"E-mailmeldingen"** card is added to `ProfilePage` below the display-name card. It contains a labelled native checkbox toggle that reflects and updates `reminderEmailsEnabled`. The save is optimistic with error rollback. If the initial preferences load fails an error message is shown and the toggle is hidden until the page is refreshed.
 
 ### Login redirect support
 
@@ -99,9 +99,9 @@ A new **"E-mailmeldingen"** card is added to `ProfilePage` below the display-nam
 
 ## Tests
 
-- **Backend:** Integration tests for `GET /api/me/preferences` (happy path, 401) and `PATCH /api/me/preferences` (happy path, 401, invalid input).
+- **Backend:** Integration tests for `GET /api/me/preferences` (happy path, 401), `PATCH /api/me/preferences` (happy path, 401, invalid body).
 - **Frontend:** Vitest + Testing Library tests for the preferences toggle (render, toggle, save, error).
 
 ## Coverage
 
-Both backend and frontend new code must maintain the project's 80% line/function/branch/statement threshold.
+Both backend and frontend new code must maintain the project's 80% line/branch/method threshold (enforced via `coverage.runsettings`).

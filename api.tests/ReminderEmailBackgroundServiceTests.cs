@@ -1,13 +1,36 @@
+using Api.Data;
 using Api.Services;
 using Api.Tests.Helpers;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Api.Tests;
 
-public sealed class ReminderEmailBackgroundServiceTests
+public sealed class ReminderEmailBackgroundServiceTests : IDisposable
 {
+    private readonly SqliteConnection _connection;
+
+    public ReminderEmailBackgroundServiceTests()
+    {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
+        // Create schema once; all AppDbContext instances in this test share the same connection.
+        using var db = OpenDb();
+        db.Database.EnsureCreated();
+    }
+
+    public void Dispose()
+    {
+        _connection.Dispose();
+    }
+
+    private AppDbContext OpenDb() =>
+        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+
     // Sunday April 5, 2026 — Brussels is CEST (UTC+2)
     // 09:00 Brussels = 07:00 UTC  → inside window
     // 07:59 Brussels = 05:59 UTC  → before window
@@ -45,7 +68,7 @@ public sealed class ReminderEmailBackgroundServiceTests
         [("Game 1", "https://example.com/login?redirect=/game/game-1")]
     );
 
-    private static ReminderEmailBackgroundService CreateService(
+    private ReminderEmailBackgroundService CreateService(
         DateTimeOffset utcNow,
         FakePendingReminderQuery? query = null,
         IEmailService? emailService = null
@@ -55,6 +78,7 @@ public sealed class ReminderEmailBackgroundServiceTests
         emailService ??= new FakeEmailService();
 
         var services = new ServiceCollection();
+        services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
         services.AddScoped<IPendingReminderQuery>(_ => query);
         services.AddScoped<IEmailService>(_ => emailService);
         var scopeFactory = services
@@ -166,6 +190,28 @@ public sealed class ReminderEmailBackgroundServiceTests
 
         Assert.Single(emailService.SentReminders);
         Assert.Equal(1, query.CallCount);
+    }
+
+    [Fact]
+    public async Task TrySendReminders_PersistedDateSurvivesNewServiceInstance()
+    {
+        // First instance sends reminders and persists the date.
+        var query = new FakePendingReminderQuery([AliceRecipient]);
+        var emailService = new FakeEmailService();
+        var first = CreateService(SundayInWindow, query, emailService);
+        await first.TrySendRemindersAsync(CancellationToken.None);
+        Assert.Single(emailService.SentReminders);
+
+        // Second instance (simulates a process restart) shares the same DB.
+        var secondEmailService = new FakeEmailService();
+        var second = CreateService(
+            SundayInWindow,
+            new FakePendingReminderQuery([AliceRecipient]),
+            secondEmailService
+        );
+        await second.TrySendRemindersAsync(CancellationToken.None);
+
+        Assert.Empty(secondEmailService.SentReminders);
     }
 
     [Fact]
