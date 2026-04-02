@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 
-export function useQuery<T>(fn: () => Promise<T>) {
+export function useQuery<T>(fn: (() => Promise<T>) | null) {
   const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(fn !== null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!fn) return
     let cancelled = false
     fn()
       .then((result) => {

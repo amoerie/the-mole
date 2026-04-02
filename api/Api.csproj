@@ -4,9 +4,11 @@
     <UserSecretsId>a43d5d13-2755-425a-bff6-84a94f0a5b74</UserSecretsId>
   </PropertyGroup>
 
-  <!-- Build-time OpenAPI spec generation → api/openapi.json -->
+  <!-- OpenAPI spec generation: disabled by default to avoid build failures when the local
+       database is out of sync with the schema. Run `dotnet build -p:OpenApiGenerateDocumentsOnBuild=true`
+       (or `npm run generate:api` from the client directory) to regenerate openapi.json + the TypeScript client. -->
   <PropertyGroup>
-    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
     <OpenApiDocumentName>openapi</OpenApiDocumentName>
   </PropertyGroup>
@@ -21,16 +23,22 @@
   </Target>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Api.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.*">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitives</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />
   </ItemGroup>
 </Project>

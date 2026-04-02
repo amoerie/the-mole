@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <!--
+            Excluded from coverage:
+              [*]*.Migrations.*              - EF Core migration files (auto-generated)
+              [Api]Program                   - ASP.NET startup/host configuration
+              [Api]Microsoft.AspNetCore.*    - OpenAPI source-generator output
+              [Api]System.Runtime.*          - Compiler-generated async state machines
+          -->
+          <Exclude>[*]*.Migrations.*;[Api]Program;[Api]Microsoft.AspNetCore.*;[Api]System.Runtime.*</Exclude>
+          <Threshold>80</Threshold>
+          <ThresholdType>line,branch,method</ThresholdType>
+          <ThresholdStat>Total</ThresholdStat>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

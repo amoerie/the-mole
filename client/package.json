@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "generate": "orval",
+    "generate:api": "dotnet build ../api -p:OpenApiGenerateDocumentsOnBuild=true && orval",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

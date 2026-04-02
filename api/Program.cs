@@ -115,6 +115,10 @@ builder
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IEmailService, MailerSendEmailService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IPendingReminderQuery, PendingReminderQuery>();
+if (!builder.Environment.IsEnvironment("Test"))
+    builder.Services.AddHostedService<ReminderEmailBackgroundService>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -136,7 +140,7 @@ builder.Services.AddOpenApi(
         options.AddDocumentTransformer(
             (document, _, _) =>
             {
-                document.Info.Title = "De Mol API";
+                document.Info.Title = "Mollenjagers API";
                 document.Info.Version = "v1";
                 document.Servers = [new() { Url = "/" }];
                 return Task.CompletedTask;

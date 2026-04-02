@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/button'
@@ -24,12 +24,20 @@ export default function LoginPage() {
   const { setUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
 
   const { inviteCode, gameId, gameName } = (location.state ?? {}) as {
     inviteCode?: string
     gameId?: string
     gameName?: string
   }
+
+  // ?redirect=/some/path — only same-origin paths are accepted
+  const redirectParam = searchParams.get('redirect')
+  const safeRedirect =
+    redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+      ? redirectParam
+      : null
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -44,6 +52,8 @@ export default function LoginPage() {
       if (gameId && inviteCode) {
         await api.joinGame(gameId, inviteCode)
         navigate(`/game/${gameId}`)
+      } else if (safeRedirect) {
+        navigate(safeRedirect)
       } else {
         navigate('/')
       }
@@ -58,7 +68,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="flex w-full max-w-md flex-col gap-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">🕵️ De Mol</h1>
+          <h1 className="text-3xl font-bold tracking-tight">🕵️ Mollenjagers</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Log in om je rangschikking in te dienen
           </p>

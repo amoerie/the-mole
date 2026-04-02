@@ -3,6 +3,7 @@ using System;
 using Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,26 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401074014_AddReminderEmailsEnabled")]
+    partial class AddReminderEmailsEnabled
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
-
-            modelBuilder.Entity("Api.Models.AppSetting", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Key");
-
-                    b.ToTable("AppSettings");
-                });
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.14");
 
             modelBuilder.Entity("Api.Models.AppUser", b =>
                 {
@@ -228,22 +217,29 @@ namespace Api.Migrations
                 {
                     b.OwnsMany("Api.Models.Contestant", "Contestants", b1 =>
                         {
-                            b1.Property<string>("GameId");
+                            b1.Property<string>("GameId")
+                                .HasColumnType("TEXT");
 
                             b1.Property<int>("__synthesizedOrdinal")
-                                .ValueGeneratedOnAddOrUpdate();
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("INTEGER");
 
-                            b1.Property<int>("Age");
+                            b1.Property<int>("Age")
+                                .HasColumnType("INTEGER");
 
-                            b1.Property<int?>("EliminatedInEpisode");
+                            b1.Property<int?>("EliminatedInEpisode")
+                                .HasColumnType("INTEGER");
 
-                            b1.Property<string>("Id");
+                            b1.Property<string>("Id")
+                                .HasColumnType("TEXT");
 
                             b1.Property<string>("Name")
-                                .IsRequired();
+                                .IsRequired()
+                                .HasColumnType("TEXT");
 
                             b1.Property<string>("PhotoUrl")
-                                .IsRequired();
+                                .IsRequired()
+                                .HasColumnType("TEXT");
 
                             b1.HasKey("GameId", "__synthesizedOrdinal");
 
@@ -259,16 +255,21 @@ namespace Api.Migrations
 
                     b.OwnsMany("Api.Models.Episode", "Episodes", b1 =>
                         {
-                            b1.Property<string>("GameId");
+                            b1.Property<string>("GameId")
+                                .HasColumnType("TEXT");
 
                             b1.Property<int>("__synthesizedOrdinal")
-                                .ValueGeneratedOnAddOrUpdate();
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("INTEGER");
 
-                            b1.Property<DateTimeOffset>("Deadline");
+                            b1.Property<DateTimeOffset>("Deadline")
+                                .HasColumnType("TEXT");
 
-                            b1.PrimitiveCollection<string>("EliminatedContestantIds");
+                            b1.PrimitiveCollection<string>("EliminatedContestantIds")
+                                .HasColumnType("TEXT");
 
-                            b1.Property<int>("Number");
+                            b1.Property<int>("Number")
+                                .HasColumnType("INTEGER");
 
                             b1.HasKey("GameId", "__synthesizedOrdinal");
 

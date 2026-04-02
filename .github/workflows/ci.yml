@@ -31,13 +31,13 @@ jobs:
         run: dotnet restore api/Api.csproj
 
       - name: Build API
-        run: dotnet build api/Api.csproj --configuration Release --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
+        run: dotnet build api/Api.csproj --configuration Release --no-restore
 
       - name: Restore Tests
         run: dotnet restore api.tests/Api.Tests.csproj
 
       - name: Build Tests
-        run: dotnet build api.tests/Api.Tests.csproj --configuration Release --no-restore /p:OpenApiGenerateDocumentsOnBuild=false
+        run: dotnet build api.tests/Api.Tests.csproj --configuration Release --no-restore
 
       - name: Run Unit Tests
         run: >
@@ -45,11 +45,7 @@ jobs:
           --configuration Release --no-build --verbosity normal
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
-          --
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*]*.Migrations.*"
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Threshold=80
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdType=line
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdStat=Total
+          --settings coverage.runsettings
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
