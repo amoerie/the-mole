@@ -4,6 +4,51 @@ A web game for playing along with the Belgian TV show "De Mol" (The Mole). Playe
 contestants from most to least suspicious each episode. After the finale reveals the mole,
 cumulative scores determine the winner.
 
+## How It Works
+
+### Domain
+
+| Concept | Description |
+|---------|-------------|
+| **Game** | The central object. One game = one season of De Mol among a group of friends. A game has contestants, episodes, and an invite code. |
+| **Contestant** | A real participant from the TV show, configured by the game admin (name, age, photo). Contestants can be marked as eliminated in a given episode. |
+| **Episode** | One weekly round. The admin creates it with a submission deadline. Once the deadline passes, no more rankings can be submitted and results become visible. |
+| **User** | Anyone with an account. A user can participate in multiple games. |
+| **Player** | A user's membership in a specific game. Created when a user joins via invite code. |
+| **Ranking** | A player's ordered list of all active contestants for one episode — most suspicious to least suspicious. Can be updated until the deadline. |
+
+### Use Cases
+
+**As a game admin:**
+1. Create a game and add contestants (name, age, photo).
+2. Share the invite code with friends so they can register and join.
+3. Each week: create a new episode with a deadline. Optionally mark which contestants were eliminated.
+4. After the finale: reveal who the mole was — this unlocks the final leaderboard.
+
+**As a player:**
+1. Register an account and join the game with the invite code.
+2. Each week: rank the remaining contestants from most to least suspicious before the deadline.
+3. Browse the "what-if" leaderboard to see standings for any hypothetical mole.
+4. After the finale: see the real leaderboard and your score breakdown per episode.
+
+### Scoring
+
+Each episode, players rank the remaining N contestants. Scores are calculated after the
+mole is revealed:
+
+```
+Episode Score = round(((N - R) / (N - 1)) × 100)
+
+N = remaining contestants that episode
+R = rank position given to the actual mole (1 = most suspect)
+```
+
+- Every episode is worth 0–100 points, normalized regardless of contestant count
+- Total score = sum of all episode scores
+- Tiebreaker: player who ranked the mole higher in later episodes wins
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -74,22 +119,6 @@ cd client && npm test
 # Watch mode
 cd client && npm run test:watch
 ```
-
-## Scoring System
-
-Each episode, players rank the remaining N contestants. Scores are calculated after the
-mole is revealed:
-
-```
-Episode Score = round(((N - R) / (N - 1)) × 100)
-
-N = remaining contestants that episode
-R = rank position given to the actual mole (1 = most suspect)
-```
-
-- Every episode is worth 0–100 points, normalized regardless of contestant count
-- Total score = sum of all episode scores
-- Tiebreaker: player who ranked the mole higher in later episodes wins
 
 ## Project Structure
 
