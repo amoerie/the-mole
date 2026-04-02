@@ -65,6 +65,7 @@ public sealed class TestContext
 
     public IDisposable AsNonAdmin()
     {
+        TestAuthHandler.IsAuthenticated = true;
         TestAuthHandler.Roles = ["authenticated"];
         return new DeferredAction(ResetAuth);
     }
