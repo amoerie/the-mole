@@ -1,77 +1,26 @@
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Api.Tests;
 
 [Collection("Integration")]
 public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly CustomWebApplicationFactory _factory;
+    private readonly TestContext _ctx;
 
     public LeaderboardRoutesTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory;
-        TestAuthHandler.UserId = "test-user-id";
-        TestAuthHandler.DisplayName = "Test User";
-        TestAuthHandler.IsAuthenticated = true;
-        TestAuthHandler.Roles = ["authenticated", "admin"];
+        _ctx = new TestContext(factory);
     }
-
-    private HttpClient CreateClient() =>
-        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-
-    private void PrepareDb(Action<AppDbContext>? seed = null)
-    {
-        _factory.ResetDb();
-        if (seed == null)
-            return;
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        seed(db);
-        db.SaveChanges();
-    }
-
-    private static Game CreateGameWithMole(string? moleContestantId = "contestant-1") =>
-        new()
-        {
-            Id = "game-1",
-            Name = "Test Game",
-            AdminUserId = "admin-user",
-            InviteCode = "INVITE01",
-            MoleContestantId = moleContestantId,
-            Contestants =
-            [
-                new Contestant
-                {
-                    Id = "contestant-1",
-                    Name = "Alice",
-                    Age = 30,
-                    PhotoUrl = "",
-                },
-                new Contestant
-                {
-                    Id = "contestant-2",
-                    Name = "Bob",
-                    Age = 25,
-                    PhotoUrl = "",
-                },
-            ],
-            Episodes = [new Episode { Number = 1, Deadline = DateTimeOffset.UtcNow.AddDays(-1) }],
-        };
 
     [Fact]
     public async Task GetLeaderboard_WhenMoleRevealed_ReturnsLeaderboard()
     {
-        var game = CreateGameWithMole("contestant-1");
-        var player = new Player
-        {
-            GameId = game.Id,
-            UserId = "test-user-id",
-            DisplayName = "Test User",
-        };
+        var game = TestData.GameWithContestants("admin-user");
+        game.MoleContestantId = "contestant-1";
+        game.Episodes.Add(TestData.Episode(1, future: false));
+        var player = TestData.Player();
         var ranking = new Ranking
         {
             GameId = game.Id,
@@ -79,13 +28,13 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
             UserId = "test-user-id",
             ContestantIds = ["contestant-1", "contestant-2"],
         };
-        PrepareDb(db =>
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
             db.Rankings.Add(ranking);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/leaderboard");
 
@@ -98,9 +47,9 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
     [Fact]
     public async Task GetLeaderboard_WhenMoleNotRevealed_ReturnsBadRequest()
     {
-        var game = CreateGameWithMole(null);
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.GameWithContestants("admin-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/leaderboard");
 
@@ -110,8 +59,8 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
     [Fact]
     public async Task GetLeaderboard_WhenGameNotFound_ReturnsNotFound()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/games/nonexistent/leaderboard");
 
@@ -121,9 +70,10 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
     [Fact]
     public async Task GetLeaderboard_WithNoRankings_ReturnsEmptyList()
     {
-        var game = CreateGameWithMole("contestant-1");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.GameWithContestants("admin-user");
+        game.MoleContestantId = "contestant-1";
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/leaderboard");
 
@@ -136,19 +86,14 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
     [Fact]
     public async Task GetWhatIfLeaderboard_WithValidContestant_ReturnsLeaderboard()
     {
-        var game = CreateGameWithMole(null);
-        var player = new Player
-        {
-            GameId = game.Id,
-            UserId = "test-user-id",
-            DisplayName = "Test User",
-        };
-        PrepareDb(db =>
+        var game = TestData.GameWithContestants("admin-user");
+        var player = TestData.Player();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync(
             $"/api/games/{game.Id}/leaderboard/what-if/contestant-1"
@@ -160,9 +105,9 @@ public sealed class LeaderboardRoutesTests : IClassFixture<CustomWebApplicationF
     [Fact]
     public async Task GetWhatIfLeaderboard_WithInvalidContestant_ReturnsBadRequest()
     {
-        var game = CreateGameWithMole(null);
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.GameWithContestants("admin-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync(
             $"/api/games/{game.Id}/leaderboard/what-if/nonexistent"

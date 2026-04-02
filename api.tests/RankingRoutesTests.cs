@@ -1,11 +1,6 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Api.Tests;
 
@@ -22,77 +17,23 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     ];
     private static readonly string[] OneContestant = ["contestant-1"];
 
-    private readonly CustomWebApplicationFactory _factory;
+    private readonly TestContext _ctx;
 
     public RankingRoutesTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory;
-        TestAuthHandler.UserId = "test-user-id";
-        TestAuthHandler.DisplayName = "Test User";
-        TestAuthHandler.IsAuthenticated = true;
-        TestAuthHandler.Roles = ["authenticated", "admin"];
-    }
-
-    private HttpClient CreateClient() =>
-        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-
-    private void PrepareDb(Action<AppDbContext>? seed = null)
-    {
-        _factory.ResetDb();
-        if (seed == null)
-            return;
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        seed(db);
-        db.SaveChanges();
-    }
-
-    private static (Game game, Player player) CreateGameWithPlayer()
-    {
-        var game = new Game
-        {
-            Id = "game-1",
-            Name = "Test Game",
-            AdminUserId = "admin-user",
-            InviteCode = "INVITE01",
-            Contestants =
-            [
-                new Contestant
-                {
-                    Id = "contestant-1",
-                    Name = "Alice",
-                    Age = 30,
-                    PhotoUrl = "",
-                },
-                new Contestant
-                {
-                    Id = "contestant-2",
-                    Name = "Bob",
-                    Age = 25,
-                    PhotoUrl = "",
-                },
-            ],
-            Episodes = [new Episode { Number = 1, Deadline = DateTimeOffset.UtcNow.AddDays(7) }],
-        };
-        var player = new Player
-        {
-            GameId = game.Id,
-            UserId = "test-user-id",
-            DisplayName = "Test User",
-        };
-        return (game, player);
+        _ctx = new TestContext(factory);
     }
 
     [Fact]
     public async Task SubmitRanking_BeforeDeadline_ReturnsOk()
     {
-        var (game, player) = CreateGameWithPlayer();
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/episodes/1/rankings",
@@ -121,20 +62,15 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
                     PhotoUrl = "",
                 },
             ],
-            Episodes = [new Episode { Number = 1, Deadline = DateTimeOffset.UtcNow.AddDays(-1) }],
+            Episodes = [TestData.Episode(1, future: false)],
         };
-        var player = new Player
-        {
-            GameId = game.Id,
-            UserId = "test-user-id",
-            DisplayName = "Test User",
-        };
-        PrepareDb(db =>
+        var player = TestData.Player();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/episodes/1/rankings",
@@ -147,9 +83,9 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task SubmitRanking_WhenNotPlayer_ReturnsUnauthorized()
     {
-        var (game, _) = CreateGameWithPlayer();
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var (game, _) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/episodes/1/rankings",
@@ -162,21 +98,22 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task SubmitRanking_UpdatesExistingRanking_ReturnsOk()
     {
-        var (game, player) = CreateGameWithPlayer();
-        var existingRanking = new Ranking
-        {
-            GameId = game.Id,
-            EpisodeNumber = 1,
-            UserId = "test-user-id",
-            ContestantIds = ["contestant-1", "contestant-2"],
-        };
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
-            db.Rankings.Add(existingRanking);
+            db.Rankings.Add(
+                new Ranking
+                {
+                    GameId = game.Id,
+                    EpisodeNumber = 1,
+                    UserId = "test-user-id",
+                    ContestantIds = ["contestant-1", "contestant-2"],
+                }
+            );
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/episodes/1/rankings",
@@ -189,21 +126,22 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task GetMyRanking_WhenExists_ReturnsRanking()
     {
-        var (game, player) = CreateGameWithPlayer();
-        var ranking = new Ranking
-        {
-            GameId = game.Id,
-            EpisodeNumber = 1,
-            UserId = "test-user-id",
-            ContestantIds = ["contestant-1", "contestant-2"],
-        };
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
-            db.Rankings.Add(ranking);
+            db.Rankings.Add(
+                new Ranking
+                {
+                    GameId = game.Id,
+                    EpisodeNumber = 1,
+                    UserId = "test-user-id",
+                    ContestantIds = ["contestant-1", "contestant-2"],
+                }
+            );
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/episodes/1/rankings/mine");
 
@@ -213,13 +151,13 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task GetMyRanking_WhenNotFound_ReturnsNotFound()
     {
-        var (game, player) = CreateGameWithPlayer();
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/episodes/1/rankings/mine");
 
@@ -229,13 +167,13 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task SubmitRanking_WithIncompleteContestants_ReturnsBadRequest()
     {
-        var (game, player) = CreateGameWithPlayer();
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/episodes/1/rankings",
@@ -248,13 +186,13 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task SubmitRanking_WithExtraContestants_ReturnsBadRequest()
     {
-        var (game, player) = CreateGameWithPlayer();
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/episodes/1/rankings",
@@ -302,18 +240,13 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
                 new Episode { Number = 2, Deadline = DateTimeOffset.UtcNow.AddDays(7) },
             ],
         };
-        var player = new Player
-        {
-            GameId = game.Id,
-            UserId = "test-user-id",
-            DisplayName = "Test User",
-        };
-        PrepareDb(db =>
+        var player = TestData.Player();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         // Episode 2: only contestant-1 is active (contestant-2 was eliminated in episode 1)
         var response = await client.PostAsJsonAsync(
@@ -327,37 +260,9 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task GetEpisodeRankings_AfterDeadline_ReturnsAllRankings()
     {
-        var game = new Game
-        {
-            Id = "game-1",
-            Name = "Test Game",
-            AdminUserId = "admin-user",
-            InviteCode = "INVITE01",
-            Contestants =
-            [
-                new Contestant
-                {
-                    Id = "contestant-1",
-                    Name = "Alice",
-                    Age = 30,
-                    PhotoUrl = "",
-                },
-                new Contestant
-                {
-                    Id = "contestant-2",
-                    Name = "Bob",
-                    Age = 25,
-                    PhotoUrl = "",
-                },
-            ],
-            Episodes = [new Episode { Number = 1, Deadline = DateTimeOffset.UtcNow.AddDays(-1) }],
-        };
-        var player = new Player
-        {
-            GameId = game.Id,
-            UserId = "test-user-id",
-            DisplayName = "Test User",
-        };
+        var game = TestData.GameWithContestants("admin-user");
+        game.Episodes.Add(TestData.Episode(1, future: false));
+        var player = TestData.Player();
         var ranking = new Ranking
         {
             GameId = game.Id,
@@ -365,13 +270,13 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
             UserId = "test-user-id",
             ContestantIds = ["contestant-1", "contestant-2"],
         };
-        PrepareDb(db =>
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
             db.Rankings.Add(ranking);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/episodes/1/rankings");
 
@@ -385,13 +290,13 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task GetEpisodeRankings_BeforeDeadline_ReturnsBadRequest()
     {
-        var (game, player) = CreateGameWithPlayer();
-        PrepareDb(db =>
+        var (game, player) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(player);
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/episodes/1/rankings");
 
@@ -401,9 +306,9 @@ public sealed class RankingRoutesTests : IClassFixture<CustomWebApplicationFacto
     [Fact]
     public async Task GetEpisodeRankings_WhenNotPlayer_ReturnsUnauthorized()
     {
-        var (game, _) = CreateGameWithPlayer();
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var (game, _) = TestData.GameWithPlayer();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}/episodes/1/rankings");
 

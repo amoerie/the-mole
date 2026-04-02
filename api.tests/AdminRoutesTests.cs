@@ -1,43 +1,23 @@
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Api.Tests;
 
 [Collection("Integration")]
 public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly CustomWebApplicationFactory _factory;
+    private readonly TestContext _ctx;
 
     public AdminRoutesTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory;
-        TestAuthHandler.UserId = "admin-user-id";
-        TestAuthHandler.DisplayName = "Admin User";
-        TestAuthHandler.IsAuthenticated = true;
-        TestAuthHandler.Roles = ["authenticated", "admin"];
-    }
-
-    private HttpClient CreateClient() =>
-        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-
-    private void PrepareDb(Action<AppDbContext>? seed = null)
-    {
-        _factory.ResetDb();
-        if (seed == null)
-            return;
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        seed(db);
-        db.SaveChanges();
+        _ctx = new TestContext(factory, userId: "admin-user-id", displayName: "Admin User");
     }
 
     [Fact]
     public async Task ListUsers_WhenAdmin_ReturnsOkWithUsers()
     {
-        PrepareDb(db =>
+        _ctx.PrepareDb(db =>
         {
             db.AppUsers.Add(
                 new AppUser
@@ -58,7 +38,7 @@ public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory
                 }
             );
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/admin/users");
 
@@ -71,46 +51,31 @@ public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory
     [Fact]
     public async Task ListUsers_WhenNotAdmin_ReturnsForbidden()
     {
-        PrepareDb();
-        TestAuthHandler.Roles = ["authenticated"];
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsNonAdmin();
+        var client = _ctx.CreateClient();
 
-            var response = await client.GetAsync("/api/admin/users");
+        var response = await client.GetAsync("/api/admin/users");
 
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
     public async Task ListUsers_WhenUnauthenticated_ReturnsUnauthorized()
     {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.GetAsync("/api/admin/users");
+        var response = await client.GetAsync("/api/admin/users");
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task GrantAdmin_WhenAdmin_SetsUserAsAdmin()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -119,24 +84,22 @@ public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory
                     DisplayName = "Target",
                     IsAdmin = false,
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsync("/api/admin/users/target-user/grant-admin", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await db.AppUsers.FindAsync("target-user");
+        var user = await _ctx.ReadDbAsync(db => db.AppUsers.FindAsync("target-user").AsTask());
         Assert.True(user!.IsAdmin);
     }
 
     [Fact]
     public async Task GrantAdmin_WhenUserNotFound_ReturnsNotFound()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsync("/api/admin/users/nonexistent/grant-admin", null);
 
@@ -146,8 +109,7 @@ public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory
     [Fact]
     public async Task GrantAdmin_WhenNotAdmin_ReturnsForbidden()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -156,28 +118,20 @@ public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory
                     DisplayName = "Target",
                     IsAdmin = false,
                 }
-            );
-        });
-        TestAuthHandler.Roles = ["authenticated"];
-        try
-        {
-            var client = CreateClient();
+            )
+        );
+        using var _ = _ctx.AsNonAdmin();
+        var client = _ctx.CreateClient();
 
-            var response = await client.PostAsync("/api/admin/users/target-user/grant-admin", null);
+        var response = await client.PostAsync("/api/admin/users/target-user/grant-admin", null);
 
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
     public async Task GrantAdmin_WhenUnauthenticated_ReturnsUnauthorized()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -186,20 +140,13 @@ public sealed class AdminRoutesTests : IClassFixture<CustomWebApplicationFactory
                     DisplayName = "Target",
                     IsAdmin = false,
                 }
-            );
-        });
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+            )
+        );
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.PostAsync("/api/admin/users/target-user/grant-admin", null);
+        var response = await client.PostAsync("/api/admin/users/target-user/grant-admin", null);
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

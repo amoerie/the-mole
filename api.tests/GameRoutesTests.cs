@@ -1,57 +1,24 @@
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Api.Tests;
 
 [Collection("Integration")]
 public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly CustomWebApplicationFactory _factory;
+    private readonly TestContext _ctx;
 
     public GameRoutesTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory;
-        TestAuthHandler.UserId = "test-user-id";
-        TestAuthHandler.DisplayName = "Test User";
-        TestAuthHandler.IsAuthenticated = true;
-        TestAuthHandler.Roles = ["authenticated", "admin"];
+        _ctx = new TestContext(factory);
     }
-
-    private HttpClient CreateClient() =>
-        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-
-    private void PrepareDb(Action<AppDbContext>? seed = null)
-    {
-        _factory.ResetDb();
-        if (seed == null)
-            return;
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        seed(db);
-        db.SaveChanges();
-    }
-
-    private static Game CreateGame(
-        string adminUserId = "test-user-id",
-        string name = "Test Game",
-        string? inviteCode = null
-    ) =>
-        new()
-        {
-            Id = "game-1",
-            Name = name,
-            AdminUserId = adminUserId,
-            InviteCode = inviteCode ?? "INVITE01",
-        };
 
     [Fact]
     public async Task CreateGame_WhenAuthenticated_ReturnsOkWithGame()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/games", new { name = "My Game" });
 
@@ -64,46 +31,32 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateGame_WhenUnauthenticated_ReturnsUnauthorized()
     {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.PostAsJsonAsync("/api/games", new { name = "My Game" });
+        var response = await client.PostAsJsonAsync("/api/games", new { name = "My Game" });
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task CreateGame_WhenNotAdmin_ReturnsForbidden()
     {
-        PrepareDb();
-        TestAuthHandler.Roles = ["authenticated"];
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsNonAdmin();
+        var client = _ctx.CreateClient();
 
-            var response = await client.PostAsJsonAsync("/api/games", new { name = "My Game" });
+        var response = await client.PostAsJsonAsync("/api/games", new { name = "My Game" });
 
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
     public async Task CreateGame_WithMissingName_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/games", new { name = "" });
 
@@ -113,9 +66,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetGame_WhenAdmin_ReturnsOk()
     {
-        var game = CreateGame(adminUserId: "test-user-id");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}");
 
@@ -125,20 +78,13 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetGame_WhenPlayer_ReturnsOk()
     {
-        var game = CreateGame(adminUserId: "other-user");
-        PrepareDb(db =>
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
-            db.Players.Add(
-                new Player
-                {
-                    GameId = game.Id,
-                    UserId = "test-user-id",
-                    DisplayName = "Test User",
-                }
-            );
+            db.Players.Add(TestData.Player(game.Id));
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}");
 
@@ -148,28 +94,21 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetGame_WhenUnauthenticated_ReturnsUnauthorized()
     {
-        var game = CreateGame();
-        PrepareDb(db => db.Games.Add(game));
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.GetAsync($"/api/games/{game.Id}");
+        var response = await client.GetAsync($"/api/games/{game.Id}");
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task GetGame_WhenNotFound_ReturnsNotFound()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/games/nonexistent-game");
 
@@ -179,9 +118,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetGame_WhenNotMember_ReturnsUnauthorized()
     {
-        var game = CreateGame(adminUserId: "other-user");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync($"/api/games/{game.Id}");
 
@@ -191,13 +130,13 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task JoinGame_WithValidInviteCode_ReturnsOk()
     {
-        var game = CreateGame(adminUserId: "other-user", inviteCode: "ABCD1234");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/join",
-            new { inviteCode = "ABCD1234" }
+            new { inviteCode = "INVITE01" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -206,9 +145,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task JoinGame_WithInvalidInviteCode_ReturnsBadRequest()
     {
-        var game = CreateGame(adminUserId: "other-user", inviteCode: "ABCD1234");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/join",
@@ -221,24 +160,17 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task JoinGame_WhenAlreadyJoined_ReturnsOk()
     {
-        var game = CreateGame(adminUserId: "other-user", inviteCode: "ABCD1234");
-        PrepareDb(db =>
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
-            db.Players.Add(
-                new Player
-                {
-                    GameId = game.Id,
-                    UserId = "test-user-id",
-                    DisplayName = "Test User",
-                }
-            );
+            db.Players.Add(TestData.Player(game.Id));
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/join",
-            new { inviteCode = "ABCD1234" }
+            new { inviteCode = "INVITE01" }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -254,11 +186,11 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetGameByInvite_WhenFound_ReturnsGameSummary()
     {
-        var game = CreateGame(inviteCode: "ABCD1234");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
-        var response = await client.GetAsync("/api/games/by-invite/ABCD1234");
+        var response = await client.GetAsync("/api/games/by-invite/INVITE01");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
@@ -269,8 +201,8 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetGameByInvite_WhenNotFound_ReturnsNotFound()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/games/by-invite/NOTEXIST");
 
@@ -280,20 +212,13 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetMyGames_WhenAuthenticated_ReturnsGameList()
     {
-        var game = CreateGame();
-        PrepareDb(db =>
+        var game = TestData.Game();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
-            db.Players.Add(
-                new Player
-                {
-                    GameId = game.Id,
-                    UserId = "test-user-id",
-                    DisplayName = "Test User",
-                }
-            );
+            db.Players.Add(TestData.Player(game.Id));
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/my-games");
 
@@ -306,28 +231,21 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetMyGames_WhenUnauthenticated_ReturnsUnauthorized()
     {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.GetAsync("/api/my-games");
+        var response = await client.GetAsync("/api/my-games");
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task AddContestants_WhenAdmin_ReturnsUpdatedGame()
     {
-        var game = CreateGame(adminUserId: "test-user-id");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/contestants",
@@ -351,9 +269,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task AddContestants_WhenNotAdmin_ReturnsUnauthorized()
     {
-        var game = CreateGame(adminUserId: "other-user");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/contestants",
@@ -377,9 +295,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task AddContestants_WithEmptyList_ReturnsBadRequest()
     {
-        var game = CreateGame(adminUserId: "test-user-id");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             $"/api/games/{game.Id}/contestants",
@@ -392,9 +310,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task DeleteGame_AsAdmin_Returns204()
     {
-        var game = CreateGame(adminUserId: "test-user-id");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.DeleteAsync($"/api/games/{game.Id}");
 
@@ -404,9 +322,9 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task DeleteGame_AsNonAdmin_ReturnsForbidden()
     {
-        var game = CreateGame(adminUserId: "other-user");
-        PrepareDb(db => db.Games.Add(game));
-        var client = CreateClient();
+        var game = TestData.Game("other-user");
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
 
         var response = await client.DeleteAsync($"/api/games/{game.Id}");
 
@@ -416,8 +334,8 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task DeleteGame_NotFound_Returns404()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.DeleteAsync("/api/games/nonexistent");
 
@@ -427,8 +345,8 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task DeleteGame_CascadesPlayersAndRankings()
     {
-        var game = CreateGame(adminUserId: "test-user-id");
-        PrepareDb(db =>
+        var game = TestData.Game();
+        _ctx.PrepareDb(db =>
         {
             db.Games.Add(game);
             db.Players.Add(
@@ -451,14 +369,16 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 }
             );
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         await client.DeleteAsync($"/api/games/{game.Id}");
 
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.Null(await db.Games.FindAsync(game.Id));
-        Assert.Empty(db.Players.Where(p => p.GameId == game.Id));
-        Assert.Empty(db.Rankings.Where(r => r.GameId == game.Id));
+        await _ctx.ReadDbAsync(async db =>
+        {
+            Assert.Null(await db.Games.FindAsync(game.Id));
+            Assert.Empty(db.Players.Where(p => p.GameId == game.Id));
+            Assert.Empty(db.Rankings.Where(r => r.GameId == game.Id));
+            return true;
+        });
     }
 }
