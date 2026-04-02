@@ -3,7 +3,6 @@ using Api.Auth;
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Api.Tests;
@@ -11,43 +10,24 @@ namespace Api.Tests;
 [Collection("Integration")]
 public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly CustomWebApplicationFactory _factory;
+    private readonly TestContext _ctx;
 
     public AuthRoutesTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory;
-        TestAuthHandler.UserId = "test-user-id";
-        TestAuthHandler.DisplayName = "Test User";
-        TestAuthHandler.IsAuthenticated = true;
-        TestAuthHandler.Roles = ["authenticated", "admin"];
+        _ctx = new TestContext(factory);
     }
-
-    private HttpClient CreateClient() =>
-        _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
     /// <summary>Mimics the server: SHA256-hash the raw hex token bytes before storing.</summary>
     private static string HashToken(string hexToken) =>
         Convert.ToHexString(SHA256.HashData(Convert.FromHexString(hexToken)));
-
-    private void PrepareDb(Action<AppDbContext>? seed = null)
-    {
-        _factory.ResetDb();
-        _factory.EmailService.SentEmails.Clear();
-        if (seed == null)
-            return;
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        seed(db);
-        db.SaveChanges();
-    }
 
     // ── Register ────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Register_AdminEmail_WithPassword_ReturnsOkWithUserInfo()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -68,8 +48,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_WithValidInviteCode_ReturnsOk()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.Games.Add(
                 new Game
                 {
@@ -78,9 +57,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     InviteCode = "VALIDCODE",
                     AdminUserId = "admin-1",
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -99,8 +78,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_WithoutInviteCode_AndNotAdmin_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -118,8 +97,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_WithInvalidInviteCode_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -138,8 +117,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_WithMissingEmail_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -157,8 +136,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_WithMissingPassword_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -176,8 +155,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_DuplicateEmail_ReturnsConflict()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -186,9 +164,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     DisplayName = "Old Name",
                     PasswordHash = PasswordHelper.Hash("oldpass"),
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -208,19 +186,10 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Login_WithCorrectCredentials_ReturnsOkWithUserInfo()
     {
-        PrepareDb(db =>
-        {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "user-1",
-                    Email = "alice@test.com",
-                    DisplayName = "Alice",
-                    PasswordHash = PasswordHelper.Hash("correctpass"),
-                }
-            );
-        });
-        var client = CreateClient();
+        _ctx.PrepareDb(db =>
+            db.AppUsers.Add(TestData.User("user-1", "alice@test.com", "Alice", "correctpass"))
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/login",
@@ -236,19 +205,10 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Login_WithWrongPassword_ReturnsUnauthorized()
     {
-        PrepareDb(db =>
-        {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "user-1",
-                    Email = "alice@test.com",
-                    DisplayName = "Alice",
-                    PasswordHash = PasswordHelper.Hash("correctpass"),
-                }
-            );
-        });
-        var client = CreateClient();
+        _ctx.PrepareDb(db =>
+            db.AppUsers.Add(TestData.User("user-1", "alice@test.com", "Alice", "correctpass"))
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/login",
@@ -261,8 +221,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Login_WithUnknownEmail_ReturnsUnauthorized()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/login",
@@ -275,8 +235,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Login_WithMissingFields_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/login",
@@ -291,19 +251,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ForgotPassword_WithKnownEmail_ReturnsOkAndSendsEmail()
     {
-        PrepareDb(db =>
-        {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "user-1",
-                    Email = "alice@test.com",
-                    DisplayName = "Alice",
-                    PasswordHash = PasswordHelper.Hash("pass"),
-                }
-            );
-        });
-        var client = CreateClient();
+        _ctx.PrepareDb(db => db.AppUsers.Add(TestData.User("user-1", "alice@test.com", "Alice")));
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/forgot-password",
@@ -311,15 +260,15 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Single(_factory.EmailService.SentEmails);
-        Assert.Equal("alice@test.com", _factory.EmailService.SentEmails[0].ToEmail);
+        Assert.Single(_ctx.EmailService.SentEmails);
+        Assert.Equal("alice@test.com", _ctx.EmailService.SentEmails[0].ToEmail);
     }
 
     [Fact]
     public async Task ForgotPassword_WithMissingEmail_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/forgot-password",
@@ -332,8 +281,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ForgotPassword_WithUnknownEmail_StillReturnsOkButNoEmail()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/forgot-password",
@@ -341,7 +290,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Empty(_factory.EmailService.SentEmails);
+        Assert.Empty(_ctx.EmailService.SentEmails);
     }
 
     // ── Reset Password ──────────────────────────────────────────────────────
@@ -351,8 +300,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     {
         // Raw token (64 hex chars = 32 bytes) sent in the email link; DB stores its SHA256 hash
         const string rawToken = "AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899";
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -363,9 +311,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     PasswordResetToken = HashToken(rawToken),
                     PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(1),
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/reset-password",
@@ -374,9 +322,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await db.AppUsers.FindAsync("user-1");
+        var user = await _ctx.ReadDbAsync(db => db.AppUsers.FindAsync("user-1").AsTask());
         Assert.True(PasswordHelper.Verify("NewP@ss123", user!.PasswordHash));
         Assert.Null(user.PasswordResetToken);
     }
@@ -385,8 +331,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     public async Task ResetPassword_WithExpiredToken_ReturnsBadRequest()
     {
         const string rawToken = "FFEEDDCCBBAA99887766554433221100FFEEDDCCBBAA99887766554433221100";
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -397,9 +342,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     PasswordResetToken = HashToken(rawToken),
                     PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(-1),
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/reset-password",
@@ -412,8 +357,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ResetPassword_WithInvalidToken_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/reset-password",
@@ -426,8 +371,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ResetPassword_WithMissingFields_ReturnsBadRequest()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/reset-password",
@@ -442,8 +387,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Logout_ReturnsRedirectToRoot()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/auth/logout");
 
@@ -456,8 +401,8 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetMe_WhenAuthenticated_ReturnsUserInfo()
     {
-        PrepareDb();
-        var client = CreateClient();
+        _ctx.PrepareDb();
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/me");
 
@@ -472,19 +417,10 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task UpdateProfile_WithValidName_ReturnsOkWithUpdatedUserInfo()
     {
-        PrepareDb(db =>
-        {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "test-user-id",
-                    Email = "alice@test.com",
-                    DisplayName = "Old Name",
-                    PasswordHash = PasswordHelper.Hash("pass"),
-                }
-            );
-        });
-        var client = CreateClient();
+        _ctx.PrepareDb(db =>
+            db.AppUsers.Add(TestData.User("test-user-id", "alice@test.com", "Old Name"))
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "New Name" });
 
@@ -497,19 +433,10 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task UpdateProfile_WithEmptyName_ReturnsBadRequest()
     {
-        PrepareDb(db =>
-        {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "test-user-id",
-                    Email = "alice@test.com",
-                    DisplayName = "Old Name",
-                    PasswordHash = PasswordHelper.Hash("pass"),
-                }
-            );
-        });
-        var client = CreateClient();
+        _ctx.PrepareDb(db =>
+            db.AppUsers.Add(TestData.User("test-user-id", "alice@test.com", "Old Name"))
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "" });
 
@@ -519,26 +446,10 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task UpdateProfile_AlsoUpdatesPlayerDisplayName()
     {
-        PrepareDb(db =>
+        _ctx.PrepareDb(db =>
         {
-            db.AppUsers.Add(
-                new AppUser
-                {
-                    Id = "test-user-id",
-                    Email = "alice@test.com",
-                    DisplayName = "Old Name",
-                    PasswordHash = PasswordHelper.Hash("pass"),
-                }
-            );
-            db.Games.Add(
-                new Game
-                {
-                    Id = "game-1",
-                    Name = "Test Game",
-                    InviteCode = "CODE",
-                    AdminUserId = "test-user-id",
-                }
-            );
+            db.AppUsers.Add(TestData.User("test-user-id", "alice@test.com", "Old Name"));
+            db.Games.Add(TestData.Game());
             db.Players.Add(
                 new Player
                 {
@@ -549,34 +460,24 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 }
             );
         });
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         await client.PatchAsJsonAsync("/api/me", new { displayName = "New Name" });
 
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var player = await db.Players.FindAsync("player-1");
+        var player = await _ctx.ReadDbAsync(db => db.Players.FindAsync("player-1").AsTask());
         Assert.Equal("New Name", player!.DisplayName);
     }
 
     [Fact]
     public async Task UpdateProfile_WhenNotAuthenticated_ReturnsUnauthorized()
     {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "Test" });
+        var response = await client.PatchAsJsonAsync("/api/me", new { displayName = "Test" });
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     // ── GetPreferences ───────────────────────────────────────────────────────
@@ -584,8 +485,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetPreferences_WhenAuthenticated_ReturnsReminderEmailsEnabled()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -595,9 +495,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     PasswordHash = PasswordHelper.Hash("pass"),
                     ReminderEmailsEnabled = true,
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.GetAsync("/api/me/preferences");
 
@@ -610,21 +510,13 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task GetPreferences_WhenNotAuthenticated_ReturnsUnauthorized()
     {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.GetAsync("/api/me/preferences");
+        var response = await client.GetAsync("/api/me/preferences");
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     // ── UpdatePreferences ────────────────────────────────────────────────────
@@ -632,8 +524,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task UpdatePreferences_DisablesReminders()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -643,9 +534,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     PasswordHash = PasswordHelper.Hash("pass"),
                     ReminderEmailsEnabled = true,
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PatchAsJsonAsync(
             "/api/me/preferences",
@@ -657,17 +548,14 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotNull(body);
         Assert.False(body!.RootElement.GetProperty("reminderEmailsEnabled").GetBoolean());
 
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await db.AppUsers.FindAsync("test-user-id");
+        var user = await _ctx.ReadDbAsync(db => db.AppUsers.FindAsync("test-user-id").AsTask());
         Assert.False(user!.ReminderEmailsEnabled);
     }
 
     [Fact]
     public async Task UpdatePreferences_ReEnablesReminders()
     {
-        PrepareDb(db =>
-        {
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -677,9 +565,9 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                     PasswordHash = PasswordHelper.Hash("pass"),
                     ReminderEmailsEnabled = false,
                 }
-            );
-        });
-        var client = CreateClient();
+            )
+        );
+        var client = _ctx.CreateClient();
 
         var response = await client.PatchAsJsonAsync(
             "/api/me/preferences",
@@ -694,30 +582,22 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task UpdatePreferences_WhenNotAuthenticated_ReturnsUnauthorized()
     {
-        PrepareDb();
-        TestAuthHandler.IsAuthenticated = false;
-        try
-        {
-            var client = CreateClient();
+        _ctx.PrepareDb();
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
 
-            var response = await client.PatchAsJsonAsync(
-                "/api/me/preferences",
-                new { reminderEmailsEnabled = false }
-            );
+        var response = await client.PatchAsJsonAsync(
+            "/api/me/preferences",
+            new { reminderEmailsEnabled = false }
+        );
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        finally
-        {
-            TestAuthHandler.IsAuthenticated = true;
-            TestAuthHandler.Roles = ["authenticated", "admin"];
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task UpdatePreferences_WithInvalidBody_ReturnsBadRequest()
     {
-        PrepareDb(db =>
+        _ctx.PrepareDb(db =>
             db.AppUsers.Add(
                 new AppUser
                 {
@@ -728,7 +608,7 @@ public sealed class AuthRoutesTests : IClassFixture<CustomWebApplicationFactory>
                 }
             )
         );
-        var client = CreateClient();
+        var client = _ctx.CreateClient();
 
         var response = await client.PatchAsync(
             "/api/me/preferences",
