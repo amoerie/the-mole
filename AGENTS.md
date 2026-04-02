@@ -47,10 +47,13 @@ Scores are calculated after the mole is revealed. Each episode is worth 0–100 
 ## 🧪 Testing
 
 ### Backend Integration Tests (`api.tests/`)
-- Create a new test class inheriting from `IClassFixture<CustomWebApplicationFactory>`.
-- Use `_factory.ResetDb()` to start with a clean state.
-- Use `TestAuthHandler` to simulate different user roles (admin, authenticated, etc.).
-- Use `client.GetAsync`, `client.PostAsJsonAsync`, etc., to hit endpoints and assert responses.
+- Create a new test class with `IClassFixture<CustomWebApplicationFactory>` and hold a `TestContext` field (not `_factory` directly).
+- Construct `TestContext` in the constructor: `_ctx = new TestContext(factory)`. Pass optional `userId`, `displayName`, or `roles` for non-default auth (e.g. `roles: ["authenticated"]` for non-admin tests).
+- Use `_ctx.PrepareDb(seed?)` to reset the DB and optionally seed data before each test.
+- Use `_ctx.CreateClient()` to get an `HttpClient`.
+- Use `TestData` static helpers (`TestData.Game()`, `TestData.GameWithContestants()`, `TestData.GameWithPlayer()`, `TestData.Player()`, `TestData.User()`, `TestData.Episode()`) for common seed data instead of constructing entities inline.
+- Use `_ctx.AsUnauthenticated()` or `_ctx.AsNonAdmin()` (both return `IDisposable`) in a `using` block to temporarily change auth state — no manual `TestAuthHandler` manipulation or `try/finally` needed.
+- Use `_ctx.ReadDb<T>()` / `_ctx.ReadDbAsync<T>()` to inspect the database after a request instead of opening scopes manually.
 
 ### Frontend Unit/Component Tests (`client/src/test/`)
 - Use **Vitest** + **React Testing Library**.
@@ -72,7 +75,8 @@ Before opening a pull request, run the coverage commands for both backend and fr
 - **Run tests:** `dotnet test api.tests/Api.Tests.csproj`
 - **Check coverage:**
   ```powershell
-  dotnet test api.tests/Api.Tests.csproj --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="[*]*.Migrations.*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdType=line DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ThresholdStat=total DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Threshold=80
+  dotnet test api.tests/Api.Tests.csproj --collect:"XPlat Code Coverage" --settings coverage.runsettings
+  ```
 
 ### Frontend (React/Vite)
 - **Run tests:** `npm run test` (in `client/`)
