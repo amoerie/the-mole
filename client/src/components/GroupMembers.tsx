@@ -86,7 +86,20 @@ export default function GroupMembers({ game }: Props) {
 
   async function copyResetLink(userId: string, url: string) {
     try {
-      await navigator.clipboard.writeText(url)
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = url
+        textArea.setAttribute('readonly', '')
+        textArea.style.position = 'absolute'
+        textArea.style.left = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.select()
+        const copied = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        if (!copied) throw new Error('Kopiëren niet ondersteund')
+      }
       setResetLinkState((prev) => ({
         ...prev,
         [userId]: { ...prev[userId], error: '', copied: true },
