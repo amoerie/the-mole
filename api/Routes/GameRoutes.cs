@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Api.Auth;
 using Api.Data;
 using Api.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Routes;
@@ -150,11 +151,14 @@ public static class GameRoutes
 
         app.MapGet(
                 "/api/my-games",
-                async (HttpContext ctx, AppDbContext db) =>
+                async Task<Results<Ok<List<MyGameResponse>>, UnauthorizedHttpResult>> (
+                    HttpContext ctx,
+                    AppDbContext db
+                ) =>
                 {
                     var user = AuthHelper.GetUserInfo(ctx);
                     if (user == null)
-                        return Results.Unauthorized();
+                        return TypedResults.Unauthorized();
 
                     var gameIds = await db
                         .Players.Where(p => p.UserId == user.UserId)
@@ -169,15 +173,24 @@ public static class GameRoutes
                         .Select(g => new { GameId = g.Key, Count = g.Count() })
                         .ToDictionaryAsync(x => x.GameId, x => x.Count);
 
-                    foreach (var game in games)
-                        game.PlayerCount = playerCounts.GetValueOrDefault(game.Id, 0);
+                    var response = games
+                        .Select(g => new MyGameResponse(
+                            g.Id,
+                            g.Name,
+                            g.AdminUserId,
+                            g.Contestants,
+                            g.Episodes,
+                            g.MoleContestantId,
+                            g.InviteCode,
+                            playerCounts.GetValueOrDefault(g.Id, 0)
+                        ))
+                        .ToList();
 
-                    return Results.Ok(games);
+                    return TypedResults.Ok(response);
                 }
             )
             .WithName("GetMyGames")
-            .WithTags("Games")
-            .Produces<List<Game>>();
+            .WithTags("Games");
 
         app.MapDelete(
                 "/api/games/{gameId}",

@@ -52,6 +52,7 @@ import {
   mapLeaderboardEntry,
   mapMessage,
   mapMessagesPage,
+  mapMyGame,
   mapRanking,
   mapUserInfo,
 } from './mappers'
@@ -156,7 +157,7 @@ export const api = {
 
   async getMyGames(): Promise<Game[]> {
     const { data } = await _getMyGames()
-    return (data ?? []).map(mapGame)
+    return (data ?? []).map(mapMyGame)
   },
 
   async getGame(gameId: string): Promise<Game> {

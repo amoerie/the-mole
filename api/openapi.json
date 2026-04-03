@@ -404,7 +404,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Game"
+                    "$ref": "#/components/schemas/MyGameResponse"
                   }
                 }
               }
@@ -1608,6 +1608,59 @@
           },
           "hasMore": {
             "type": "boolean"
+          }
+        }
+      },
+      "MyGameResponse": {
+        "required": [
+          "id",
+          "name",
+          "adminUserId",
+          "contestants",
+          "episodes",
+          "moleContestantId",
+          "inviteCode",
+          "playerCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "adminUserId": {
+            "type": "string"
+          },
+          "contestants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contestant"
+            }
+          },
+          "episodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Episode"
+            }
+          },
+          "moleContestantId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "inviteCode": {
+            "type": "string"
+          },
+          "playerCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

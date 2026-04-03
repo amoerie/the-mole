@@ -137,6 +137,19 @@ export interface MessagesResponse {
   hasMore: boolean
 }
 
+export interface MyGameResponse {
+  id: string
+  name: string
+  adminUserId: string
+  contestants: Contestant[]
+  episodes: Episode[]
+  /** @nullable */
+  moleContestantId: string | null
+  inviteCode: string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  playerCount: number | string
+}
+
 export interface PasswordResetLinkResponse {
   resetUrl: string
 }
@@ -588,7 +601,7 @@ export const getGameByInvite = async (
 }
 
 export type getMyGamesResponse200 = {
-  data: Game[]
+  data: MyGameResponse[]
   status: 200
 }
 
