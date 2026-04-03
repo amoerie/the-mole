@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from './ui/alert'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Skeleton } from './ui/skeleton'
+import { Input } from './ui/input'
+
 import { AlertCircle, ChevronDown, ChevronUp, Copy, Check, KeyRound, Users } from 'lucide-react'
 
 interface EpisodeRankingData {
@@ -264,10 +266,11 @@ export default function GroupMembers({ game }: Props) {
                                   Stuur deze link naar {player.displayName}:
                                 </p>
                                 <div className="flex gap-2">
-                                  <input
+                                  <Input
                                     readOnly
+                                    aria-label="Wachtwoord herstelkoppeling"
                                     value={resetLinkState[player.userId].url!}
-                                    className="flex-1 min-w-0 rounded-md border bg-muted px-2 py-1 text-xs font-mono"
+                                    className="flex-1 min-w-0 h-8 text-xs font-mono bg-muted"
                                   />
                                   <Button
                                     size="sm"
