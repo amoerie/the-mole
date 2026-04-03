@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Api.Data;
 using Api.Models;
 using Api.Tests.Helpers;
@@ -432,6 +433,21 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
         var firstUrl = firstBody!.RootElement.GetProperty("resetUrl").GetString();
         var secondUrl = secondBody!.RootElement.GetProperty("resetUrl").GetString();
         Assert.NotEqual(firstUrl, secondUrl);
+
+        // The token extracted from each URL is the raw hex; the DB stores the SHA-256 hash.
+        var firstToken = firstUrl!.Split("token=")[1];
+        var secondToken = secondUrl!.Split("token=")[1];
+        var firstHash = Convert.ToHexString(SHA256.HashData(Convert.FromHexString(firstToken)));
+        var secondHash = Convert.ToHexString(SHA256.HashData(Convert.FromHexString(secondToken)));
+
+        // Only the second (latest) hash should be stored — the first is invalidated.
+        var storedHash = await _ctx.ReadDbAsync(async db =>
+        {
+            var user = await db.AppUsers.FindAsync("other-player-id");
+            return user!.PasswordResetToken;
+        });
+        Assert.NotEqual(firstHash, storedHash);
+        Assert.Equal(secondHash, storedHash);
     }
 
     [Fact]
