@@ -477,7 +477,7 @@ describe('GamePage - spoiler-free mode', () => {
     const { container } = renderWithAuth(mockUser)
     await screen.findByRole('button', { name: /spoilervrij/i })
     expect(container.querySelectorAll('.eliminated')).toHaveLength(1)
-    expect(localStorage.getItem('spoilerFree_game-1')).toBeNull()
+    await waitFor(() => expect(localStorage.getItem('spoilerFree_game-1')).toBeNull())
   })
 
   it('clears stale localStorage entry on auto-reset', async () => {
