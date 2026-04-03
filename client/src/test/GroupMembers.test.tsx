@@ -294,6 +294,7 @@ describe('GroupMembers', () => {
       vi.mocked(api.generatePasswordResetLink).mockResolvedValue(resetUrl)
       const writeText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', { value: { writeText }, writable: true })
+      Object.defineProperty(window, 'isSecureContext', { value: true, writable: true })
       renderComponent()
       await expandBob()
       await userEvent.click(await screen.findByRole('button', { name: /reset wachtwoord/i }))
