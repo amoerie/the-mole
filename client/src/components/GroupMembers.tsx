@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../api/client'
 import type { Game, GamePlayer, PlayerRanking } from '../types'
 import { useAuth } from '../hooks/useAuth'
@@ -37,6 +37,16 @@ export default function GroupMembers({ game }: Props) {
     Record<string, { loading: boolean; url: string | null; error: string; copied: boolean }>
   >({})
 
+  // Track pending "Gekopieerd!" reset timeouts so they can be cancelled on collapse/unmount.
+  const copyTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  useEffect(() => {
+    const timeouts = copyTimeouts.current
+    return () => {
+      Object.values(timeouts).forEach(clearTimeout)
+    }
+  }, [])
+
   useEffect(() => {
     if (!open || loaded) return
     api
@@ -73,20 +83,37 @@ export default function GroupMembers({ game }: Props) {
   }
 
   async function copyResetLink(userId: string, url: string) {
-    await navigator.clipboard.writeText(url)
-    setResetLinkState((prev) => ({ ...prev, [userId]: { ...prev[userId], copied: true } }))
-    setTimeout(() => {
+    try {
+      await navigator.clipboard.writeText(url)
       setResetLinkState((prev) => ({
         ...prev,
-        [userId]: { ...prev[userId], copied: false },
+        [userId]: { ...prev[userId], error: '', copied: true },
       }))
-    }, 2000)
+      clearTimeout(copyTimeouts.current[userId])
+      copyTimeouts.current[userId] = setTimeout(() => {
+        setResetLinkState((prev) => {
+          if (!prev[userId]) return prev
+          return { ...prev, [userId]: { ...prev[userId], copied: false } }
+        })
+      }, 2000)
+    } catch (err) {
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          copied: false,
+          error: err instanceof Error ? err.message : 'Fout bij kopiëren link',
+        },
+      }))
+    }
   }
 
   async function togglePlayer(userId: string) {
     if (expandedPlayer === userId) {
       setExpandedPlayer(null)
-      // Clear reset link state when collapsing
+      // Cancel any pending copy-confirmation reset and clear state for this row.
+      clearTimeout(copyTimeouts.current[userId])
+      delete copyTimeouts.current[userId]
       setResetLinkState((prev) => {
         const next = { ...prev }
         delete next[userId]
