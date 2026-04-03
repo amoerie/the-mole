@@ -15,7 +15,10 @@ export default function ContestantDetailPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!gameId) return
+    if (!gameId) {
+      setLoading(false)
+      return
+    }
     api
       .getGame(gameId)
       .then(setGame)
@@ -87,9 +90,12 @@ export default function ContestantDetailPage() {
         alt={contestant.name}
         className="w-full rounded-xl object-cover aspect-square"
         onError={(e) => {
-          if (contestant.photoUrl && (e.target as HTMLImageElement).src !== contestant.photoUrl) {
-            ;(e.target as HTMLImageElement).src = contestant.photoUrl
+          const img = e.currentTarget
+          if (!contestant.photoUrl || img.dataset.fallbackAttempted === 'true') {
+            return
           }
+          img.dataset.fallbackAttempted = 'true'
+          img.src = contestant.photoUrl
         }}
       />
 
