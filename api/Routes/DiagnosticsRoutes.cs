@@ -50,13 +50,13 @@ public static class DiagnosticsRoutes
                             .Select(i => reader.GetName(i))
                             .ToList();
 
-                        var rows = new List<List<string?>>();
+                        var rows = new List<List<string>>();
                         while (await reader.ReadAsync(ct))
                         {
                             var row = Enumerable
                                 .Range(0, reader.FieldCount)
                                 .Select(i =>
-                                    reader.IsDBNull(i) ? null : reader.GetValue(i)?.ToString()
+                                    reader.IsDBNull(i) ? "" : reader.GetValue(i)?.ToString() ?? ""
                                 )
                                 .ToList();
                             rows.Add(row);
@@ -159,5 +159,5 @@ public static class DiagnosticsRoutes
 
     private sealed record QueryRequest(string? Sql);
 
-    private sealed record QueryResult(List<string> Columns, List<List<string?>> Rows);
+    private sealed record QueryResult(List<string> Columns, List<List<string>> Rows);
 }
