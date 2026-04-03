@@ -148,7 +148,7 @@ describe('GroupMembers', () => {
     renderComponent()
     await open()
     await screen.findByText('Alice')
-    await userEvent.click(screen.getAllByRole('button')[1])
+    await userEvent.click(screen.getByRole('button', { name: /alice/i }))
     await waitFor(() => expect(api.getEpisodeRankings).toHaveBeenCalledWith('game-1', 1))
     expect(await screen.findByText('Aflevering 1')).toBeInTheDocument()
   })
@@ -159,7 +159,7 @@ describe('GroupMembers', () => {
     renderComponent()
     await open()
     await screen.findByText('Alice')
-    await userEvent.click(screen.getAllByRole('button')[1])
+    await userEvent.click(screen.getByRole('button', { name: /alice/i }))
     await screen.findByText('Aflevering 1')
     const items = screen.getAllByRole('listitem')
     expect(items[0]).toHaveTextContent('Alice')
@@ -172,7 +172,7 @@ describe('GroupMembers', () => {
     renderComponent()
     await open()
     await screen.findByText('Alice')
-    const playerButton = screen.getAllByRole('button')[1]
+    const playerButton = screen.getByRole('button', { name: /alice/i })
     await userEvent.click(playerButton)
     await screen.findByText('Aflevering 1')
     await userEvent.click(playerButton)
@@ -185,7 +185,7 @@ describe('GroupMembers', () => {
     renderComponent()
     await open()
     await screen.findByText('Alice')
-    await userEvent.click(screen.getAllByRole('button')[1])
+    await userEvent.click(screen.getByRole('button', { name: /alice/i }))
     expect(await screen.findByText('Geen rangschikking ingediend.')).toBeInTheDocument()
   })
 
@@ -198,7 +198,7 @@ describe('GroupMembers', () => {
     renderComponent(gameNoDeadline)
     await open()
     await screen.findByText('Alice')
-    await userEvent.click(screen.getAllByRole('button')[1])
+    await userEvent.click(screen.getByRole('button', { name: /alice/i }))
     expect(
       await screen.findByText('Nog geen afleveringen met een verstreken deadline.'),
     ).toBeInTheDocument()
@@ -210,7 +210,7 @@ describe('GroupMembers', () => {
     renderComponent()
     await open()
     await screen.findByText('Alice')
-    await userEvent.click(screen.getAllByRole('button')[1])
+    await userEvent.click(screen.getByRole('button', { name: /alice/i }))
     expect(await screen.findByText('Rankingfout')).toBeInTheDocument()
   })
 
@@ -242,8 +242,7 @@ describe('GroupMembers', () => {
     async function expandBob() {
       await open()
       await screen.findByText('Bob')
-      // button[0]=Groep header, button[1]=Admin row, button[2]=Bob row
-      await userEvent.click(screen.getAllByRole('button')[2])
+      await userEvent.click(screen.getByRole('button', { name: /bob/i }))
     }
 
     it('shows "Reset wachtwoord" button for non-admin players', async () => {
@@ -256,7 +255,7 @@ describe('GroupMembers', () => {
       renderComponent()
       await open()
       await screen.findByText('Admin')
-      await userEvent.click(screen.getAllByRole('button')[1])
+      await userEvent.click(screen.getByRole('button', { name: /admin/i }))
       expect(screen.queryByRole('button', { name: /reset wachtwoord/i })).not.toBeInTheDocument()
     })
 
@@ -268,7 +267,7 @@ describe('GroupMembers', () => {
       renderComponent()
       await open()
       await screen.findByText('Bob')
-      await userEvent.click(screen.getAllByRole('button')[2])
+      await userEvent.click(screen.getByRole('button', { name: /bob/i }))
       expect(screen.queryByRole('button', { name: /reset wachtwoord/i })).not.toBeInTheDocument()
     })
 
