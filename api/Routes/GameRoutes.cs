@@ -163,6 +163,7 @@ public static class GameRoutes
                     var gameIds = await db
                         .Players.Where(p => p.UserId == user.UserId)
                         .Select(p => p.GameId)
+                        .Distinct()
                         .ToListAsync();
 
                     var games = await db.Games.Where(g => gameIds.Contains(g.Id)).ToListAsync();
@@ -323,7 +324,11 @@ public static class GameRoutes
             )
             .WithName("GeneratePasswordResetLink")
             .WithTags("Games")
-            .Produces<PasswordResetLinkResponse>();
+            .Produces<PasswordResetLinkResponse>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
     }
 
     private sealed record CreateGameRequest(string? Name, List<Contestant>? Contestants);
