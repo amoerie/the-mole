@@ -381,4 +381,129 @@ public sealed class GameRoutesTests : IClassFixture<CustomWebApplicationFactory>
             return true;
         });
     }
+
+    // --- GeneratePasswordResetLink ---
+
+    [Fact]
+    public async Task GeneratePasswordResetLink_AsGameAdmin_ReturnsResetUrl()
+    {
+        var game = TestData.Game();
+        var targetUser = TestData.User("other-player-id", "bob@test.com", "Bob");
+        _ctx.PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.AppUsers.Add(targetUser);
+            db.Players.Add(TestData.Player(game.Id, "other-player-id", "Bob"));
+        });
+        var client = _ctx.CreateClient();
+
+        var response = await client.PostAsync(
+            $"/api/games/{game.Id}/players/other-player-id/password-reset-link",
+            null
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        Assert.NotNull(body);
+        var resetUrl = body!.RootElement.GetProperty("resetUrl").GetString();
+        Assert.NotNull(resetUrl);
+        Assert.Contains("/reset-password?token=", resetUrl);
+    }
+
+    [Fact]
+    public async Task GeneratePasswordResetLink_SecondCall_InvalidatesPreviousToken()
+    {
+        var game = TestData.Game();
+        var targetUser = TestData.User("other-player-id", "bob@test.com", "Bob");
+        _ctx.PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.AppUsers.Add(targetUser);
+            db.Players.Add(TestData.Player(game.Id, "other-player-id", "Bob"));
+        });
+        var client = _ctx.CreateClient();
+        var url = $"/api/games/{game.Id}/players/other-player-id/password-reset-link";
+
+        var first = await client.PostAsync(url, null);
+        var second = await client.PostAsync(url, null);
+
+        var firstBody = await first.Content.ReadFromJsonAsync<JsonDocument>();
+        var secondBody = await second.Content.ReadFromJsonAsync<JsonDocument>();
+        var firstUrl = firstBody!.RootElement.GetProperty("resetUrl").GetString();
+        var secondUrl = secondBody!.RootElement.GetProperty("resetUrl").GetString();
+        Assert.NotEqual(firstUrl, secondUrl);
+    }
+
+    [Fact]
+    public async Task GeneratePasswordResetLink_ForSelf_ReturnsBadRequest()
+    {
+        var game = TestData.Game(); // AdminUserId = "test-user-id"
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        var client = _ctx.CreateClient();
+
+        var response = await client.PostAsync(
+            $"/api/games/{game.Id}/players/test-user-id/password-reset-link",
+            null
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GeneratePasswordResetLink_NotGameAdmin_ReturnsForbidden()
+    {
+        var game = TestData.Game("other-admin"); // caller is "test-user-id", not the admin
+        var targetUser = TestData.User("other-player-id", "bob@test.com", "Bob");
+        _ctx.PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.AppUsers.Add(targetUser);
+            db.Players.Add(TestData.Player(game.Id, "other-player-id", "Bob"));
+        });
+        var client = _ctx.CreateClient();
+
+        var response = await client.PostAsync(
+            $"/api/games/{game.Id}/players/other-player-id/password-reset-link",
+            null
+        );
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GeneratePasswordResetLink_TargetNotInGame_ReturnsNotFound()
+    {
+        var game = TestData.Game();
+        var targetUser = TestData.User("other-player-id", "bob@test.com", "Bob");
+        _ctx.PrepareDb(db =>
+        {
+            db.Games.Add(game);
+            db.AppUsers.Add(targetUser);
+            // Note: no Player record added — user exists but is not in the game
+        });
+        var client = _ctx.CreateClient();
+
+        var response = await client.PostAsync(
+            $"/api/games/{game.Id}/players/other-player-id/password-reset-link",
+            null
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GeneratePasswordResetLink_WhenUnauthenticated_ReturnsUnauthorized()
+    {
+        var game = TestData.Game();
+        _ctx.PrepareDb(db => db.Games.Add(game));
+        using var _ = _ctx.AsUnauthenticated();
+        var client = _ctx.CreateClient();
+
+        var response = await client.PostAsync(
+            $"/api/games/{game.Id}/players/other-player-id/password-reset-link",
+            null
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

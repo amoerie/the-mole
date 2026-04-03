@@ -8,14 +8,16 @@ vi.mock('../api/client', () => ({
   api: {
     getGamePlayers: vi.fn(),
     getEpisodeRankings: vi.fn(),
+    generatePasswordResetLink: vi.fn(),
   },
 }))
 
 vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({ user: { userId: 'player-1', displayName: 'Alice', roles: ['authenticated'] } }),
+  useAuth: vi.fn(),
 }))
 
 import { api } from '../api/client'
+import { useAuth } from '../hooks/useAuth'
 
 const pastDeadline = new Date(Date.now() - 1000).toISOString()
 const futureDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -75,6 +77,9 @@ async function open() {
 describe('GroupMembers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useAuth).mockReturnValue({
+      user: { userId: 'player-1', displayName: 'Alice', roles: ['authenticated'] },
+    })
   })
 
   it('renders collapsed by default', () => {
@@ -207,5 +212,103 @@ describe('GroupMembers', () => {
     await screen.findByText('Alice')
     await userEvent.click(screen.getAllByRole('button')[1])
     expect(await screen.findByText('Rankingfout')).toBeInTheDocument()
+  })
+
+  describe('password reset link', () => {
+    const mockPlayersWithAdmin: GamePlayer[] = [
+      {
+        id: 'p0',
+        gameId: 'game-1',
+        userId: 'admin-1',
+        displayName: 'Admin',
+        joinedAt: new Date().toISOString(),
+      },
+      {
+        id: 'p2',
+        gameId: 'game-1',
+        userId: 'player-2',
+        displayName: 'Bob',
+        joinedAt: new Date().toISOString(),
+      },
+    ]
+
+    beforeEach(() => {
+      vi.mocked(useAuth).mockReturnValue({
+        user: { userId: 'admin-1', displayName: 'Admin', roles: ['authenticated'] },
+      })
+      vi.mocked(api.getGamePlayers).mockResolvedValue(mockPlayersWithAdmin)
+    })
+
+    async function expandBob() {
+      await open()
+      await screen.findByText('Bob')
+      // button[0]=Groep header, button[1]=Admin row, button[2]=Bob row
+      await userEvent.click(screen.getAllByRole('button')[2])
+    }
+
+    it('shows "Reset wachtwoord" button for non-admin players', async () => {
+      renderComponent()
+      await expandBob()
+      expect(await screen.findByRole('button', { name: /reset wachtwoord/i })).toBeInTheDocument()
+    })
+
+    it('hides "Reset wachtwoord" button for the admin\'s own row', async () => {
+      renderComponent()
+      await open()
+      await screen.findByText('Admin')
+      await userEvent.click(screen.getAllByRole('button')[1])
+      expect(screen.queryByRole('button', { name: /reset wachtwoord/i })).not.toBeInTheDocument()
+    })
+
+    it('hides "Reset wachtwoord" button when current user is not the game admin', async () => {
+      vi.mocked(useAuth).mockReturnValue({
+        user: { userId: 'player-1', displayName: 'Alice', roles: ['authenticated'] },
+      })
+      vi.mocked(api.getGamePlayers).mockResolvedValue(mockPlayers)
+      renderComponent()
+      await open()
+      await screen.findByText('Bob')
+      await userEvent.click(screen.getAllByRole('button')[2])
+      expect(screen.queryByRole('button', { name: /reset wachtwoord/i })).not.toBeInTheDocument()
+    })
+
+    it('shows loading state while generating link', async () => {
+      vi.mocked(api.generatePasswordResetLink).mockReturnValue(new Promise(() => {}))
+      renderComponent()
+      await expandBob()
+      await userEvent.click(await screen.findByRole('button', { name: /reset wachtwoord/i }))
+      expect(screen.getByText('Aanmaken...')).toBeInTheDocument()
+    })
+
+    it('shows reset URL input and copy button on success', async () => {
+      const resetUrl = 'https://example.com/reset-password?token=abc123'
+      vi.mocked(api.generatePasswordResetLink).mockResolvedValue(resetUrl)
+      renderComponent()
+      await expandBob()
+      await userEvent.click(await screen.findByRole('button', { name: /reset wachtwoord/i }))
+      expect(await screen.findByDisplayValue(resetUrl)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /kopieer/i })).toBeInTheDocument()
+    })
+
+    it('copies URL to clipboard and shows confirmation', async () => {
+      const resetUrl = 'https://example.com/reset-password?token=abc123'
+      vi.mocked(api.generatePasswordResetLink).mockResolvedValue(resetUrl)
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, writable: true })
+      renderComponent()
+      await expandBob()
+      await userEvent.click(await screen.findByRole('button', { name: /reset wachtwoord/i }))
+      await userEvent.click(await screen.findByRole('button', { name: /kopieer/i }))
+      expect(writeText).toHaveBeenCalledWith(resetUrl)
+      expect(await screen.findByText('Gekopieerd!')).toBeInTheDocument()
+    })
+
+    it('shows error message when generating link fails', async () => {
+      vi.mocked(api.generatePasswordResetLink).mockRejectedValue(new Error('Server error'))
+      renderComponent()
+      await expandBob()
+      await userEvent.click(await screen.findByRole('button', { name: /reset wachtwoord/i }))
+      expect(await screen.findByText('Server error')).toBeInTheDocument()
+    })
   })
 })
