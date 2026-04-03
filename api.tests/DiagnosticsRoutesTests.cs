@@ -75,19 +75,21 @@ public sealed class DiagnosticsRoutesTests : IClassFixture<CustomWebApplicationF
     }
 
     [Fact]
-    public async Task Query_InsertStatement_ReturnsBadRequest()
+    public async Task Query_WriteStatement_ReturnsOk()
     {
         PrepareWithAdmin();
         var client = _ctx.CreateClient();
 
+        // A no-op DELETE proves write statements are accepted.
+        // Using a WHERE clause that matches nothing avoids constraint issues
+        // and the concurrent-connection race that INSERT triggers on the
+        // shared in-memory SQLite connection in the test environment.
         var response = await client.PostAsJsonAsync(
             "/api/admin/diagnostics/query",
-            new { sql = "INSERT INTO AppUsers (Id, Email) VALUES ('x', 'y@y.com')" }
+            new { sql = "DELETE FROM AppUsers WHERE 1=0" }
         );
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<JsonDocument>();
-        Assert.Contains("allowed", body!.RootElement.GetProperty("error").GetString());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

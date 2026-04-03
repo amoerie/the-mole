@@ -227,13 +227,13 @@ describe('AdminQueryPage', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ columns: ['name'], rows: [] }) })
       .mockResolvedValueOnce({
         ok: false,
-        json: async () => ({ error: 'Only SELECT queries are allowed.' }),
+        json: async () => ({ error: 'no such table: FakeTable' }),
       })
     renderPage()
     await waitFor(() => screen.getByText('No tables found'))
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => expect(screen.getByTestId('query-error')).toBeInTheDocument())
-    expect(screen.getByText('Only SELECT queries are allowed.')).toBeInTheDocument()
+    expect(screen.getByText('no such table: FakeTable')).toBeInTheDocument()
   })
 
   it('shows error banner on network failure', async () => {

@@ -29,8 +29,6 @@ column names and row values.
 
 **Validation:**
 - `sql` must be non-empty.
-- The trimmed statement must begin with `SELECT`, `WITH`, `PRAGMA`, or `EXPLAIN`.
-  Any other prefix is rejected with `400 Bad Request` to prevent writes.
 
 **Response (200 OK):**
 ```json
@@ -41,11 +39,6 @@ column names and row values.
     ["usr-2", "bob@example.com", "False"]
   ]
 }
-```
-
-**Error (400 Bad Request):**
-```json
-{ "error": "Only SELECT, WITH, PRAGMA, and EXPLAIN queries are allowed." }
 ```
 
 ### Frontend

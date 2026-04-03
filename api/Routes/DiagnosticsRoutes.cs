@@ -31,20 +31,6 @@ public static class DiagnosticsRoutes
                     if (string.IsNullOrWhiteSpace(sql))
                         return Results.BadRequest(new { error = "SQL query is required." });
 
-                    var upper = sql.TrimStart().ToUpperInvariant();
-                    if (
-                        !upper.StartsWith("SELECT", StringComparison.Ordinal)
-                        && !upper.StartsWith("WITH", StringComparison.Ordinal)
-                        && !upper.StartsWith("PRAGMA", StringComparison.Ordinal)
-                        && !upper.StartsWith("EXPLAIN", StringComparison.Ordinal)
-                    )
-                        return Results.BadRequest(
-                            new
-                            {
-                                error = "Only SELECT, WITH, PRAGMA, and EXPLAIN queries are allowed.",
-                            }
-                        );
-
                     try
                     {
                         var connection = db.Database.GetDbConnection();
