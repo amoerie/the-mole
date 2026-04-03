@@ -151,6 +151,10 @@ builder.Services.AddOpenApi(
 
 builder.Services.AddApplicationInsightsTelemetry();
 
+var logBroadcaster = new LogBroadcaster();
+builder.Services.AddSingleton(logBroadcaster);
+builder.Logging.AddProvider(logBroadcaster);
+
 var app = builder.Build();
 
 // Skip migrations when the build tool probes for the OpenAPI document
@@ -197,6 +201,7 @@ app.MapMessageRoutes();
 app.MapPlayerRoutes();
 app.MapSuspectStatsRoutes();
 app.MapAdminRoutes();
+app.MapDiagnosticsRoutes();
 app.MapConfigRoutes();
 
 if (!app.Environment.IsDevelopment())

@@ -12,6 +12,8 @@ import ProfilePage from './pages/ProfilePage'
 import MessageBoardPage from './pages/MessageBoardPage'
 import GroupPage from './pages/GroupPage'
 import SuspectChartsPage from './pages/SuspectChartsPage'
+import AdminQueryPage from './pages/AdminQueryPage'
+import AdminLogsPage from './pages/AdminLogsPage'
 import Footer from './components/Footer'
 import { Button } from './components/ui/button'
 
@@ -34,6 +36,16 @@ function App() {
                       {auth.user.displayName}
                     </Link>
                   </span>
+                  {auth.user.roles.includes('admin') && (
+                    <>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to="/admin/query">SQL</Link>
+                      </Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to="/admin/logs">Logs</Link>
+                      </Button>
+                    </>
+                  )}
                   <Button asChild variant="ghost" size="sm">
                     <a href="/api/auth/logout">Uitloggen</a>
                   </Button>
@@ -55,6 +67,8 @@ function App() {
             <Route path="/game/:gameId/group" element={<GroupPage />} />
             <Route path="/game/:gameId/suspect-charts" element={<SuspectChartsPage />} />
             <Route path="/join/:inviteCode" element={<HomePage />} />
+            <Route path="/admin/query" element={<AdminQueryPage />} />
+            <Route path="/admin/logs" element={<AdminLogsPage />} />
           </Routes>
           <Footer />
         </div>
