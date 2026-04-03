@@ -42,6 +42,7 @@ import {
   markMessagesRead as _markMessagesRead,
   getGamePlayers as _getGamePlayers,
   getSuspectStats as _getSuspectStats,
+  generatePasswordResetLink as _generatePasswordResetLink,
 } from './generated'
 import {
   mapAdminUser,
@@ -282,5 +283,10 @@ export const api = {
   async getSuspectStats(gameId: string): Promise<EpisodeStat[]> {
     const { data } = await _getSuspectStats(gameId)
     return (data ?? []).map(mapEpisodeStat)
+  },
+
+  async generatePasswordResetLink(gameId: string, userId: string): Promise<string> {
+    const { data } = await _generatePasswordResetLink(gameId, userId)
+    return data!.resetUrl
   },
 }

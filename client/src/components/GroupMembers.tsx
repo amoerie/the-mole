@@ -5,8 +5,9 @@ import { useAuth } from '../hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Alert, AlertDescription } from './ui/alert'
 import { Badge } from './ui/badge'
+import { Button } from './ui/button'
 import { Skeleton } from './ui/skeleton'
-import { AlertCircle, ChevronDown, ChevronUp, Users } from 'lucide-react'
+import { AlertCircle, ChevronDown, ChevronUp, Copy, Check, KeyRound, Users } from 'lucide-react'
 
 interface EpisodeRankingData {
   episodeNumber: number
@@ -22,12 +23,19 @@ interface Props {
 export default function GroupMembers({ game }: Props) {
   const { user } = useAuth()
 
+  const isGameAdmin = user?.userId === game.adminUserId
+
   const [open, setOpen] = useState(false)
   const [players, setPlayers] = useState<GamePlayer[]>([])
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [episodeData, setEpisodeData] = useState<EpisodeRankingData[]>([])
+
+  // Per-player reset link state: userId → { loading, url, error, copied }
+  const [resetLinkState, setResetLinkState] = useState<
+    Record<string, { loading: boolean; url: string | null; error: string; copied: boolean }>
+  >({})
 
   useEffect(() => {
     if (!open || loaded) return
@@ -40,9 +48,50 @@ export default function GroupMembers({ game }: Props) {
       .catch((err) => setLoadError(err instanceof Error ? err.message : 'Fout bij laden'))
   }, [open, loaded, game.id])
 
+  async function generateResetLink(userId: string) {
+    setResetLinkState((prev) => ({
+      ...prev,
+      [userId]: { loading: true, url: null, error: '', copied: false },
+    }))
+    try {
+      const url = await api.generatePasswordResetLink(game.id, userId)
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: { loading: false, url, error: '', copied: false },
+      }))
+    } catch (err) {
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: {
+          loading: false,
+          url: null,
+          error: err instanceof Error ? err.message : 'Fout bij aanmaken link',
+          copied: false,
+        },
+      }))
+    }
+  }
+
+  async function copyResetLink(userId: string, url: string) {
+    await navigator.clipboard.writeText(url)
+    setResetLinkState((prev) => ({ ...prev, [userId]: { ...prev[userId], copied: true } }))
+    setTimeout(() => {
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: { ...prev[userId], copied: false },
+      }))
+    }, 2000)
+  }
+
   async function togglePlayer(userId: string) {
     if (expandedPlayer === userId) {
       setExpandedPlayer(null)
+      // Clear reset link state when collapsing
+      setResetLinkState((prev) => {
+        const next = { ...prev }
+        delete next[userId]
+        return next
+      })
       return
     }
 
@@ -160,6 +209,67 @@ export default function GroupMembers({ game }: Props) {
 
                     {isExpanded && (
                       <div className="border-t px-4 pb-4 flex flex-col gap-3 pt-3">
+                        {isGameAdmin && !isCurrentUser && (
+                          <div className="flex flex-col gap-2">
+                            {!resetLinkState[player.userId]?.url ? (
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => generateResetLink(player.userId)}
+                                  disabled={resetLinkState[player.userId]?.loading}
+                                  className="w-fit"
+                                >
+                                  <KeyRound className="size-3.5 mr-1.5" />
+                                  {resetLinkState[player.userId]?.loading
+                                    ? 'Aanmaken...'
+                                    : 'Reset wachtwoord'}
+                                </Button>
+                                {resetLinkState[player.userId]?.error && (
+                                  <p className="text-xs text-destructive">
+                                    {resetLinkState[player.userId].error}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <p className="text-xs text-muted-foreground">
+                                  Stuur deze link naar {player.displayName}:
+                                </p>
+                                <div className="flex gap-2">
+                                  <input
+                                    readOnly
+                                    value={resetLinkState[player.userId].url!}
+                                    className="flex-1 min-w-0 rounded-md border bg-muted px-2 py-1 text-xs font-mono"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      copyResetLink(
+                                        player.userId,
+                                        resetLinkState[player.userId].url!,
+                                      )
+                                    }
+                                    className="shrink-0"
+                                  >
+                                    {resetLinkState[player.userId].copied ? (
+                                      <>
+                                        <Check className="size-3.5 mr-1.5" />
+                                        Gekopieerd!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="size-3.5 mr-1.5" />
+                                        Kopieer
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {game.episodes.filter((e) => new Date(e.deadline) < new Date()).length ===
                         0 ? (
                           <p className="text-sm text-muted-foreground">

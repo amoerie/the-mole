@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Api.Auth;
 using Api.Data;
 using Api.Models;
@@ -245,6 +246,62 @@ public static class GameRoutes
             .WithName("AddContestants")
             .WithTags("Games")
             .Produces<Game>();
+
+        app.MapPost(
+                "/api/games/{gameId}/players/{userId}/password-reset-link",
+                async (
+                    HttpContext ctx,
+                    AppDbContext db,
+                    IConfiguration config,
+                    string gameId,
+                    string userId
+                ) =>
+                {
+                    var caller = AuthHelper.GetUserInfo(ctx);
+                    if (caller == null)
+                        return Results.Unauthorized();
+
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound(new { error = "Game not found." });
+
+                    if (game.AdminUserId != caller.UserId)
+                        return Results.Forbid();
+
+                    if (userId == caller.UserId)
+                        return Results.BadRequest(
+                            new { error = "Je kunt geen herstellink voor jezelf aanmaken." }
+                        );
+
+                    var isPlayer = await db.Players.AnyAsync(p =>
+                        p.GameId == gameId && p.UserId == userId
+                    );
+                    if (!isPlayer)
+                        return Results.NotFound(
+                            new { error = "Speler niet gevonden in dit spel." }
+                        );
+
+                    var targetUser = await db.AppUsers.FindAsync(userId);
+                    if (targetUser == null)
+                        return Results.NotFound(new { error = "Gebruiker niet gevonden." });
+
+                    var tokenBytes = RandomNumberGenerator.GetBytes(32);
+                    var token = Convert.ToHexString(tokenBytes);
+                    var tokenHash = Convert.ToHexString(SHA256.HashData(tokenBytes));
+
+                    targetUser.PasswordResetToken = tokenHash;
+                    targetUser.PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(24);
+                    await db.SaveChangesAsync();
+
+                    var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
+                    var resetUrl = $"{baseUrl}/reset-password?token={token}";
+
+                    return Results.Ok(new PasswordResetLinkResponse(resetUrl));
+                }
+            )
+            .WithName("GeneratePasswordResetLink")
+            .WithTags("Games")
+            .Produces<PasswordResetLinkResponse>();
     }
 
     private sealed record CreateGameRequest(string? Name, List<Contestant>? Contestants);
@@ -254,6 +311,8 @@ public static class GameRoutes
     private sealed record AddContestantsRequest(List<Contestant>? Contestants);
 
     private sealed record MessageResponse(string Message);
+
+    private sealed record PasswordResetLinkResponse(string ResetUrl);
 
     private sealed record GameSummaryResponse(
         string Id,
