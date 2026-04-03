@@ -69,8 +69,6 @@ export default function ContestantDetailPage() {
     )
   }
 
-  const photoSrc = contestant.highResPhotoUrl || contestant.photoUrl
-
   return (
     <main className="container mx-auto max-w-lg px-4 py-8 flex flex-col gap-6">
       <div>
@@ -82,19 +80,13 @@ export default function ContestantDetailPage() {
         </Button>
       </div>
 
-      <img
-        src={photoSrc}
-        alt={contestant.name}
-        className="w-full rounded-xl object-cover aspect-square"
-        onError={(e) => {
-          const img = e.currentTarget
-          if (!contestant.photoUrl || img.dataset.fallbackAttempted === 'true') {
-            return
-          }
-          img.dataset.fallbackAttempted = 'true'
-          img.src = contestant.photoUrl
-        }}
-      />
+      {contestant.highResPhotoUrl && (
+        <img
+          src={contestant.highResPhotoUrl}
+          alt={contestant.name}
+          className="w-full rounded-xl object-cover aspect-square"
+        />
+      )}
 
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{contestant.name}</h1>

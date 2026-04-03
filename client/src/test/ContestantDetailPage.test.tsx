@@ -26,7 +26,7 @@ const mockGame: Game = {
       name: 'Abigail',
       age: 33,
       photoUrl: '/contestants/abigail.png',
-      highResPhotoUrl: 'https://images.play.tv/abigail-hires.png',
+      highResPhotoUrl: '/contestants/abigail-hires.webp',
       bio: 'Abigail heeft wortels in Ghana.',
     },
     {
@@ -87,15 +87,14 @@ describe('ContestantDetailPage', () => {
     renderPage('c1')
     await screen.findByText('Abigail')
     const img = screen.getByRole('img', { name: 'Abigail' }) as HTMLImageElement
-    expect(img.src).toContain('abigail-hires.png')
+    expect(img.src).toContain('abigail-hires.webp')
   })
 
-  it('falls back to photoUrl when highResPhotoUrl is absent', async () => {
+  it('does not render image when highResPhotoUrl is absent', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     renderPage('c2')
     await screen.findByText('Dries')
-    const img = screen.getByRole('img', { name: 'Dries' }) as HTMLImageElement
-    expect(img.src).toContain('/contestants/dries.png')
+    expect(screen.queryByRole('img', { name: 'Dries' })).not.toBeInTheDocument()
   })
 
   it('shows error alert when API call fails', async () => {
