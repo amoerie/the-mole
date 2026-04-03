@@ -64,6 +64,7 @@ import type {
   GamePlayer,
   MessagesPage,
   LeaderboardEntry,
+  MyGame,
   NewContestant,
   PlayerRanking,
   Ranking,
@@ -78,6 +79,7 @@ export type {
   GamePlayer,
   MessagesPage,
   LeaderboardEntry,
+  MyGame,
   NewContestant,
   PlayerRanking,
   Ranking,
@@ -155,7 +157,7 @@ export const api = {
     return mapGame(data!)
   },
 
-  async getMyGames(): Promise<Game[]> {
+  async getMyGames(): Promise<MyGame[]> {
     const { data } = await _getMyGames()
     return (data ?? []).map(mapMyGame)
   },

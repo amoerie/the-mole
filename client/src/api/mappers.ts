@@ -35,6 +35,7 @@ import type {
   GamePlayer,
   LeaderboardEntry,
   MessagesPage,
+  MyGame,
   Ranking,
   UserInfo,
 } from '../types'
@@ -84,11 +85,10 @@ export function mapGame(raw: RawGame): Game {
     episodes: (raw.episodes ?? []).map(mapEpisode),
     moleContestantId: raw.moleContestantId ?? undefined,
     inviteCode: raw.inviteCode ?? '',
-    playerCount: 0,
   }
 }
 
-export function mapMyGame(raw: RawMyGameResponse): Game {
+export function mapMyGame(raw: RawMyGameResponse): MyGame {
   return {
     id: raw.id ?? '',
     name: raw.name ?? '',

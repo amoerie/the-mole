@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../hooks/useAuth'
 import HomePage from '../pages/HomePage'
-import type { UserInfo, Game } from '../types'
+import type { UserInfo, MyGame } from '../types'
 
 // Mock the api module
 vi.mock('../api/client', () => ({
@@ -38,7 +38,7 @@ const mockAdminUser: UserInfo = {
   roles: ['authenticated', 'admin'],
 }
 
-const mockGame: Game = {
+const mockGame: MyGame = {
   id: 'game-1',
   name: 'Testspel',
   inviteCode: 'abc123',

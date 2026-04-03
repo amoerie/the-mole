@@ -27,6 +27,10 @@ export interface Game {
   episodes: Episode[]
   moleContestantId?: string
   inviteCode: string
+}
+
+/** Game as returned by /api/my-games — includes the player count */
+export interface MyGame extends Game {
   playerCount: number
 }
 
