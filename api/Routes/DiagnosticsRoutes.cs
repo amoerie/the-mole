@@ -31,16 +31,19 @@ public static class DiagnosticsRoutes
                     if (string.IsNullOrWhiteSpace(sql))
                         return Results.BadRequest(new { error = "SQL query is required." });
 
+                    var ct = ctx.RequestAborted;
+
                     try
                     {
                         var connection = db.Database.GetDbConnection();
                         if (connection.State != System.Data.ConnectionState.Open)
-                            await connection.OpenAsync();
+                            await connection.OpenAsync(ct);
 
                         await using var command = connection.CreateCommand();
                         command.CommandText = sql;
+                        command.CommandTimeout = 30;
 
-                        await using var reader = await command.ExecuteReaderAsync();
+                        await using var reader = await command.ExecuteReaderAsync(ct);
 
                         var columns = Enumerable
                             .Range(0, reader.FieldCount)
@@ -48,7 +51,7 @@ public static class DiagnosticsRoutes
                             .ToList();
 
                         var rows = new List<List<string?>>();
-                        while (await reader.ReadAsync())
+                        while (await reader.ReadAsync(ct))
                         {
                             var row = Enumerable
                                 .Range(0, reader.FieldCount)
@@ -91,15 +94,16 @@ public static class DiagnosticsRoutes
                     ctx.Response.Headers.Append("Connection", "keep-alive");
                     ctx.Response.Headers.Append("X-Accel-Buffering", "no");
 
-                    var channel = broadcaster.Subscribe();
+                    // Subscribe and snapshot history atomically so no entry can appear
+                    // in both the replay and the live channel (duplicate-free guarantee).
+                    var (channel, history) = broadcaster.SubscribeWithHistory();
                     var ct = ctx.RequestAborted;
 
                     try
                     {
-                        foreach (var entry in broadcaster.GetHistory())
-                        {
+                        foreach (var entry in history)
                             await WriteEntry(ctx.Response, entry, ct);
-                        }
+
                         await ctx.Response.Body.FlushAsync(ct);
 
                         await foreach (var entry in channel.Reader.ReadAllAsync(ct))

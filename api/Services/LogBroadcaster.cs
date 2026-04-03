@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Threading.Channels;
 
 namespace Api.Services;
@@ -19,32 +18,38 @@ public sealed class LogBroadcaster : ILoggerProvider
 {
     private const int MaxHistory = 500;
 
-    private readonly ConcurrentQueue<LogEntry> _history = new();
+    // Plain Queue protected by _lock gives O(1) Count (unlike ConcurrentQueue which is O(n)).
+    private readonly Queue<LogEntry> _history = new();
     private readonly List<Channel<LogEntry>> _subscribers = [];
     private readonly object _lock = new();
 
-    public IEnumerable<LogEntry> GetHistory() => _history;
-
     public void Broadcast(LogEntry entry)
     {
-        _history.Enqueue(entry);
-        while (_history.Count > MaxHistory && _history.TryDequeue(out _)) { }
-
         lock (_lock)
         {
+            _history.Enqueue(entry);
+            if (_history.Count > MaxHistory)
+                _history.Dequeue();
+
             foreach (var ch in _subscribers)
                 ch.Writer.TryWrite(entry);
         }
     }
 
-    public Channel<LogEntry> Subscribe()
+    /// <summary>
+    /// Atomically registers the subscriber and snapshots the current history so
+    /// that no entry can appear both in the history replay and the live stream.
+    /// </summary>
+    public (Channel<LogEntry> Channel, LogEntry[] History) SubscribeWithHistory()
     {
         var channel = Channel.CreateBounded<LogEntry>(
             new BoundedChannelOptions(200) { FullMode = BoundedChannelFullMode.DropOldest }
         );
         lock (_lock)
+        {
             _subscribers.Add(channel);
-        return channel;
+            return (channel, _history.ToArray());
+        }
     }
 
     public void Unsubscribe(Channel<LogEntry> channel)
@@ -66,7 +71,10 @@ internal sealed class LogBroadcasterLogger(LogBroadcaster broadcaster, string ca
     public IDisposable? BeginScope<TState>(TState state)
         where TState : notnull => null;
 
-    public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+    // Explicitly exclude LogLevel.None (numerically > Information) to avoid
+    // broadcasting artificial "None" entries from misconfigured providers.
+    public bool IsEnabled(LogLevel logLevel) =>
+        logLevel != LogLevel.None && logLevel >= LogLevel.Information;
 
     public void Log<TState>(
         LogLevel logLevel,
