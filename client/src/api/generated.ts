@@ -11,6 +11,10 @@ export interface Contestant {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   age?: number | string
   photoUrl?: string
+  /** @nullable */
+  highResPhotoUrl?: string | null
+  /** @nullable */
+  bio?: string | null
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)$

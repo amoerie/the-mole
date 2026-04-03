@@ -63,6 +63,8 @@ export function mapContestant(raw: RawContestant): Contestant {
     name: raw.name ?? '',
     age: Number(raw.age ?? 0),
     photoUrl: raw.photoUrl ?? '',
+    highResPhotoUrl: raw.highResPhotoUrl ?? undefined,
+    bio: raw.bio ?? undefined,
     eliminatedInEpisode:
       raw.eliminatedInEpisode != null ? Number(raw.eliminatedInEpisode) : undefined,
   }

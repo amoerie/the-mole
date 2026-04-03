@@ -17,6 +17,8 @@ public class Contestant
     public string Name { get; set; } = string.Empty;
     public int Age { get; set; }
     public string PhotoUrl { get; set; } = string.Empty;
+    public string? HighResPhotoUrl { get; set; }
+    public string? Bio { get; set; }
     public int? EliminatedInEpisode { get; set; }
 }
 

@@ -282,11 +282,13 @@ export default function GamePage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {game.contestants.map((c) => (
-                <ContestantCard
-                  key={c.id}
-                  contestant={c}
-                  eliminated={displayEliminatedIds.has(c.id)}
-                />
+                <Link key={c.id} to={`/game/${game.id}/contestant/${c.id}`}>
+                  <ContestantCard
+                    contestant={c}
+                    eliminated={displayEliminatedIds.has(c.id)}
+                    className="h-full cursor-pointer hover:bg-accent transition-colors"
+                  />
+                </Link>
               ))}
             </div>
           )}
