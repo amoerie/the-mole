@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Api.Models;
 
 public class Game
@@ -9,6 +11,10 @@ public class Game
     public List<Episode> Episodes { get; set; } = new();
     public string? MoleContestantId { get; set; }
     public string InviteCode { get; set; } = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>Number of players in this game. Populated by the my-games endpoint; 0 elsewhere.</summary>
+    [NotMapped]
+    public int PlayerCount { get; set; }
 }
 
 public class Contestant

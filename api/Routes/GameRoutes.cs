@@ -163,6 +163,15 @@ public static class GameRoutes
 
                     var games = await db.Games.Where(g => gameIds.Contains(g.Id)).ToListAsync();
 
+                    var playerCounts = await db
+                        .Players.Where(p => gameIds.Contains(p.GameId))
+                        .GroupBy(p => p.GameId)
+                        .Select(g => new { GameId = g.Key, Count = g.Count() })
+                        .ToDictionaryAsync(x => x.GameId, x => x.Count);
+
+                    foreach (var game in games)
+                        game.PlayerCount = playerCounts.GetValueOrDefault(game.Id, 0);
+
                     return Results.Ok(games);
                 }
             )

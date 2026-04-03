@@ -83,6 +83,7 @@ export function mapGame(raw: RawGame): Game {
     episodes: (raw.episodes ?? []).map(mapEpisode),
     moleContestantId: raw.moleContestantId ?? undefined,
     inviteCode: raw.inviteCode ?? '',
+    playerCount: raw.playerCount ?? 0,
   }
 }
 

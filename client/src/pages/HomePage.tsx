@@ -212,6 +212,10 @@ export default function HomePage() {
                         <Users className="size-3" />
                         {game.contestants.length} kandidaten
                       </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="size-3" />
+                        {game.playerCount} spelers
+                      </span>
                       <span>{game.episodes.length} afleveringen</span>
                     </span>
                   </div>

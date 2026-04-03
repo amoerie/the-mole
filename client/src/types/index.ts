@@ -27,6 +27,7 @@ export interface Game {
   episodes: Episode[]
   moleContestantId?: string
   inviteCode: string
+  playerCount: number
 }
 
 export interface Player {
