@@ -68,9 +68,13 @@ describe('AdminQueryPage', () => {
       error: null,
       setUser: vi.fn(),
     })
-    global.fetch = mockFetch
+    vi.stubGlobal('fetch', mockFetch)
     // Default: empty table list, silent
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ columns: ['name'], rows: [] }) })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
@@ -151,7 +155,7 @@ describe('AdminQueryPage', () => {
       json: async () => ({ columns: ['name'], rows: [] }),
     })
     renderPage()
-    await waitFor(() => expect(screen.getByText('No tables found')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Geen tabellen gevonden')).toBeInTheDocument())
   })
 
   it('double-clicking a table prefills the editor with SELECT query', async () => {
@@ -160,7 +164,7 @@ describe('AdminQueryPage', () => {
     const item = await screen.findByTestId('table-item')
     fireEvent.doubleClick(item)
     const editor = screen.getByTestId('sql-editor') as HTMLTextAreaElement
-    expect(editor.value).toBe('SELECT * FROM AppUsers LIMIT 1000')
+    expect(editor.value).toBe('SELECT * FROM "AppUsers" LIMIT 1000')
   })
 
   it('still shows other tables after prefilling', async () => {
@@ -169,7 +173,7 @@ describe('AdminQueryPage', () => {
     await screen.findAllByTestId('table-item')
     fireEvent.doubleClick(screen.getAllByTestId('table-item')[1])
     const editor = screen.getByTestId('sql-editor') as HTMLTextAreaElement
-    expect(editor.value).toBe('SELECT * FROM Games LIMIT 1000')
+    expect(editor.value).toBe('SELECT * FROM "Games" LIMIT 1000')
     // Both table items are still visible
     expect(screen.getAllByTestId('table-item').length).toBe(2)
   })
@@ -179,7 +183,7 @@ describe('AdminQueryPage', () => {
   it('executes query and shows results table', async () => {
     mockTablesAndQuery([], { columns: ['id', 'email'], rows: [['usr-1', 'alice@example.com']] })
     renderPage()
-    await waitFor(() => expect(screen.queryByText('No tables found')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Geen tabellen gevonden')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => expect(screen.getByTestId('query-results')).toBeInTheDocument())
     expect(screen.getByText('alice@example.com')).toBeInTheDocument()
@@ -194,7 +198,7 @@ describe('AdminQueryPage', () => {
         json: async () => ({ columns: ['id'], rows: [['a'], ['b'], ['c']] }),
       })
     renderPage()
-    await waitFor(() => screen.getByText('No tables found'))
+    await waitFor(() => screen.getByText('Geen tabellen gevonden'))
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => screen.getByTestId('query-results'))
     expect(screen.getByText('3 rows returned')).toBeInTheDocument()
@@ -205,7 +209,7 @@ describe('AdminQueryPage', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ columns: ['name'], rows: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ columns: ['id'], rows: [] }) })
     renderPage()
-    await waitFor(() => screen.getByText('No tables found'))
+    await waitFor(() => screen.getByText('Geen tabellen gevonden'))
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => screen.getByTestId('query-results'))
     expect(screen.getByText(/geen rijen gevonden/i)).toBeInTheDocument()
@@ -216,7 +220,7 @@ describe('AdminQueryPage', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ columns: ['name'], rows: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ columns: ['val'], rows: [[null]] }) })
     renderPage()
-    await waitFor(() => screen.getByText('No tables found'))
+    await waitFor(() => screen.getByText('Geen tabellen gevonden'))
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => screen.getByTestId('query-results'))
     expect(screen.getByText('null').tagName).toBe('EM')
@@ -230,7 +234,7 @@ describe('AdminQueryPage', () => {
         json: async () => ({ error: 'no such table: FakeTable' }),
       })
     renderPage()
-    await waitFor(() => screen.getByText('No tables found'))
+    await waitFor(() => screen.getByText('Geen tabellen gevonden'))
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => expect(screen.getByTestId('query-error')).toBeInTheDocument())
     expect(screen.getByText('no such table: FakeTable')).toBeInTheDocument()
@@ -241,7 +245,7 @@ describe('AdminQueryPage', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ columns: ['name'], rows: [] }) })
       .mockRejectedValueOnce(new Error('Network error'))
     renderPage()
-    await waitFor(() => screen.getByText('No tables found'))
+    await waitFor(() => screen.getByText('Geen tabellen gevonden'))
     fireEvent.click(screen.getByRole('button', { name: /uitvoeren/i }))
     await waitFor(() => expect(screen.getByTestId('query-error')).toBeInTheDocument())
     expect(screen.getByText('Network error')).toBeInTheDocument()

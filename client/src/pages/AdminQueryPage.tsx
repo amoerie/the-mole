@@ -49,7 +49,7 @@ export default function AdminQueryPage() {
   useEffect(() => {
     if (!user?.roles.includes('admin')) return
     runQuery("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-      .then((r) => setTables(r.rows.map((row) => row[0] ?? '')))
+      .then((r) => setTables(r.rows.map((row) => row[0] ?? '').filter(Boolean)))
       .catch(() => setTables([]))
       .finally(() => setTablesLoading(false))
   }, [user])
@@ -119,14 +119,16 @@ export default function AdminQueryPage() {
                 <Skeleton className="h-4 w-5/6" />
               </div>
             ) : tables.length === 0 ? (
-              <p className="p-2 text-xs text-muted-foreground">No tables found</p>
+              <p className="p-2 text-xs text-muted-foreground">Geen tabellen gevonden</p>
             ) : (
               <ul>
                 {tables.map((table) => (
                   <li
                     key={table}
-                    onDoubleClick={() => setQueryText(`SELECT * FROM ${table} LIMIT 1000`)}
-                    title="Double-click to prefill query"
+                    onDoubleClick={() =>
+                      setQueryText(`SELECT * FROM "${table.replaceAll('"', '""')}" LIMIT 1000`)
+                    }
+                    title="Dubbelklik om te selecteren"
                     className="px-3 py-1.5 text-xs font-mono cursor-pointer select-none hover:bg-accent hover:text-accent-foreground"
                     data-testid="table-item"
                   >
@@ -136,7 +138,7 @@ export default function AdminQueryPage() {
               </ul>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Double-click to SELECT</p>
+          <p className="text-xs text-muted-foreground">Dubbelklik om te selecteren</p>
         </aside>
 
         {/* Editor + results */}

@@ -30,8 +30,9 @@ export default function AdminLogsPage() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
-  const [entries, setEntries] = useState<LogEntry[]>([])
+  const [entries, setEntries] = useState<(LogEntry & { _key: number })[]>([])
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const keyCounterRef = useRef(0)
   const [autoScroll, setAutoScroll] = useState(true)
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -77,7 +78,8 @@ export default function AdminLogsPage() {
       try {
         const entry = JSON.parse(event.data) as LogEntry
         setEntries((prev) => {
-          const next = [...prev, entry]
+          const keyed = { ...entry, _key: keyCounterRef.current++ }
+          const next = [...prev, keyed]
           return next.length > MAX_LOG_ENTRIES ? next.slice(next.length - MAX_LOG_ENTRIES) : next
         })
       } catch {
@@ -85,7 +87,12 @@ export default function AdminLogsPage() {
       }
     }
 
-    es.onerror = () => setStatus('error')
+    // onerror fires for transient disconnects (readyState → CONNECTING, auto-reconnect)
+    // as well as permanent failures (readyState → CLOSED). Distinguish them so we don't
+    // show a hard error during a normal reconnect cycle.
+    es.onerror = () => {
+      setStatus(es.readyState === EventSource.CLOSED ? 'error' : 'connecting')
+    }
 
     return () => {
       es.close()
@@ -128,7 +135,7 @@ export default function AdminLogsPage() {
         {entries.length === 0 ? (
           <p className="text-muted-foreground italic">Wachten op log entries...</p>
         ) : (
-          entries.map((entry, i) => {
+          entries.map((entry) => {
             const levelClass = LOG_LEVEL_CLASSES[entry.level] ?? 'text-slate-300'
             const time = new Date(entry.timestamp).toLocaleTimeString('nl-BE', {
               hour: '2-digit',
@@ -136,7 +143,7 @@ export default function AdminLogsPage() {
               second: '2-digit',
             })
             return (
-              <div key={i} className="flex gap-2 leading-relaxed" data-testid="log-entry">
+              <div key={entry._key} className="flex gap-2 leading-relaxed" data-testid="log-entry">
                 <span className="shrink-0 text-slate-600">{time}</span>
                 <span className={`shrink-0 w-20 ${levelClass}`}>{entry.level}</span>
                 <span className="shrink-0 truncate max-w-48 text-slate-500">{entry.category}</span>

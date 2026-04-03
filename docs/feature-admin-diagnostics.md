@@ -1,26 +1,38 @@
-# Feature: Admin Diagnostics Page
+# Feature: Admin Diagnostics
 
 ## Overview
 
-A protected admin-only page at `/admin/diagnostics` that provides two live diagnostic
-tools: an interactive SQL query runner against the SQLite database, and a streaming
-log viewer that tails backend log output in real time.
+Two protected super-admin-only pages that provide live diagnostic tooling:
+
+- **`/admin/query`** — interactive SQL runner against the SQLite database.
+- **`/admin/logs`** — streaming log viewer that tails backend output in real time.
 
 ## Goal
 
-Give the admin a zero-friction way to inspect application state and debug issues
-without needing shell access to the server or a separate database tool.
+Give the super-admin a zero-friction way to inspect application state and debug
+issues without needing shell access to the server or a separate database tool.
+
+## Authorization
+
+Both endpoints (and both pages) are restricted to the **super-admin**: the caller
+must hold the `admin` role **and** their email must match `config["AdminEmail"]`.
+Any other caller receives `401 Unauthorized` (unauthenticated) or `403 Forbidden`
+(authenticated but not the super-admin).
 
 ## SQL Query Runner
+
+### Route
+
+`/admin/query`
 
 ### API
 
 #### `POST /api/admin/diagnostics/query`
 
-Executes a read-only SQL statement against the SQLite database and returns the
+Executes an arbitrary SQL statement against the SQLite database and returns the
 column names and row values.
 
-**Auth:** Admin only.
+**Auth:** Super-admin only (see above).
 
 **Request body:**
 ```json
@@ -29,6 +41,8 @@ column names and row values.
 
 **Validation:**
 - `sql` must be non-empty.
+- All statement types are accepted (SELECT, INSERT, UPDATE, DELETE, PRAGMA, …).
+  SQLite errors are caught and returned as `400 Bad Request`.
 
 **Response (200 OK):**
 ```json
@@ -41,21 +55,29 @@ column names and row values.
 }
 ```
 
+For non-SELECT statements (INSERT/UPDATE/DELETE) `columns` and `rows` are empty.
+
 ### Frontend
 
+- **Table browser sidebar** listing all tables from `sqlite_master`, loaded on
+  mount. Double-clicking a table prefills the editor with
+  `SELECT * FROM "<table>" LIMIT 1000` (identifier double-quote escaped).
 - **SQL editor** using CodeMirror 6 (`@uiw/react-codemirror` + `@codemirror/lang-sql`)
-  with SQL syntax highlighting and a dark theme matching the app's aesthetic.
-- **Execute** button submits the query; the editor also responds to `Ctrl+Enter` /
-  `Cmd+Enter`.
+  with SQL syntax highlighting and a dark theme.
+- **Execute** button submits the query; `Ctrl+Enter` / `Cmd+Enter` also works.
 - **Results table** rendered below the editor:
   - Column headers in the first row.
   - All cell values displayed as plain text; `NULL` shown as an italic `null`.
   - Horizontal scroll on wide result sets.
-  - Row count shown beneath the table ("N rows returned").
+  - Row count shown beneath the table.
 - **Error banner** shown when the query fails (validation error or SQLite error).
 - **Empty state** when the query returns zero rows.
 
 ## Log Viewer
+
+### Route
+
+`/admin/logs`
 
 ### API
 
@@ -63,15 +85,15 @@ column names and row values.
 
 A Server-Sent Events (SSE) endpoint that streams structured log entries.
 
-**Auth:** Admin only (checked before headers are written; returns `401`/`403` if
-the caller is not an authenticated admin).
+**Auth:** Super-admin only (see above).
 
 **Behaviour:**
-1. On connection, replay the last ≤ 500 buffered log entries so the viewer has
-   immediate context.
-2. Stream new log entries as they are emitted by the application's logging
+1. Subscribe and snapshot existing history **atomically** (under the same lock)
+   so no entry can appear in both the history replay and the live channel.
+2. Replay the last ≤ 500 buffered entries so the viewer has immediate context.
+3. Stream new log entries as they are emitted by the application's logging
    pipeline.
-3. Closes when the client disconnects.
+4. Closes when the client disconnects.
 
 Each SSE event carries a JSON payload:
 ```
@@ -80,19 +102,21 @@ data: {"level":"Information","category":"Api.Routes.GameRoutes","message":"Game 
 ```
 
 **Log levels captured:** `Information`, `Warning`, `Error`, `Critical`.
-`Trace` and `Debug` are excluded to reduce noise.
+`Trace`, `Debug`, and `None` are excluded to reduce noise.
 
 ### Backend: LogBroadcaster
 
 A singleton `LogBroadcaster` is registered as both an `ILoggerProvider` and as a
 plain DI service so it can be injected into the SSE route handler.
 
-- Maintains a bounded in-memory `ConcurrentQueue<LogEntry>` (cap: 500 entries).
-- Keeps a list of active subscriber `Channel<LogEntry>` instances (one per
-  connected SSE client, cap: 200 buffered entries per channel, drops oldest on
-  overflow).
-- On each new log entry: enqueue + broadcast to all active channels.
-- Subscribers are registered on SSE connection and removed on disconnect.
+- Maintains a bounded in-memory `Queue<LogEntry>` (cap: 500 entries) protected
+  by a single lock. Using `Queue<T>` gives O(1) `Count`; `ConcurrentQueue<T>`
+  would be O(n).
+- Exposes `SubscribeWithHistory()` which atomically registers a subscriber
+  channel and returns the current history snapshot, preventing duplicates.
+- Per-subscriber `Channel<LogEntry>` (cap: 200, drops oldest on overflow).
+- On each new log entry: enqueue (trimming if over cap) + broadcast to all
+  channels — all under the same lock.
 
 ### Frontend
 
@@ -100,9 +124,11 @@ plain DI service so it can be injected into the SSE route handler.
   closes it on unmount.
 - Maintains an in-memory list of log entries capped at **500 entries** (oldest
   are dropped when the cap is exceeded) to avoid memory growth.
-- **Auto-scroll**: the log feed scrolls to the newest entry automatically unless
-  the user has manually scrolled up, in which case auto-scroll is paused until
-  the user scrolls back to the bottom.
+- Each entry is assigned a stable monotonic key (counter ref) so React can
+  reconcile the list correctly when old entries are trimmed.
+- **Auto-scroll** controlled by a "Volg laatste log" checkbox (checked by
+  default). Scrolling away from the bottom unchecks it automatically;
+  re-checking jumps back to the bottom.
 - **Log-level colour coding:**
 
   | Level       | Colour          |
@@ -114,28 +140,28 @@ plain DI service so it can be injected into the SSE route handler.
   | Debug       | Muted grey      |
 
 - Each row shows: `[timestamp]  [level]  [category]  message`.
-- **Connection status badge** (Connected / Reconnecting / Error) shown in the
-  panel header.
-- Empty state shown when no entries have arrived yet.
+- **Connection status badge**: `Verbinden...` (connecting / reconnecting),
+  `Verbonden` (open), `Fout` (permanently closed). Transient disconnects show
+  "Verbinden..." rather than "Fout" because `EventSource` will retry automatically.
 
 ## Navigation
 
-A **"Diagnostics"** link is added to the top navigation bar, visible only to
-admin users, pointing to `/admin/diagnostics`.
+**"SQL"** and **"Logs"** links are added to the top navigation bar, visible only
+to admin users, pointing to `/admin/query` and `/admin/logs` respectively.
 
 ## Tests
 
 - **Backend:**
-  - Query: happy path (columns + rows returned), auth guard (401 unauthenticated,
-    403 non-admin), write-blocked (INSERT rejected with 400), empty result set,
-    SQLite syntax error returns 400.
-  - Logs stream: auth guard (401 unauthenticated, 403 non-admin), connection
-    returns `text/event-stream` content type for admin.
+  - Query: happy path (columns + rows returned), empty result set, write statement
+    accepted (DELETE WHERE 1=0), SQLite error returns 400, empty SQL returns 400.
+  - Auth guard: 401 unauthenticated, 403 non-admin role, 403 admin role but
+    non-super-admin email.
+  - Logs stream: SSE content-type for super-admin, same auth guards as query.
 
 - **Frontend:** Vitest + Testing Library tests for loading state, redirect when
-  not admin, query execution (success, error), results table rendering, log
-  viewer mount/unmount of EventSource, auto-scroll behaviour, log-level colour
-  classes.
+  not admin, SQL execute/error/empty/null-cells, table browser (loading skeleton,
+  table list, double-click prefill with quoted identifier, empty state), log viewer
+  SSE connect/reconnect/close/message/colour-coding/stable-key/unmount.
 
 ## Coverage
 

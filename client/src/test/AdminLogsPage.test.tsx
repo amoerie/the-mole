@@ -18,8 +18,12 @@ const adminUser = { userId: 'a1', displayName: 'Admin', roles: ['authenticated',
 const regularUser = { userId: 'u1', displayName: 'User', roles: ['authenticated'] }
 
 class MockEventSource {
+  static readonly CONNECTING = 0
+  static readonly OPEN = 1
+  static readonly CLOSED = 2
   static instance: MockEventSource | null = null
   url: string
+  readyState: number = MockEventSource.CONNECTING
   onopen: (() => void) | null = null
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: (() => void) | null = null
@@ -31,6 +35,7 @@ class MockEventSource {
   }
 
   close() {
+    this.readyState = MockEventSource.CLOSED
     this.closed = true
   }
 
@@ -61,11 +66,12 @@ describe('AdminLogsPage', () => {
       error: null,
       setUser: vi.fn(),
     })
-    global.EventSource = MockEventSource as unknown as typeof EventSource
+    vi.stubGlobal('EventSource', MockEventSource)
   })
 
   afterEach(() => {
     MockEventSource.instance?.close()
+    vi.unstubAllGlobals()
   })
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
@@ -130,12 +136,28 @@ describe('AdminLogsPage', () => {
     await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('Verbonden'))
   })
 
-  it('shows "error" status when EventSource errors', async () => {
+  it('shows "error" status when EventSource is permanently closed', async () => {
     renderPage()
     act(() => {
-      MockEventSource.instance?.onerror?.()
+      const es = MockEventSource.instance!
+      es.readyState = MockEventSource.CLOSED
+      es.onerror?.()
     })
     await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('Fout'))
+  })
+
+  it('shows "connecting" status when EventSource errors but is still reconnecting', async () => {
+    renderPage()
+    act(() => {
+      MockEventSource.instance?.onopen?.()
+    })
+    await waitFor(() => screen.getByTestId('log-status'))
+    act(() => {
+      const es = MockEventSource.instance!
+      es.readyState = MockEventSource.CONNECTING // reconnecting, not closed
+      es.onerror?.()
+    })
+    await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('Verbinden...'))
   })
 
   it('closes the EventSource on unmount', () => {
