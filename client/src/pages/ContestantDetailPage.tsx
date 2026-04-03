@@ -27,7 +27,7 @@ export default function ContestantDetailPage() {
     return (
       <div className="container mx-auto max-w-lg px-4 py-8 flex flex-col gap-4">
         <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-80 w-full rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-xl" />
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-20 w-full" />
       </div>
@@ -84,7 +84,7 @@ export default function ContestantDetailPage() {
         <img
           src={contestant.highResPhotoUrl}
           alt={contestant.name}
-          className="w-full rounded-xl object-cover aspect-square"
+          className="w-full rounded-xl object-cover aspect-video"
         />
       )}
 
