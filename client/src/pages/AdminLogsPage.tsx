@@ -32,8 +32,9 @@ export default function AdminLogsPage() {
 
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const [autoScroll, setAutoScroll] = useState(true)
+
   const containerRef = useRef<HTMLDivElement>(null)
-  const atBottomRef = useRef(true)
 
   useEffect(() => {
     if (!loading && (!user || !user.roles.includes('admin'))) {
@@ -41,17 +42,29 @@ export default function AdminLogsPage() {
     }
   }, [loading, user, navigate])
 
+  // Scroll to bottom whenever new entries arrive, but only if autoScroll is on.
+  // A programmatic scroll to the bottom leaves scrollHeight - scrollTop - clientHeight ≈ 0,
+  // so the scroll handler (which only turns auto-scroll OFF when NOT near bottom) is a no-op.
+  useEffect(() => {
+    if (!autoScroll || !containerRef.current) return
+    containerRef.current.scrollTop = containerRef.current.scrollHeight
+  }, [entries, autoScroll])
+
+  // When the user manually scrolls away from the bottom, turn off auto-scroll.
   const handleScroll = useCallback(() => {
     const el = containerRef.current
     if (!el) return
-    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    if (!nearBottom) setAutoScroll(false)
   }, [])
 
-  useEffect(() => {
-    if (atBottomRef.current && containerRef.current) {
+  // Re-enable auto-scroll: flip the switch and immediately jump to bottom.
+  const enableAutoScroll = useCallback(() => {
+    setAutoScroll(true)
+    if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-  }, [entries])
+  }, [])
 
   useEffect(() => {
     if (!user || !user.roles.includes('admin')) return
@@ -133,9 +146,22 @@ export default function AdminLogsPage() {
           })
         )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        {entries.length} / {MAX_LOG_ENTRIES} entries in geheugen
-      </p>
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {entries.length} / {MAX_LOG_ENTRIES} entries in geheugen
+        </p>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={autoScroll}
+            onChange={(e) => (e.target.checked ? enableAutoScroll() : setAutoScroll(false))}
+            className="size-3.5 accent-primary"
+            data-testid="auto-scroll-checkbox"
+          />
+          <span className="text-xs text-muted-foreground">Volg laatste log</span>
+        </label>
+      </div>
     </main>
   )
 }
