@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
-import type { Game } from '../types'
+import type { Game, MyGame } from '../types'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
@@ -27,7 +27,7 @@ export default function HomePage() {
   const navigate = useNavigate()
   const { inviteCode: routeInviteCode } = useParams<{ inviteCode?: string }>()
 
-  const [games, setGames] = useState<Game[]>([])
+  const [games, setGames] = useState<MyGame[]>([])
   const [gameName, setGameName] = useState('')
   const [inviteCode, setInviteCode] = useState(routeInviteCode ?? '')
   const [error, setError] = useState('')
@@ -67,7 +67,9 @@ export default function HomePage() {
         // Fallback to localStorage if API not available
         const savedGameIds = JSON.parse(localStorage.getItem('myGameIds') ?? '[]') as string[]
         Promise.all(savedGameIds.map((id) => api.getGame(id).catch(() => null))).then((results) =>
-          setGames(results.filter((g): g is Game => g !== null)),
+          setGames(
+            results.filter((g): g is Game => g !== null).map((g) => ({ ...g, playerCount: 0 })),
+          ),
         )
       })
   }, [user])
@@ -211,6 +213,10 @@ export default function HomePage() {
                       <span className="flex items-center gap-1">
                         <Users className="size-3" />
                         {game.contestants.length} kandidaten
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="size-3" />
+                        {game.playerCount} spelers
                       </span>
                       <span>{game.episodes.length} afleveringen</span>
                     </span>

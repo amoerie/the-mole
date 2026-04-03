@@ -1,6 +1,8 @@
+using System.Security.Cryptography;
 using Api.Auth;
 using Api.Data;
 using Api.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Routes;
@@ -149,25 +151,47 @@ public static class GameRoutes
 
         app.MapGet(
                 "/api/my-games",
-                async (HttpContext ctx, AppDbContext db) =>
+                async Task<Results<Ok<List<MyGameResponse>>, UnauthorizedHttpResult>> (
+                    HttpContext ctx,
+                    AppDbContext db
+                ) =>
                 {
                     var user = AuthHelper.GetUserInfo(ctx);
                     if (user == null)
-                        return Results.Unauthorized();
+                        return TypedResults.Unauthorized();
 
                     var gameIds = await db
                         .Players.Where(p => p.UserId == user.UserId)
                         .Select(p => p.GameId)
+                        .Distinct()
                         .ToListAsync();
 
                     var games = await db.Games.Where(g => gameIds.Contains(g.Id)).ToListAsync();
 
-                    return Results.Ok(games);
+                    var playerCounts = await db
+                        .Players.Where(p => gameIds.Contains(p.GameId))
+                        .GroupBy(p => p.GameId)
+                        .Select(g => new { GameId = g.Key, Count = g.Count() })
+                        .ToDictionaryAsync(x => x.GameId, x => x.Count);
+
+                    var response = games
+                        .Select(g => new MyGameResponse(
+                            g.Id,
+                            g.Name,
+                            g.AdminUserId,
+                            g.Contestants,
+                            g.Episodes,
+                            g.MoleContestantId,
+                            g.InviteCode,
+                            playerCounts.GetValueOrDefault(g.Id, 0)
+                        ))
+                        .ToList();
+
+                    return TypedResults.Ok(response);
                 }
             )
             .WithName("GetMyGames")
-            .WithTags("Games")
-            .Produces<List<Game>>();
+            .WithTags("Games");
 
         app.MapDelete(
                 "/api/games/{gameId}",
@@ -245,6 +269,66 @@ public static class GameRoutes
             .WithName("AddContestants")
             .WithTags("Games")
             .Produces<Game>();
+
+        app.MapPost(
+                "/api/games/{gameId}/players/{userId}/password-reset-link",
+                async (
+                    HttpContext ctx,
+                    AppDbContext db,
+                    IConfiguration config,
+                    string gameId,
+                    string userId
+                ) =>
+                {
+                    var caller = AuthHelper.GetUserInfo(ctx);
+                    if (caller == null)
+                        return Results.Unauthorized();
+
+                    var game = await db.Games.FindAsync(gameId);
+                    if (game == null)
+                        return Results.NotFound(new { error = "Game not found." });
+
+                    if (game.AdminUserId != caller.UserId)
+                        return Results.Forbid();
+
+                    if (userId == caller.UserId)
+                        return Results.BadRequest(
+                            new { error = "Je kunt geen herstellink voor jezelf aanmaken." }
+                        );
+
+                    var isPlayer = await db.Players.AnyAsync(p =>
+                        p.GameId == gameId && p.UserId == userId
+                    );
+                    if (!isPlayer)
+                        return Results.NotFound(
+                            new { error = "Speler niet gevonden in dit spel." }
+                        );
+
+                    var targetUser = await db.AppUsers.FindAsync(userId);
+                    if (targetUser == null)
+                        return Results.NotFound(new { error = "Gebruiker niet gevonden." });
+
+                    var tokenBytes = RandomNumberGenerator.GetBytes(32);
+                    var token = Convert.ToHexString(tokenBytes);
+                    var tokenHash = Convert.ToHexString(SHA256.HashData(tokenBytes));
+
+                    targetUser.PasswordResetToken = tokenHash;
+                    targetUser.PasswordResetTokenExpiry = DateTimeOffset.UtcNow.AddHours(24);
+                    await db.SaveChangesAsync();
+
+                    var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
+                    var resetUrl = $"{baseUrl}/reset-password?token={token}";
+
+                    return Results.Ok(new PasswordResetLinkResponse(resetUrl));
+                }
+            )
+            .WithName("GeneratePasswordResetLink")
+            .WithTags("Games")
+            .Produces<PasswordResetLinkResponse>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
     }
 
     private sealed record CreateGameRequest(string? Name, List<Contestant>? Contestants);
@@ -254,6 +338,8 @@ public static class GameRoutes
     private sealed record AddContestantsRequest(List<Contestant>? Contestants);
 
     private sealed record MessageResponse(string Message);
+
+    private sealed record PasswordResetLinkResponse(string ResetUrl);
 
     private sealed record GameSummaryResponse(
         string Id,

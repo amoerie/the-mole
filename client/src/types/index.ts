@@ -29,6 +29,11 @@ export interface Game {
   inviteCode: string
 }
 
+/** Game as returned by /api/my-games — includes the player count */
+export interface MyGame extends Game {
+  playerCount: number
+}
+
 export interface Player {
   id: string
   gameId: string

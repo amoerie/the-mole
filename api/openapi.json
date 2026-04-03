@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "De Mol API",
+    "title": "Mollenjagers API",
     "version": "v1"
   },
   "servers": [
@@ -191,6 +191,54 @@
         }
       }
     },
+    "/api/me/preferences": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "GetPreferences",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "UpdatePreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/games": {
       "post": {
         "tags": [
@@ -356,7 +404,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Game"
+                    "$ref": "#/components/schemas/MyGameResponse"
                   }
                 }
               }
@@ -398,6 +446,44 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Game"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}/players/{userId}/password-reset-link": {
+      "post": {
+        "tags": [
+          "Games"
+        ],
+        "operationId": "GeneratePasswordResetLink",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetLinkResponse"
                 }
               }
             }
@@ -1056,6 +1142,49 @@
           }
         }
       }
+    },
+    "/api/admin/diagnostics/query": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "ExecuteQuery",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/diagnostics/logs/stream": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "StreamLogs",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1482,6 +1611,70 @@
           }
         }
       },
+      "MyGameResponse": {
+        "required": [
+          "id",
+          "name",
+          "adminUserId",
+          "contestants",
+          "episodes",
+          "moleContestantId",
+          "inviteCode",
+          "playerCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "adminUserId": {
+            "type": "string"
+          },
+          "contestants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contestant"
+            }
+          },
+          "episodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Episode"
+            }
+          },
+          "moleContestantId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "inviteCode": {
+            "type": "string"
+          },
+          "playerCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PasswordResetLinkResponse": {
+        "required": [
+          "resetUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "resetUrl": {
+            "type": "string"
+          }
+        }
+      },
       "Player": {
         "type": "object",
         "properties": {
@@ -1541,6 +1734,44 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "QueryRequest": {
+        "required": [
+          "sql"
+        ],
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "QueryResult": {
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -1704,6 +1935,17 @@
           }
         }
       },
+      "UpdatePreferencesRequest": {
+        "required": [
+          "reminderEmailsEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "reminderEmailsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "UpdateProfileRequest": {
         "required": [
           "displayName"
@@ -1734,6 +1976,17 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "UserPreferences": {
+        "required": [
+          "reminderEmailsEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "reminderEmailsEnabled": {
+            "type": "boolean"
           }
         }
       }

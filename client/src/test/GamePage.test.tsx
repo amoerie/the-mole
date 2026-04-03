@@ -485,7 +485,9 @@ describe('GamePage - spoiler-free mode', () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGameTwoEpisodes)
     renderWithAuth(mockUser)
     await screen.findByRole('button', { name: /spoilervrij/i })
-    expect(localStorage.getItem('spoilerFree_game-1')).toBeNull()
+    // The localStorage removal happens in a useEffect that runs after the DOM
+    // update — use waitFor so the assertion retries until the effect has fired.
+    await waitFor(() => expect(localStorage.getItem('spoilerFree_game-1')).toBeNull())
   })
 
   it('removes localStorage entry when re-enabling spoiler-free mode', async () => {

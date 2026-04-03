@@ -42,6 +42,7 @@ import {
   markMessagesRead as _markMessagesRead,
   getGamePlayers as _getGamePlayers,
   getSuspectStats as _getSuspectStats,
+  generatePasswordResetLink as _generatePasswordResetLink,
 } from './generated'
 import {
   mapAdminUser,
@@ -51,6 +52,7 @@ import {
   mapLeaderboardEntry,
   mapMessage,
   mapMessagesPage,
+  mapMyGame,
   mapRanking,
   mapUserInfo,
 } from './mappers'
@@ -62,6 +64,7 @@ import type {
   GamePlayer,
   MessagesPage,
   LeaderboardEntry,
+  MyGame,
   NewContestant,
   PlayerRanking,
   Ranking,
@@ -76,6 +79,7 @@ export type {
   GamePlayer,
   MessagesPage,
   LeaderboardEntry,
+  MyGame,
   NewContestant,
   PlayerRanking,
   Ranking,
@@ -153,9 +157,9 @@ export const api = {
     return mapGame(data!)
   },
 
-  async getMyGames(): Promise<Game[]> {
+  async getMyGames(): Promise<MyGame[]> {
     const { data } = await _getMyGames()
-    return (data ?? []).map(mapGame)
+    return (data ?? []).map(mapMyGame)
   },
 
   async getGame(gameId: string): Promise<Game> {
@@ -282,5 +286,10 @@ export const api = {
   async getSuspectStats(gameId: string): Promise<EpisodeStat[]> {
     const { data } = await _getSuspectStats(gameId)
     return (data ?? []).map(mapEpisodeStat)
+  },
+
+  async generatePasswordResetLink(gameId: string, userId: string): Promise<string> {
+    const { data } = await _generatePasswordResetLink(gameId, userId)
+    return data!.resetUrl
   },
 }

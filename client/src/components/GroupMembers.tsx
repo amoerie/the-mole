@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../api/client'
 import type { Game, GamePlayer, PlayerRanking } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Alert, AlertDescription } from './ui/alert'
 import { Badge } from './ui/badge'
+import { Button } from './ui/button'
 import { Skeleton } from './ui/skeleton'
-import { AlertCircle, ChevronDown, ChevronUp, Users } from 'lucide-react'
+import { Input } from './ui/input'
+
+import { AlertCircle, ChevronDown, ChevronUp, Copy, Check, KeyRound, Users } from 'lucide-react'
 
 interface EpisodeRankingData {
   episodeNumber: number
@@ -22,12 +25,29 @@ interface Props {
 export default function GroupMembers({ game }: Props) {
   const { user } = useAuth()
 
+  const isGameAdmin = user?.userId === game.adminUserId
+
   const [open, setOpen] = useState(false)
   const [players, setPlayers] = useState<GamePlayer[]>([])
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [episodeData, setEpisodeData] = useState<EpisodeRankingData[]>([])
+
+  // Per-player reset link state: userId → { loading, url, error, copied }
+  const [resetLinkState, setResetLinkState] = useState<
+    Record<string, { loading: boolean; url: string | null; error: string; copied: boolean }>
+  >({})
+
+  // Track pending "Gekopieerd!" reset timeouts so they can be cancelled on collapse/unmount.
+  const copyTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  useEffect(() => {
+    const timeouts = copyTimeouts.current
+    return () => {
+      Object.values(timeouts).forEach(clearTimeout)
+    }
+  }, [])
 
   useEffect(() => {
     if (!open || loaded) return
@@ -40,9 +60,80 @@ export default function GroupMembers({ game }: Props) {
       .catch((err) => setLoadError(err instanceof Error ? err.message : 'Fout bij laden'))
   }, [open, loaded, game.id])
 
+  async function generateResetLink(userId: string) {
+    setResetLinkState((prev) => ({
+      ...prev,
+      [userId]: { loading: true, url: null, error: '', copied: false },
+    }))
+    try {
+      const url = await api.generatePasswordResetLink(game.id, userId)
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: { loading: false, url, error: '', copied: false },
+      }))
+    } catch (err) {
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: {
+          loading: false,
+          url: null,
+          error: err instanceof Error ? err.message : 'Fout bij aanmaken link',
+          copied: false,
+        },
+      }))
+    }
+  }
+
+  async function copyResetLink(userId: string, url: string) {
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = url
+        textArea.setAttribute('readonly', '')
+        textArea.style.position = 'absolute'
+        textArea.style.left = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.select()
+        const copied = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        if (!copied) throw new Error('Kopiëren niet ondersteund')
+      }
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: { ...prev[userId], error: '', copied: true },
+      }))
+      clearTimeout(copyTimeouts.current[userId])
+      copyTimeouts.current[userId] = setTimeout(() => {
+        setResetLinkState((prev) => {
+          if (!prev[userId]) return prev
+          return { ...prev, [userId]: { ...prev[userId], copied: false } }
+        })
+      }, 2000)
+    } catch (err) {
+      setResetLinkState((prev) => ({
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          copied: false,
+          error: err instanceof Error ? err.message : 'Fout bij kopiëren link',
+        },
+      }))
+    }
+  }
+
   async function togglePlayer(userId: string) {
     if (expandedPlayer === userId) {
       setExpandedPlayer(null)
+      // Cancel any pending copy-confirmation reset and clear state for this row.
+      clearTimeout(copyTimeouts.current[userId])
+      delete copyTimeouts.current[userId]
+      setResetLinkState((prev) => {
+        const next = { ...prev }
+        delete next[userId]
+        return next
+      })
       return
     }
 
@@ -160,6 +251,68 @@ export default function GroupMembers({ game }: Props) {
 
                     {isExpanded && (
                       <div className="border-t px-4 pb-4 flex flex-col gap-3 pt-3">
+                        {isGameAdmin && !isCurrentUser && (
+                          <div className="flex flex-col gap-2">
+                            {!resetLinkState[player.userId]?.url ? (
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => generateResetLink(player.userId)}
+                                  disabled={resetLinkState[player.userId]?.loading}
+                                  className="w-fit"
+                                >
+                                  <KeyRound className="size-3.5 mr-1.5" />
+                                  {resetLinkState[player.userId]?.loading
+                                    ? 'Aanmaken...'
+                                    : 'Reset wachtwoord'}
+                                </Button>
+                                {resetLinkState[player.userId]?.error && (
+                                  <p className="text-xs text-destructive">
+                                    {resetLinkState[player.userId].error}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <p className="text-xs text-muted-foreground">
+                                  Stuur deze link naar {player.displayName}:
+                                </p>
+                                <div className="flex gap-2">
+                                  <Input
+                                    readOnly
+                                    aria-label="Wachtwoord herstelkoppeling"
+                                    value={resetLinkState[player.userId].url!}
+                                    className="flex-1 min-w-0 h-8 text-xs font-mono bg-muted"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      copyResetLink(
+                                        player.userId,
+                                        resetLinkState[player.userId].url!,
+                                      )
+                                    }
+                                    className="shrink-0"
+                                  >
+                                    {resetLinkState[player.userId].copied ? (
+                                      <>
+                                        <Check className="size-3.5 mr-1.5" />
+                                        Gekopieerd!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="size-3.5 mr-1.5" />
+                                        Kopieer
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {game.episodes.filter((e) => new Date(e.deadline) < new Date()).length ===
                         0 ? (
                           <p className="text-sm text-muted-foreground">

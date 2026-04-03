@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../hooks/useAuth'
 import HomePage from '../pages/HomePage'
-import type { UserInfo, Game } from '../types'
+import type { UserInfo, MyGame } from '../types'
 
 // Mock the api module
 vi.mock('../api/client', () => ({
@@ -38,13 +38,14 @@ const mockAdminUser: UserInfo = {
   roles: ['authenticated', 'admin'],
 }
 
-const mockGame: Game = {
+const mockGame: MyGame = {
   id: 'game-1',
   name: 'Testspel',
   inviteCode: 'abc123',
   adminUserId: 'user-123',
   contestants: [{ id: 'c1', name: 'Alice', age: 30, photoUrl: '/a.jpg' }],
   episodes: [],
+  playerCount: 3,
 }
 
 function renderWithAuth(user: UserInfo | null, loading = false) {
@@ -188,6 +189,13 @@ describe('HomePage', () => {
     renderWithAuth(mockUser)
     expect(await screen.findByText('Testspel')).toBeInTheDocument()
     expect(screen.getByText('Mijn spellen')).toBeInTheDocument()
+  })
+
+  it('shows player count next to contestant count in game list', async () => {
+    vi.mocked(api.getMyGames).mockResolvedValueOnce([mockGame])
+    renderWithAuth(mockUser)
+    await screen.findByText('Testspel')
+    expect(screen.getByText('3 spelers')).toBeInTheDocument()
   })
 
   it('navigates to game when game button is clicked', async () => {

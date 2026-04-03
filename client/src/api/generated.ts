@@ -137,6 +137,23 @@ export interface MessagesResponse {
   hasMore: boolean
 }
 
+export interface MyGameResponse {
+  id: string
+  name: string
+  adminUserId: string
+  contestants: Contestant[]
+  episodes: Episode[]
+  /** @nullable */
+  moleContestantId: string | null
+  inviteCode: string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  playerCount: number | string
+}
+
+export interface PasswordResetLinkResponse {
+  resetUrl: string
+}
+
 export interface Player {
   id?: string
   gameId?: string
@@ -155,6 +172,16 @@ export interface PlayerRankingResponse {
 export interface PostMessageRequest {
   /** @nullable */
   content: string | null
+}
+
+export interface QueryRequest {
+  /** @nullable */
+  sql: string | null
+}
+
+export interface QueryResult {
+  columns: string[]
+  rows: string[][]
 }
 
 export interface Ranking {
@@ -207,6 +234,10 @@ export interface UpdateEpisodeRequest {
   eliminatedContestantIds: string[] | null
 }
 
+export interface UpdatePreferencesRequest {
+  reminderEmailsEnabled: boolean
+}
+
 export interface UpdateProfileRequest {
   displayName: string
 }
@@ -215,6 +246,10 @@ export interface UserInfo {
   userId: string
   displayName: string
   roles: string[]
+}
+
+export interface UserPreferences {
+  reminderEmailsEnabled: boolean
 }
 
 export type GetMessagesParams = {
@@ -370,12 +405,30 @@ export const getMe = async (options?: RequestInit): Promise<getMeResponse> => {
   })
 }
 
-export interface UserPreferences {
-  reminderEmailsEnabled: boolean
+export type updateProfileResponse200 = {
+  data: UserInfo
+  status: 200
 }
 
-export interface UpdatePreferencesRequest {
-  reminderEmailsEnabled: boolean
+export type updateProfileResponseSuccess = updateProfileResponse200 & {
+  headers: Headers
+}
+export type updateProfileResponse = updateProfileResponseSuccess
+
+export const getUpdateProfileUrl = () => {
+  return `/api/me`
+}
+
+export const updateProfile = async (
+  updateProfileRequest: UpdateProfileRequest,
+  options?: RequestInit,
+): Promise<updateProfileResponse> => {
+  return fetcher<updateProfileResponse>(getUpdateProfileUrl(), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateProfileRequest),
+  })
 }
 
 export type getPreferencesResponse200 = {
@@ -422,32 +475,6 @@ export const updatePreferences = async (
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updatePreferencesRequest),
-  })
-}
-
-export type updateProfileResponse200 = {
-  data: UserInfo
-  status: 200
-}
-
-export type updateProfileResponseSuccess = updateProfileResponse200 & {
-  headers: Headers
-}
-export type updateProfileResponse = updateProfileResponseSuccess
-
-export const getUpdateProfileUrl = () => {
-  return `/api/me`
-}
-
-export const updateProfile = async (
-  updateProfileRequest: UpdateProfileRequest,
-  options?: RequestInit,
-): Promise<updateProfileResponse> => {
-  return fetcher<updateProfileResponse>(getUpdateProfileUrl(), {
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(updateProfileRequest),
   })
 }
 
@@ -574,7 +601,7 @@ export const getGameByInvite = async (
 }
 
 export type getMyGamesResponse200 = {
-  data: Game[]
+  data: MyGameResponse[]
   status: 200
 }
 
@@ -619,6 +646,34 @@ export const addContestants = async (
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(addContestantsRequest),
   })
+}
+
+export type generatePasswordResetLinkResponse200 = {
+  data: PasswordResetLinkResponse
+  status: 200
+}
+
+export type generatePasswordResetLinkResponseSuccess = generatePasswordResetLinkResponse200 & {
+  headers: Headers
+}
+export type generatePasswordResetLinkResponse = generatePasswordResetLinkResponseSuccess
+
+export const getGeneratePasswordResetLinkUrl = (gameId: string, userId: string) => {
+  return `/api/games/${gameId}/players/${userId}/password-reset-link`
+}
+
+export const generatePasswordResetLink = async (
+  gameId: string,
+  userId: string,
+  options?: RequestInit,
+): Promise<generatePasswordResetLinkResponse> => {
+  return fetcher<generatePasswordResetLinkResponse>(
+    getGeneratePasswordResetLinkUrl(gameId, userId),
+    {
+      ...options,
+      method: 'POST',
+    },
+  )
 }
 
 export type createEpisodeResponse200 = {
@@ -1079,6 +1134,53 @@ export const getListUsersUrl = () => {
 
 export const listUsers = async (options?: RequestInit): Promise<listUsersResponse> => {
   return fetcher<listUsersResponse>(getListUsersUrl(), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type executeQueryResponse200 = {
+  data: QueryResult
+  status: 200
+}
+
+export type executeQueryResponseSuccess = executeQueryResponse200 & {
+  headers: Headers
+}
+export type executeQueryResponse = executeQueryResponseSuccess
+
+export const getExecuteQueryUrl = () => {
+  return `/api/admin/diagnostics/query`
+}
+
+export const executeQuery = async (
+  queryRequest: QueryRequest,
+  options?: RequestInit,
+): Promise<executeQueryResponse> => {
+  return fetcher<executeQueryResponse>(getExecuteQueryUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(queryRequest),
+  })
+}
+
+export type streamLogsResponse200 = {
+  data: void
+  status: 200
+}
+
+export type streamLogsResponseSuccess = streamLogsResponse200 & {
+  headers: Headers
+}
+export type streamLogsResponse = streamLogsResponseSuccess
+
+export const getStreamLogsUrl = () => {
+  return `/api/admin/diagnostics/logs/stream`
+}
+
+export const streamLogs = async (options?: RequestInit): Promise<streamLogsResponse> => {
+  return fetcher<streamLogsResponse>(getStreamLogsUrl(), {
     ...options,
     method: 'GET',
   })
