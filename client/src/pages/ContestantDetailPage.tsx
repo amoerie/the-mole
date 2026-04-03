@@ -11,14 +11,11 @@ export default function ContestantDetailPage() {
   const { gameId, contestantId } = useParams<{ gameId: string; contestantId: string }>()
 
   const [game, setGame] = useState<Game | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!gameId)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!gameId) {
-      setLoading(false)
-      return
-    }
+    if (!gameId) return
     api
       .getGame(gameId)
       .then(setGame)
