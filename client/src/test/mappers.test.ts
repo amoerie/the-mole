@@ -69,6 +69,8 @@ describe('mapContestant', () => {
       name: 'Bob',
       age: 30,
       photoUrl: '/b.jpg',
+      highResPhotoUrl: '/b-hires.jpg',
+      bio: 'A short bio.',
       eliminatedInEpisode: 2,
     }
     expect(mapContestant(raw)).toEqual({
@@ -76,6 +78,8 @@ describe('mapContestant', () => {
       name: 'Bob',
       age: 30,
       photoUrl: '/b.jpg',
+      highResPhotoUrl: '/b-hires.jpg',
+      bio: 'A short bio.',
       eliminatedInEpisode: 2,
     })
   })
@@ -88,6 +92,16 @@ describe('mapContestant', () => {
   it('sets eliminatedInEpisode to undefined when null/absent', () => {
     const raw: RawContestant = { id: 'c1', name: 'Bob', age: 25, photoUrl: '/b.jpg' }
     expect(mapContestant(raw).eliminatedInEpisode).toBeUndefined()
+  })
+
+  it('sets highResPhotoUrl to undefined when null/absent', () => {
+    const raw: RawContestant = { id: 'c1', name: 'Bob', age: 25, photoUrl: '/b.jpg' }
+    expect(mapContestant(raw).highResPhotoUrl).toBeUndefined()
+  })
+
+  it('sets bio to undefined when null/absent', () => {
+    const raw: RawContestant = { id: 'c1', name: 'Bob', age: 25, photoUrl: '/b.jpg' }
+    expect(mapContestant(raw).bio).toBeUndefined()
   })
 
   it('uses empty string defaults for missing fields', () => {

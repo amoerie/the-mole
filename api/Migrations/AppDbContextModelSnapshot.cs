@@ -235,7 +235,11 @@ namespace Api.Migrations
 
                             b1.Property<int>("Age");
 
+                            b1.Property<string>("Bio");
+
                             b1.Property<int?>("EliminatedInEpisode");
+
+                            b1.Property<string>("HighResPhotoUrl");
 
                             b1.Property<string>("Id");
 

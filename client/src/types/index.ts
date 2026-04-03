@@ -3,6 +3,8 @@ export interface Contestant {
   name: string
   age: number
   photoUrl: string
+  highResPhotoUrl?: string
+  bio?: string
   eliminatedInEpisode?: number
 }
 
@@ -11,6 +13,8 @@ export interface NewContestant {
   name: string
   age: number
   photoUrl: string
+  highResPhotoUrl?: string
+  bio?: string
 }
 
 export interface Episode {

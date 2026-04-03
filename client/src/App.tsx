@@ -12,6 +12,7 @@ import ProfilePage from './pages/ProfilePage'
 import MessageBoardPage from './pages/MessageBoardPage'
 import GroupPage from './pages/GroupPage'
 import SuspectChartsPage from './pages/SuspectChartsPage'
+import ContestantDetailPage from './pages/ContestantDetailPage'
 import AdminQueryPage from './pages/AdminQueryPage'
 import AdminLogsPage from './pages/AdminLogsPage'
 import Footer from './components/Footer'
@@ -66,6 +67,10 @@ function App() {
             <Route path="/game/:gameId/messages" element={<MessageBoardPage />} />
             <Route path="/game/:gameId/group" element={<GroupPage />} />
             <Route path="/game/:gameId/suspect-charts" element={<SuspectChartsPage />} />
+            <Route
+              path="/game/:gameId/contestant/:contestantId"
+              element={<ContestantDetailPage />}
+            />
             <Route path="/join/:inviteCode" element={<HomePage />} />
             <Route path="/admin/query" element={<AdminQueryPage />} />
             <Route path="/admin/logs" element={<AdminLogsPage />} />
