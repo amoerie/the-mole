@@ -57,7 +57,8 @@ public sealed class PendingReminderQueryTests : IDisposable
     private Game SeedGame(
         string id = "game-1",
         int episodeNumber = 1,
-        DateTimeOffset? deadline = null
+        DateTimeOffset? deadline = null,
+        List<Contestant>? contestants = null
     )
     {
         var game = new Game
@@ -66,6 +67,7 @@ public sealed class PendingReminderQueryTests : IDisposable
             Name = $"Game {id}",
             AdminUserId = "admin",
             InviteCode = id,
+            Contestants = contestants ?? [],
             Episodes =
             [
                 new Episode { Number = episodeNumber, Deadline = deadline ?? FutureDeadline },
@@ -91,7 +93,12 @@ public sealed class PendingReminderQueryTests : IDisposable
         return player;
     }
 
-    private void SeedRanking(string gameId, string userId, int episodeNumber)
+    private void SeedRanking(
+        string gameId,
+        string userId,
+        int episodeNumber,
+        List<string>? contestantIds = null
+    )
     {
         _db.Rankings.Add(
             new Ranking
@@ -100,64 +107,65 @@ public sealed class PendingReminderQueryTests : IDisposable
                 GameId = gameId,
                 UserId = userId,
                 EpisodeNumber = episodeNumber,
-                ContestantIds = [],
+                ContestantIds = contestantIds ?? [],
                 SubmittedAt = DateTimeOffset.UtcNow,
             }
         );
         _db.SaveChanges();
     }
 
-    // ── Tests ────────────────────────────────────────────────────────────────
+    // ── GetRecipientsAsync ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetPendingRecipients_WhenNoGames_ReturnsEmpty()
+    public async Task GetRecipients_WhenNoGames_ReturnsEmpty()
     {
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenGameHasNoOpenEpisode_ReturnsEmpty()
+    public async Task GetRecipients_WhenGameHasNoOpenEpisode_ReturnsEmpty()
     {
         SeedGame(deadline: PastDeadline);
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenOpenEpisodeButNoPlayers_ReturnsEmpty()
+    public async Task GetRecipients_WhenOpenEpisodeButNoPlayers_ReturnsEmpty()
     {
         SeedGame();
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenPlayerHasSubmittedRanking_ReturnsEmpty()
+    public async Task GetRecipients_WhenPlayerHasNoRanking_ReturnsEmpty()
     {
         var user = SeedUser();
         SeedGame();
         SeedPlayer("game-1", user.Id);
-        SeedRanking("game-1", user.Id, episodeNumber: 1);
+        // No ranking seeded
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenPlayerHasNotSubmitted_ReturnsRecipient()
+    public async Task GetRecipients_WhenPlayerHasRanking_ReturnsRecipient()
     {
         var user = SeedUser(email: "alice@test.com", displayName: "Alice");
         SeedGame();
         SeedPlayer("game-1", user.Id);
+        SeedRanking("game-1", user.Id, episodeNumber: 1);
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         var recipient = Assert.Single(result);
         Assert.Equal("alice@test.com", recipient.Email);
@@ -166,58 +174,105 @@ public sealed class PendingReminderQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetPendingRecipients_GameUrlContainsBaseUrlAndGameId()
+    public async Task GetRecipients_GameUrlContainsBaseUrlAndGameId()
     {
         var user = SeedUser();
         SeedGame(id: "game-abc");
         SeedPlayer("game-abc", user.Id);
+        SeedRanking("game-abc", user.Id, episodeNumber: 1);
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         var recipient = Assert.Single(result);
-        var (_, gameUrl) = Assert.Single(recipient.Games);
-        Assert.Equal("https://example.com/login?redirect=/game/game-abc", gameUrl);
+        var gameInfo = Assert.Single(recipient.Games);
+        Assert.Equal("https://example.com/login?redirect=/game/game-abc", gameInfo.GameUrl);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenUserOptedOut_ReturnsEmpty()
+    public async Task GetRecipients_DeadlineIsIncludedInGameInfo()
+    {
+        var user = SeedUser();
+        SeedGame(deadline: FutureDeadline);
+        SeedPlayer("game-1", user.Id);
+        SeedRanking("game-1", user.Id, episodeNumber: 1);
+
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
+
+        var gameInfo = Assert.Single(Assert.Single(result).Games);
+        Assert.Equal(FutureDeadline.ToUnixTimeSeconds(), gameInfo.Deadline.ToUnixTimeSeconds());
+    }
+
+    [Fact]
+    public async Task GetRecipients_RankedContestantNamesAreMapped()
+    {
+        var user = SeedUser();
+        var c1 = new Contestant
+        {
+            Id = "c1",
+            Name = "Alice",
+            Age = 30,
+            PhotoUrl = "",
+        };
+        var c2 = new Contestant
+        {
+            Id = "c2",
+            Name = "Bob",
+            Age = 25,
+            PhotoUrl = "",
+        };
+        SeedGame(contestants: [c1, c2]);
+        SeedPlayer("game-1", user.Id);
+        SeedRanking("game-1", user.Id, episodeNumber: 1, contestantIds: ["c1", "c2"]);
+
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
+
+        var gameInfo = Assert.Single(Assert.Single(result).Games);
+        Assert.Equal(["Alice", "Bob"], gameInfo.RankedContestantNames);
+    }
+
+    [Fact]
+    public async Task GetRecipients_WhenUserOptedOut_ReturnsEmpty()
     {
         var user = SeedUser(reminderEmailsEnabled: false);
         SeedGame();
         SeedPlayer("game-1", user.Id);
+        SeedRanking("game-1", user.Id, episodeNumber: 1);
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenPlayerMissingInSomeGames_OnlyIncludesMissingGames()
+    public async Task GetRecipients_WhenPlayerHasRankingInOnlyOneGame_ReturnsOnlyThatGame()
     {
         var user = SeedUser();
         SeedGame(id: "game-1");
         SeedGame(id: "game-2");
         SeedPlayer("game-1", user.Id);
         SeedPlayer("game-2", user.Id);
-        SeedRanking("game-1", user.Id, episodeNumber: 1); // submitted for game-1 only
+        SeedRanking("game-1", user.Id, episodeNumber: 1);
+        // No ranking for game-2
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         var recipient = Assert.Single(result);
-        var (gameName, _) = Assert.Single(recipient.Games);
-        Assert.Equal("Game game-2", gameName);
+        var gameInfo = Assert.Single(recipient.Games);
+        Assert.Equal("Game game-1", gameInfo.GameName);
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WithMultipleUsersNeedingReminders_ReturnsAll()
+    public async Task GetRecipients_WithMultipleUsers_ReturnsAll()
     {
         var alice = SeedUser(id: "alice", email: "alice@test.com", displayName: "Alice");
         var bob = SeedUser(id: "bob", email: "bob@test.com", displayName: "Bob");
         SeedGame();
         SeedPlayer("game-1", alice.Id);
         SeedPlayer("game-1", bob.Id);
+        SeedRanking("game-1", alice.Id, episodeNumber: 1);
+        SeedRanking("game-1", bob.Id, episodeNumber: 1);
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
         Assert.Equal(2, result.Count);
         Assert.Contains(result, r => r.Email == "alice@test.com");
@@ -225,16 +280,81 @@ public sealed class PendingReminderQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetPendingRecipients_WhenSubmittingForDifferentEpisode_StillReturnsRecipient()
+    public async Task GetRecipients_WhenRankingIsForDifferentEpisode_ReturnsEmpty()
     {
-        // Submitted for episode 2, but open episode is 1 — should still remind
+        // Submitted for episode 2, but open episode is 1 — ranking doesn't match
         var user = SeedUser();
         SeedGame(episodeNumber: 1);
         SeedPlayer("game-1", user.Id);
         SeedRanking("game-1", user.Id, episodeNumber: 2);
 
-        var result = await CreateQuery().GetPendingRecipientsAsync("https://example.com", default);
+        var result = await CreateQuery().GetRecipientsAsync("https://example.com", default);
 
-        Assert.Single(result);
+        Assert.Empty(result);
+    }
+
+    // ── GetRecipientForUserAsync ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetRecipientForUser_WhenUserHasRanking_ReturnsRecipient()
+    {
+        var user = SeedUser(email: "alice@test.com", displayName: "Alice");
+        SeedGame();
+        SeedPlayer("game-1", user.Id);
+        SeedRanking("game-1", user.Id, episodeNumber: 1);
+
+        var result = await CreateQuery()
+            .GetRecipientForUserAsync(user.Id, "https://example.com", default);
+
+        Assert.NotNull(result);
+        Assert.Equal("alice@test.com", result.Email);
+        Assert.Single(result.Games);
+    }
+
+    [Fact]
+    public async Task GetRecipientForUser_WhenUserNotFound_ReturnsNull()
+    {
+        var result = await CreateQuery()
+            .GetRecipientForUserAsync("nonexistent", "https://example.com", default);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetRecipientForUser_WhenUserHasNoOpenGames_ReturnsNull()
+    {
+        var user = SeedUser();
+        // No games seeded
+
+        var result = await CreateQuery()
+            .GetRecipientForUserAsync(user.Id, "https://example.com", default);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetRecipientForUser_WhenUserHasNoRankingForOpenEpisode_ReturnsNull()
+    {
+        var user = SeedUser();
+        SeedGame();
+        SeedPlayer("game-1", user.Id);
+        // No ranking seeded
+
+        var result = await CreateQuery()
+            .GetRecipientForUserAsync(user.Id, "https://example.com", default);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetRecipientForUser_WhenNotAPlayerInAnyOpenGame_ReturnsNull()
+    {
+        var user = SeedUser();
+        SeedGame(); // game exists but user is not a player
+
+        var result = await CreateQuery()
+            .GetRecipientForUserAsync(user.Id, "https://example.com", default);
+
+        Assert.Null(result);
     }
 }

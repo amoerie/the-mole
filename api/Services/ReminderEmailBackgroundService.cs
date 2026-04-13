@@ -81,7 +81,7 @@ public sealed partial class ReminderEmailBackgroundService(
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
         var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
 
-        var recipients = await query.GetPendingRecipientsAsync(baseUrl, ct);
+        var recipients = await query.GetRecipientsAsync(baseUrl, ct);
 
         if (recipients.Count == 0)
         {

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Api.Data;
 using Api.DataProtection;
@@ -11,6 +12,10 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter())
+);
 
 builder
     .Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -201,6 +206,7 @@ app.MapMessageRoutes();
 app.MapPlayerRoutes();
 app.MapSuspectStatsRoutes();
 app.MapAdminRoutes();
+app.MapAdminEmailRoutes();
 app.MapDiagnosticsRoutes();
 app.MapConfigRoutes();
 

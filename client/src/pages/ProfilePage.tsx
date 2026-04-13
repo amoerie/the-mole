@@ -159,8 +159,8 @@ export default function ProfilePage() {
           <CardHeader className="pb-4">
             <CardTitle>E-mailmeldingen</CardTitle>
             <CardDescription>
-              Ontvang elke zondagochtend een herinnering als je je rangschikking nog niet hebt
-              ingediend.
+              Ontvang elke zondagochtend een overzicht van je huidige rangschikking, zodat je deze
+              nog kunt aanpassen vóór de deadline.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">

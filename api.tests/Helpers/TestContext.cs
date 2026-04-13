@@ -35,6 +35,7 @@ public sealed class TestContext
         _factory.ResetDb();
         _factory.EmailService.SentEmails.Clear();
         _factory.EmailService.SentReminders.Clear();
+        _factory.EmailService.Retried.Clear();
         if (seed == null)
             return;
         using var scope = _factory.Services.CreateScope();
