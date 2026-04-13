@@ -13,6 +13,7 @@ import MessageBoardPage from './pages/MessageBoardPage'
 import GroupPage from './pages/GroupPage'
 import SuspectChartsPage from './pages/SuspectChartsPage'
 import ContestantDetailPage from './pages/ContestantDetailPage'
+import NotebookPage from './pages/NotebookPage'
 import AdminQueryPage from './pages/AdminQueryPage'
 import AdminLogsPage from './pages/AdminLogsPage'
 import AdminEmailsPage from './pages/AdminEmailsPage'
@@ -75,6 +76,7 @@ function App() {
               path="/game/:gameId/contestant/:contestantId"
               element={<ContestantDetailPage />}
             />
+            <Route path="/game/:gameId/molboekje" element={<NotebookPage />} />
             <Route path="/join/:inviteCode" element={<HomePage />} />
             <Route path="/admin/query" element={<AdminQueryPage />} />
             <Route path="/admin/logs" element={<AdminLogsPage />} />

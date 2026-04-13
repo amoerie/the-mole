@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Api.Data;
 
@@ -14,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<MessageRead> MessageReads => Set<MessageRead>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+    public DbSet<NotebookNote> NotebookNotes => Set<NotebookNote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +72,48 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<DataProtectionKey>(entity =>
         {
             entity.HasIndex(k => k.FriendlyName).IsUnique();
+        });
+
+        modelBuilder.Entity<NotebookNote>(entity =>
+        {
+            entity
+                .HasIndex(n => new
+                {
+                    n.UserId,
+                    n.GameId,
+                    n.EpisodeNumber,
+                })
+                .IsUnique();
+            entity.HasIndex(n => new { n.GameId, n.UserId });
+            entity
+                .Property((NotebookNote n) => n.SuspicionLevels)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v =>
+                        JsonSerializer.Deserialize<Dictionary<string, int>>(
+                            v,
+                            (JsonSerializerOptions?)null
+                        ) ?? new Dictionary<string, int>(),
+                    new ValueComparer<Dictionary<string, int>>(
+                        (a, b) =>
+                            a != null
+                            && b != null
+                            && a.Count == b.Count
+                            && a.All(kv => b.ContainsKey(kv.Key) && b[kv.Key] == kv.Value),
+                        c =>
+                            c.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                                .Aggregate(
+                                    0,
+                                    (acc, kv) =>
+                                        HashCode.Combine(
+                                            acc,
+                                            kv.Key.GetHashCode(),
+                                            kv.Value.GetHashCode()
+                                        )
+                                ),
+                        c => new Dictionary<string, int>(c)
+                    )
+                );
         });
     }
 }

@@ -15,6 +15,8 @@ import type {
   EpisodeScore as RawEpisodeScore,
   EpisodeStats as RawEpisodeStats,
   Game as RawGame,
+  NoteResponse as RawNote,
+  NotebookResponse as RawNotebook,
   MyGameResponse as RawMyGameResponse,
   LeaderboardEntry as RawLeaderboardEntry,
   Message as RawMessage,
@@ -35,7 +37,9 @@ import type {
   GamePlayer,
   LeaderboardEntry,
   MessagesPage,
+  MolboekjeNote,
   MyGame,
+  Notebook,
   Ranking,
   UserInfo,
 } from '../types'
@@ -166,6 +170,26 @@ function mapContestantStat(raw: RawContestantStats): ContestantStat {
     name: raw.name,
     avgRank: Number(raw.avgRank),
     rankingCount: Number(raw.rankingCount),
+  }
+}
+
+export function mapNote(raw: RawNote): MolboekjeNote {
+  const suspicionLevels: Record<string, number> = {}
+  for (const [key, value] of Object.entries(raw.suspicionLevels ?? {})) {
+    suspicionLevels[key] = Number(value)
+  }
+  return {
+    episodeNumber: Number(raw.episodeNumber ?? 0),
+    content: raw.content ?? '',
+    suspicionLevels,
+    updatedAt: raw.updatedAt ?? '',
+  }
+}
+
+export function mapNotebook(raw: RawNotebook): Notebook {
+  return {
+    notebookColor: raw.notebookColor ?? null,
+    notes: (raw.notes ?? []).map(mapNote),
   }
 }
 

@@ -1335,6 +1335,112 @@
           }
         }
       }
+    },
+    "/api/games/{gameId}/molboekje": {
+      "get": {
+        "tags": [
+          "Notebook"
+        ],
+        "operationId": "GetNotebook",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotebookResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}/molboekje/notes/{episodeNumber}": {
+      "put": {
+        "tags": [
+          "Notebook"
+        ],
+        "operationId": "SaveNote",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "episodeNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveNoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/games/{gameId}/molboekje/color": {
+      "patch": {
+        "tags": [
+          "Notebook"
+        ],
+        "operationId": "UpdateNotebookColor",
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotebookColorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1398,6 +1504,18 @@
           },
           "photoUrl": {
             "type": "string"
+          },
+          "highResPhotoUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bio": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "eliminatedInEpisode": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -1955,6 +2073,64 @@
           }
         }
       },
+      "NotebookResponse": {
+        "required": [
+          "notebookColor",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "notebookColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoteResponse"
+            }
+          }
+        }
+      },
+      "NoteResponse": {
+        "required": [
+          "episodeNumber",
+          "content",
+          "suspicionLevels",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "episodeNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "content": {
+            "type": "string"
+          },
+          "suspicionLevels": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "PasswordResetLinkResponse": {
         "required": [
           "resetUrl"
@@ -1984,6 +2160,12 @@
           "joinedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "notebookColor": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2179,6 +2361,35 @@
           }
         }
       },
+      "SaveNoteRequest": {
+        "required": [
+          "content",
+          "suspicionLevels"
+        ],
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "suspicionLevels": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        }
+      },
       "SendReminderRequest": {
         "required": [
           "userId"
@@ -2256,6 +2467,17 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "UpdateNotebookColorRequest": {
+        "required": [
+          "color"
+        ],
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
           }
         }
       },
@@ -2346,6 +2568,9 @@
     },
     {
       "name": "AdminEmail"
+    },
+    {
+      "name": "Notebook"
     }
   ]
 }

@@ -197,6 +197,22 @@ export interface MyGameResponse {
   playerCount: number | string
 }
 
+export type NoteResponseSuspicionLevels = { [key: string]: number | string }
+
+export interface NoteResponse {
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  episodeNumber: number | string
+  content: string
+  suspicionLevels: NoteResponseSuspicionLevels
+  updatedAt: string
+}
+
+export interface NotebookResponse {
+  /** @nullable */
+  notebookColor: string | null
+  notes: NoteResponse[]
+}
+
 export interface PasswordResetLinkResponse {
   resetUrl: string
 }
@@ -207,6 +223,8 @@ export interface Player {
   userId?: string
   displayName?: string
   joinedAt?: string
+  /** @nullable */
+  notebookColor?: string | null
 }
 
 export interface PlayerRankingResponse {
@@ -268,6 +286,18 @@ export interface RevealMoleResponse {
   moleContestantId: string
 }
 
+/**
+ * @nullable
+ */
+export type SaveNoteRequestSuspicionLevels = null | { [key: string]: number | string }
+
+export interface SaveNoteRequest {
+  /** @nullable */
+  content: string | null
+  /** @nullable */
+  suspicionLevels: SaveNoteRequestSuspicionLevels
+}
+
 export interface SendReminderRequest {
   userId: string
 }
@@ -291,6 +321,10 @@ export interface UpdateEpisodeRequest {
   deadline: string | null
   /** @nullable */
   eliminatedContestantIds: string[] | null
+}
+
+export interface UpdateNotebookColorRequest {
+  color: string
 }
 
 export interface UpdatePreferencesRequest {
@@ -1394,5 +1428,84 @@ export const streamLogs = async (options?: RequestInit): Promise<streamLogsRespo
   return fetcher<streamLogsResponse>(getStreamLogsUrl(), {
     ...options,
     method: 'GET',
+  })
+}
+
+export type getNotebookResponse200 = {
+  data: NotebookResponse
+  status: 200
+}
+
+export type getNotebookResponseSuccess = getNotebookResponse200 & {
+  headers: Headers
+}
+export type getNotebookResponse = getNotebookResponseSuccess
+
+export const getGetNotebookUrl = (gameId: string) => {
+  return `/api/games/${gameId}/molboekje`
+}
+
+export const getNotebook = async (
+  gameId: string,
+  options?: RequestInit,
+): Promise<getNotebookResponse> => {
+  return fetcher<getNotebookResponse>(getGetNotebookUrl(gameId), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type saveNoteResponse204 = {
+  data: void
+  status: 204
+}
+
+export type saveNoteResponseSuccess = saveNoteResponse204 & {
+  headers: Headers
+}
+export type saveNoteResponse = saveNoteResponseSuccess
+
+export const getSaveNoteUrl = (gameId: string, episodeNumber: number) => {
+  return `/api/games/${gameId}/molboekje/notes/${episodeNumber}`
+}
+
+export const saveNote = async (
+  gameId: string,
+  episodeNumber: number,
+  saveNoteRequest: SaveNoteRequest,
+  options?: RequestInit,
+): Promise<saveNoteResponse> => {
+  return fetcher<saveNoteResponse>(getSaveNoteUrl(gameId, episodeNumber), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(saveNoteRequest),
+  })
+}
+
+export type updateNotebookColorResponse204 = {
+  data: void
+  status: 204
+}
+
+export type updateNotebookColorResponseSuccess = updateNotebookColorResponse204 & {
+  headers: Headers
+}
+export type updateNotebookColorResponse = updateNotebookColorResponseSuccess
+
+export const getUpdateNotebookColorUrl = (gameId: string) => {
+  return `/api/games/${gameId}/molboekje/color`
+}
+
+export const updateNotebookColor = async (
+  gameId: string,
+  updateNotebookColorRequest: UpdateNotebookColorRequest,
+  options?: RequestInit,
+): Promise<updateNotebookColorResponse> => {
+  return fetcher<updateNotebookColorResponse>(getUpdateNotebookColorUrl(gameId), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateNotebookColorRequest),
   })
 }

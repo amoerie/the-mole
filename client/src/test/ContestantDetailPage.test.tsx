@@ -8,6 +8,7 @@ import type { UserInfo, Game } from '../types'
 vi.mock('../api/client', () => ({
   api: {
     getGame: vi.fn(),
+    getNotebook: vi.fn(),
   },
 }))
 
@@ -54,6 +55,7 @@ function renderPage(contestantId: string, user: UserInfo | null = mockUser) {
 describe('ContestantDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(api.getNotebook).mockResolvedValue({ notebookColor: null, notes: [] })
   })
 
   it('shows loading skeleton initially', () => {
@@ -121,5 +123,53 @@ describe('ContestantDetailPage', () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     renderPage('c1')
     await waitFor(() => expect(api.getGame).toHaveBeenCalledWith('game-1'))
+  })
+
+  it('shows "In jouw molboekje" section when a note mentions the contestant by first name', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getNotebook).mockResolvedValue({
+      notebookColor: 'blue',
+      notes: [
+        {
+          episodeNumber: 2,
+          content: 'Abigail was acting very suspicious during challenge 1.',
+          suspicionLevels: {},
+          updatedAt: '2025-03-14T20:00:00Z',
+        },
+      ],
+    })
+    renderPage('c1')
+    expect(await screen.findByText('In jouw molboekje')).toBeInTheDocument()
+    expect(screen.getByText('Aflevering 2')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /bekijk notitie/i })).toHaveAttribute(
+      'href',
+      '/game/game-1/molboekje',
+    )
+  })
+
+  it('omits "In jouw molboekje" section when no notes mention the contestant', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getNotebook).mockResolvedValue({
+      notebookColor: null,
+      notes: [
+        {
+          episodeNumber: 1,
+          content: 'Dries was very quiet this episode.',
+          suspicionLevels: {},
+          updatedAt: '2025-03-07T20:00:00Z',
+        },
+      ],
+    })
+    renderPage('c1')
+    await screen.findByText('Abigail')
+    expect(screen.queryByText('In jouw molboekje')).not.toBeInTheDocument()
+  })
+
+  it('omits "In jouw molboekje" section when notebook fetch fails', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getNotebook).mockRejectedValue(new Error('forbidden'))
+    renderPage('c1')
+    await screen.findByText('Abigail')
+    expect(screen.queryByText('In jouw molboekje')).not.toBeInTheDocument()
   })
 })
