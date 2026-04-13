@@ -1,11 +1,16 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Api.Data;
+using Api.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Api.Services;
 
 public sealed class MailerSendEmailService(
     IHttpClientFactory httpClientFactory,
-    IConfiguration config
+    IConfiguration config,
+    IServiceScopeFactory scopeFactory
 ) : IEmailService
 {
     public async Task SendPasswordResetAsync(string toEmail, string displayName, string resetUrl)
@@ -32,38 +37,65 @@ public sealed class MailerSendEmailService(
         var text =
             $"Hallo {displayName},\n\nKlik op de volgende link om je wachtwoord te herstellen:\n\n{resetUrl}\n\nDeze link is 24 uur geldig.";
 
-        await SendAsync(toEmail, "Wachtwoord herstellen — Mollenjagers", text, html);
+        await SendAndLogAsync(
+            toEmail,
+            displayName,
+            "Wachtwoord herstellen — Mollenjagers",
+            text,
+            html,
+            "PasswordReset"
+        );
     }
 
     public async Task SendRankingReminderAsync(
         string toEmail,
         string displayName,
-        IEnumerable<(string GameName, string GameUrl)> games
+        IEnumerable<GameReminderInfo> games
     )
     {
         var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
         var gamesList = games.ToList();
 
-        var gameLinks = string.Join(
+        var gameBlocks = string.Join(
             "\n",
             gamesList.Select(g =>
-                $"""
+            {
+                var deadline = FormatDeadlineDutch(g.Deadline);
+                var contestantRows = string.Join(
+                    "\n",
+                    g.RankedContestantNames.Select(
+                        (name, i) =>
+                            $"""
+                            <tr>
+                              <td style="padding:3px 0;font-size:14px;color:#e0e0e0;">
+                                <span style="color:#00ff41;font-weight:700;margin-right:8px;">{i
+                                + 1}.</span>{EscapeHtml(name)}
+                              </td>
+                            </tr>
+                            """
+                    )
+                );
+
+                return $"""
                 <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;">
+                  <td style="padding:12px 0;border-bottom:1px solid #2a2a2a;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#e0e0e0;">{EscapeHtml(
+                    g.GameName
+                )}</p>
+                    <p style="margin:0 0 8px;font-size:13px;color:#888;">Deadline: {EscapeHtml(
+                    deadline
+                )}</p>
+                    <table cellpadding="0" cellspacing="0" style="margin:0 0 10px;">
+                      {contestantRows}
+                    </table>
                     <a href="{g.GameUrl}"
-                       style="color:#00ff41;font-size:15px;font-weight:600;text-decoration:none;">
-                      {EscapeHtml(g.GameName)}
+                       style="display:inline-block;padding:7px 16px;background-color:#00ff41;color:#000;font-weight:700;font-size:13px;text-decoration:none;border-radius:5px;">
+                      Wijzig rangschikking →
                     </a>
-                    <span style="display:block;margin-top:4px;">
-                      <a href="{g.GameUrl}"
-                         style="display:inline-block;margin-top:6px;padding:7px 16px;background-color:#00ff41;color:#000;font-weight:700;font-size:13px;text-decoration:none;border-radius:5px;">
-                        Rangschikking indienen →
-                      </a>
-                    </span>
                   </td>
                 </tr>
-                """
-            )
+                """;
+            })
         );
 
         var content = $"""
@@ -71,12 +103,10 @@ public sealed class MailerSendEmailService(
                 displayName
             )},</p>
             <p style="margin:0 0 20px;font-size:15px;color:#e0e0e0;">
-              Je hebt voor de volgende {(
-                gamesList.Count == 1 ? "spel" : "spellen"
-            )} nog geen rangschikking ingediend voor de huidige aflevering:
+              Hieronder zie je je huidige rangschikking. Je kunt deze nog wijzigen vóór de deadline.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-              {gameLinks}
+              {gameBlocks}
             </table>
             <p style="margin:0;font-size:13px;color:#888;">
               Je ontvangt deze herinnering elke zondag. Je kunt ze uitschakelen via je
@@ -86,11 +116,122 @@ public sealed class MailerSendEmailService(
 
         var html = BuildEmailHtml(baseUrl, content);
 
-        var gameLines = string.Join("\n", gamesList.Select(g => $"- {g.GameName}: {g.GameUrl}"));
+        var textGames = string.Join(
+            "\n\n",
+            gamesList.Select(g =>
+            {
+                var deadline = FormatDeadlineDutch(g.Deadline);
+                var ranked = string.Join(
+                    "\n",
+                    g.RankedContestantNames.Select((n, i) => $"  {i + 1}. {n}")
+                );
+                return $"{g.GameName} (deadline: {deadline}):\n{ranked}\n{g.GameUrl}";
+            })
+        );
         var text =
-            $"Hallo {displayName},\n\nJe hebt nog geen rangschikking ingediend voor de huidige aflevering in:\n\n{gameLines}\n\nJe kunt meldingen uitschakelen via {baseUrl}/profile.";
+            $"Hallo {displayName},\n\nHieronder zie je je huidige rangschikking:\n\n{textGames}\n\nJe kunt meldingen uitschakelen via {baseUrl}/profile.";
 
-        await SendAsync(toEmail, "Vergeet je rangschikking niet — Mollenjagers", text, html);
+        await SendAndLogAsync(
+            toEmail,
+            displayName,
+            "Jouw rangschikking voor deze week — Mollenjagers",
+            text,
+            html,
+            "RankingReminder"
+        );
+    }
+
+    public async Task RetryAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string textBody,
+        string htmlBody,
+        string type
+    )
+    {
+        await SendAndLogAsync(toEmail, toName, subject, textBody, htmlBody, type);
+    }
+
+    private async Task SendAndLogAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string text,
+        string html,
+        string type
+    )
+    {
+        bool success = false;
+        string? errorMessage = null;
+
+        try
+        {
+            await PostToMailerSendAsync(toEmail, subject, text, html);
+            success = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            throw;
+        }
+        finally
+        {
+            await LogEmailAsync(toEmail, toName, subject, html, text, type, success, errorMessage);
+        }
+    }
+
+    private async Task LogEmailAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string html,
+        string text,
+        string type,
+        bool success,
+        string? errorMessage
+    )
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.EmailLogs.Add(
+                new EmailLog
+                {
+                    SentAt = DateTimeOffset.UtcNow,
+                    ToEmail = toEmail,
+                    ToName = toName,
+                    Subject = subject,
+                    HtmlBody = html,
+                    TextBody = text,
+                    Type = type,
+                    Success = success,
+                    ErrorMessage = errorMessage,
+                }
+            );
+            await db.SaveChangesAsync();
+        }
+        catch
+        {
+            // Log failure must never mask the original exception
+        }
+    }
+
+    private static string FormatDeadlineDutch(DateTimeOffset deadline)
+    {
+        TimeZoneInfo tz;
+        try
+        {
+            tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Brussels");
+        }
+        catch
+        {
+            tz = TimeZoneInfo.FindSystemTimeZoneById("Romance Standard Time");
+        }
+
+        var local = TimeZoneInfo.ConvertTimeFromUtc(deadline.UtcDateTime, tz);
+        return local.ToString("dddd d MMMM 'om' HH:mm", new CultureInfo("nl-NL"));
     }
 
     private static string BuildEmailHtml(string baseUrl, string bodyContent) =>
@@ -142,7 +283,12 @@ public sealed class MailerSendEmailService(
             .Replace(">", "&gt;")
             .Replace("\"", "&quot;");
 
-    private async Task SendAsync(string toEmail, string subject, string text, string html)
+    private async Task PostToMailerSendAsync(
+        string toEmail,
+        string subject,
+        string text,
+        string html
+    )
     {
         var apiKey = config["MailerSend:ApiKey"] ?? "";
         var fromEmail = config["MailerSend:FromEmail"] ?? "";
