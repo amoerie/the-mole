@@ -222,6 +222,73 @@ public sealed class ReminderEmailBackgroundServiceTests : IDisposable
         Assert.Empty(secondEmailService.SentReminders);
     }
 
+    // ── ExecuteAsync (startup behaviour) ──────────────────────────────────────
+
+    [Fact]
+    public async Task ExecuteAsync_WhenStartedInsideSundayWindow_SendsRemindersBeforeFirstTimerTick()
+    {
+        // Before the fix, ExecuteAsync used PeriodicTimer without an upfront check, so a
+        // process restart at e.g. 09:45 would miss the window entirely (first tick at 10:15).
+        // The first tick of a 30-minute PeriodicTimer is 30 real minutes away; if emails are
+        // sent it must be because the startup check fired before any tick.
+        var query = new FakePendingReminderQuery([AliceRecipient]);
+        var emailService = new FakeEmailService();
+        var service = CreateService(SundayInWindow, query, emailService);
+
+        await service.StartAsync(CancellationToken.None);
+        // All fakes complete synchronously; wait briefly for the in-memory async ops to finish.
+        await Task.Delay(500);
+
+        Assert.Single(emailService.SentReminders);
+
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenStartedOutsideWindow_DoesNotSendOnStartup()
+    {
+        var query = new FakePendingReminderQuery([AliceRecipient]);
+        var emailService = new FakeEmailService();
+        var service = CreateService(MondayInWindow, query, emailService);
+
+        await service.StartAsync(CancellationToken.None);
+        await Task.Delay(500);
+
+        Assert.Empty(emailService.SentReminders);
+
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenRestartedInsideWindow_DoesNotDoubleSend()
+    {
+        // First instance sends and persists the date.
+        var firstEmailService = new FakeEmailService();
+        var first = CreateService(
+            SundayInWindow,
+            new FakePendingReminderQuery([AliceRecipient]),
+            firstEmailService
+        );
+        await first.StartAsync(CancellationToken.None);
+        await Task.Delay(500);
+        Assert.Single(firstEmailService.SentReminders);
+        await first.StopAsync(CancellationToken.None);
+
+        // Second instance (simulates a mid-window restart) shares the same DB.
+        var secondEmailService = new FakeEmailService();
+        var second = CreateService(
+            SundayInWindow,
+            new FakePendingReminderQuery([AliceRecipient]),
+            secondEmailService
+        );
+        await second.StartAsync(CancellationToken.None);
+        await Task.Delay(500);
+
+        Assert.Empty(secondEmailService.SentReminders);
+
+        await second.StopAsync(CancellationToken.None);
+    }
+
     [Fact]
     public async Task TrySendReminders_WhenOneEmailFails_ContinuesToSendToOtherRecipients()
     {
