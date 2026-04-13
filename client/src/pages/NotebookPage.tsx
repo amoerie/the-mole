@@ -41,9 +41,7 @@ function buildInitialNotes(game: Game, notebook: Notebook): Map<number, NoteStat
   return map
 }
 
-function defaultColor(game: Game, userId: string): string {
-  const players = game.episodes // proxy for join order not available here; use userId hash
-  void players
+function defaultColor(userId: string): string {
   const hash = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
   return DEFAULT_COLOR_PALETTE[hash % DEFAULT_COLOR_PALETTE.length]
 }
@@ -60,7 +58,20 @@ export default function NotebookPage() {
   const [error, setError] = useState('')
 
   const debounceTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const savedTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const notesRef = useRef<Map<number, NoteState>>(new Map())
   const episodeRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+
+  useEffect(() => {
+    notesRef.current = notes
+  }, [notes])
+
+  useEffect(() => {
+    return () => {
+      debounceTimers.current.forEach(clearTimeout)
+      savedTimers.current.forEach(clearTimeout)
+    }
+  }, [])
 
   useEffect(() => {
     if (!gameId) return
@@ -94,7 +105,9 @@ export default function NotebookPage() {
             if (entry) next.set(episodeNumber, { ...entry, savingState: 'saved' })
             return next
           })
-          setTimeout(() => {
+          const existing = savedTimers.current.get(episodeNumber)
+          if (existing) clearTimeout(existing)
+          const savedTimer = setTimeout(() => {
             setNotes((prev) => {
               const next = new Map(prev)
               const entry = next.get(episodeNumber)
@@ -103,6 +116,7 @@ export default function NotebookPage() {
               return next
             })
           }, 2000)
+          savedTimers.current.set(episodeNumber, savedTimer)
         })
         .catch(() => {
           setNotes((prev) => {
@@ -128,11 +142,8 @@ export default function NotebookPage() {
     if (existing) clearTimeout(existing)
 
     const timer = setTimeout(() => {
-      setNotes((prev) => {
-        const entry = prev.get(episodeNumber)
-        if (entry) saveNote(episodeNumber, entry.content, entry.suspicionLevels)
-        return prev
-      })
+      const entry = notesRef.current.get(episodeNumber)
+      if (entry) saveNote(episodeNumber, entry.content, entry.suspicionLevels)
     }, 500)
     debounceTimers.current.set(episodeNumber, timer)
   }
@@ -200,7 +211,7 @@ export default function NotebookPage() {
     .filter((ep) => new Date(ep.deadline) < now)
     .sort((a, b) => b.number - a.number)
 
-  const effectiveColor = notebookColor ?? defaultColor(game, user?.userId ?? '')
+  const effectiveColor = notebookColor ?? defaultColor(user?.userId ?? '')
 
   return (
     <main className="container mx-auto max-w-2xl px-4 py-8 flex flex-col gap-4">

@@ -87,6 +87,14 @@ public static class NotebookRoutes
                     if (!isPlayer)
                         return Results.Unauthorized();
 
+                    if (body.Content == null)
+                        return Results.UnprocessableEntity(new { error = "Content is verplicht." });
+
+                    if (body.SuspicionLevels == null)
+                        return Results.UnprocessableEntity(
+                            new { error = "SuspicionLevels is verplicht." }
+                        );
+
                     var episode = game.Episodes.FirstOrDefault(e => e.Number == episodeNumber);
                     if (episode == null)
                         return Results.UnprocessableEntity(
@@ -176,7 +184,10 @@ public static class NotebookRoutes
             .Produces(StatusCodes.Status204NoContent);
     }
 
-    private sealed record SaveNoteRequest(string Content, Dictionary<string, int> SuspicionLevels);
+    private sealed record SaveNoteRequest(
+        string? Content,
+        Dictionary<string, int>? SuspicionLevels
+    );
 
     private sealed record UpdateNotebookColorRequest(string Color);
 

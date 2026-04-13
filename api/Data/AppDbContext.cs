@@ -101,15 +101,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                             && a.Count == b.Count
                             && a.All(kv => b.ContainsKey(kv.Key) && b[kv.Key] == kv.Value),
                         c =>
-                            c.Aggregate(
-                                0,
-                                (acc, kv) =>
-                                    HashCode.Combine(
-                                        acc,
-                                        kv.Key.GetHashCode(),
-                                        kv.Value.GetHashCode()
-                                    )
-                            ),
+                            c.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                                .Aggregate(
+                                    0,
+                                    (acc, kv) =>
+                                        HashCode.Combine(
+                                            acc,
+                                            kv.Key.GetHashCode(),
+                                            kv.Value.GetHashCode()
+                                        )
+                                ),
                         c => new Dictionary<string, int>(c)
                     )
                 );

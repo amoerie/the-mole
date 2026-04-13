@@ -105,7 +105,7 @@ Toggled via a view-toggle button group in the notebook header.
 
 ## Data model changes
 
-### New table: `MolboekjeNotes`
+### New table: `NotebookNotes`
 
 One row per (user, game, episode). Suspicion levels are stored as a JSON dictionary in a single column to avoid a separate many-row table for a small, bounded set of values (max ~12 contestants × ~12 episodes). EF Core maps this column using a `HasConversion<Dictionary<string, int>, string>` value converter — the same pattern already used for `Contestants` and `Episodes` on the `Game` entity.
 
@@ -132,9 +132,9 @@ Valid color values: `"red"`, `"orange"`, `"yellow"`, `"green"`, `"teal"`, `"blue
 
 ### Database migration
 
-Migration name: `AddMolboekje`
+Migration name: `AddNotebook`
 
-- Creates `MolboekjeNotes` table.
+- Creates `NotebookNotes` table.
 - Adds nullable `NotebookColor` column to `Players`.
 - No data migration needed.
 
@@ -146,7 +146,7 @@ Migration name: `AddMolboekje`
 
 Returns the current user's full notebook.
 
-**Auth:** must be a player or admin of the game. Returns `401` if unauthenticated, `403` if not a member.
+**Auth:** must be a player or admin of the game. Returns `401` if unauthenticated or not a member.
 
 **Response `200`:**
 ```json
@@ -327,7 +327,7 @@ If `mentioningNotes` is empty or the notebook fetch fails, the section is omitte
 - `PATCH /color` returns `204` and persists the color.
 - `PATCH /color` returns `422` for an invalid color string.
 - All endpoints return `401` for unauthenticated requests.
-- All endpoints return `403` for authenticated users who are not members of the game.
+- All endpoints return `401` for authenticated users who are not members of the game.
 
 ### Frontend: `MolboekjePage`
 

@@ -62,10 +62,10 @@ export default function ContestantDetailPage() {
   const contestant = game.contestants.find((c) => c.id === contestantId)
 
   function highlightName(text: string, firstName: string) {
-    const regex = new RegExp(`(${firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-    const parts = text.split(regex)
-    return parts.map((part, i) =>
-      regex.test(part) ? (
+    const pattern = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`(${pattern})`, 'i')
+    return text.split(regex).map((part, i) =>
+      i % 2 === 1 ? (
         <mark key={i} className="bg-yellow-200 rounded-sm px-0.5">
           {part}
         </mark>
