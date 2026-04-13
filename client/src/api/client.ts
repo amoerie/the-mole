@@ -43,7 +43,17 @@ import {
   getGamePlayers as _getGamePlayers,
   getSuspectStats as _getSuspectStats,
   generatePasswordResetLink as _generatePasswordResetLink,
+  listEmailLogs as _listEmailLogs,
+  getEmailLog as _getEmailLog,
+  retryEmailLog as _retryEmailLog,
+  sendReminderEmail as _sendReminderEmail,
 } from './generated'
+export type {
+  EmailLogPageResponse,
+  EmailLogSummaryResponse,
+  EmailLogDetailResponse,
+} from './generated'
+export { EmailType } from './generated'
 import {
   mapAdminUser,
   mapEpisodeStat,
@@ -291,5 +301,25 @@ export const api = {
   async generatePasswordResetLink(gameId: string, userId: string): Promise<string> {
     const { data } = await _generatePasswordResetLink(gameId, userId)
     return data!.resetUrl
+  },
+
+  // Admin email log
+  async listEmailLogs(page = 1, pageSize = 50) {
+    const { data } = await _listEmailLogs({ page, pageSize })
+    return data!
+  },
+
+  async getEmailLog(id: string) {
+    const { data } = await _getEmailLog(id)
+    return data!
+  },
+
+  async retryEmailLog(id: string) {
+    await _retryEmailLog(id)
+  },
+
+  async sendReminderEmail(userId: string) {
+    const { data } = await _sendReminderEmail({ userId })
+    return data!
   },
 }

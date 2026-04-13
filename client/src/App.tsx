@@ -14,6 +14,7 @@ import GroupPage from './pages/GroupPage'
 import SuspectChartsPage from './pages/SuspectChartsPage'
 import AdminQueryPage from './pages/AdminQueryPage'
 import AdminLogsPage from './pages/AdminLogsPage'
+import AdminEmailsPage from './pages/AdminEmailsPage'
 import Footer from './components/Footer'
 import { Button } from './components/ui/button'
 
@@ -44,6 +45,9 @@ function App() {
                       <Button asChild variant="ghost" size="sm">
                         <Link to="/admin/logs">Logs</Link>
                       </Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to="/admin/emails">E-mails</Link>
+                      </Button>
                     </>
                   )}
                   <Button asChild variant="ghost" size="sm">
@@ -69,6 +73,7 @@ function App() {
             <Route path="/join/:inviteCode" element={<HomePage />} />
             <Route path="/admin/query" element={<AdminQueryPage />} />
             <Route path="/admin/logs" element={<AdminLogsPage />} />
+            <Route path="/admin/emails" element={<AdminEmailsPage />} />
           </Routes>
           <Footer />
         </div>
