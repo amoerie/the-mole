@@ -1155,6 +1155,144 @@
         }
       }
     },
+    "/api/admin/emails": {
+      "get": {
+        "tags": [
+          "AdminEmail"
+        ],
+        "operationId": "ListEmailLogs",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailLogPageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/emails/{id}": {
+      "get": {
+        "tags": [
+          "AdminEmail"
+        ],
+        "operationId": "GetEmailLog",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailLogDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/emails/send-reminder": {
+      "post": {
+        "tags": [
+          "AdminEmail"
+        ],
+        "operationId": "SendReminderEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendReminderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendReminderResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/emails/{id}/retry": {
+      "post": {
+        "tags": [
+          "AdminEmail"
+        ],
+        "operationId": "RetryEmailLog",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/diagnostics/query": {
       "post": {
         "tags": [
@@ -1468,6 +1606,147 @@
             }
           }
         }
+      },
+      "EmailLogDetailResponse": {
+        "required": [
+          "id",
+          "sentAt",
+          "toEmail",
+          "toName",
+          "subject",
+          "htmlBody",
+          "textBody",
+          "type",
+          "success",
+          "errorMessage"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toEmail": {
+            "type": "string"
+          },
+          "toName": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "htmlBody": {
+            "type": "string"
+          },
+          "textBody": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EmailType"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EmailLogPageResponse": {
+        "required": [
+          "total",
+          "page",
+          "pageSize",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailLogSummaryResponse"
+            }
+          }
+        }
+      },
+      "EmailLogSummaryResponse": {
+        "required": [
+          "id",
+          "sentAt",
+          "toEmail",
+          "toName",
+          "subject",
+          "type",
+          "success",
+          "errorMessage"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toEmail": {
+            "type": "string"
+          },
+          "toName": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EmailType"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EmailType": {
+        "enum": [
+          "PasswordReset",
+          "RankingReminder"
+        ]
       },
       "Episode": {
         "type": "object",
@@ -2042,6 +2321,17 @@
           }
         }
       },
+      "RetryResponse": {
+        "required": [
+          "success"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "RevealMoleRequest": {
         "required": [
           "moleContestantId"
@@ -2079,10 +2369,16 @@
         "type": "object",
         "properties": {
           "content": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "suspicionLevels": {
-            "type": "object",
+            "type": [
+              "null",
+              "object"
+            ],
             "additionalProperties": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
@@ -2091,6 +2387,28 @@
               ],
               "format": "int32"
             }
+          }
+        }
+      },
+      "SendReminderRequest": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "SendReminderResponse": {
+        "required": [
+          "sentTo"
+        ],
+        "type": "object",
+        "properties": {
+          "sentTo": {
+            "type": "string"
           }
         }
       },
@@ -2247,6 +2565,9 @@
     },
     {
       "name": "Admin"
+    },
+    {
+      "name": "AdminEmail"
     },
     {
       "name": "Notebook"

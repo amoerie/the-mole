@@ -56,6 +56,49 @@ export interface CreateGameRequest {
   contestants: Contestant[] | null
 }
 
+export type EmailType = (typeof EmailType)[keyof typeof EmailType]
+
+export const EmailType = {
+  PasswordReset: 'PasswordReset',
+  RankingReminder: 'RankingReminder',
+} as const
+
+export interface EmailLogDetailResponse {
+  id: string
+  sentAt: string
+  toEmail: string
+  toName: string
+  subject: string
+  htmlBody: string
+  textBody: string
+  type: EmailType
+  success: boolean
+  /** @nullable */
+  errorMessage: string | null
+}
+
+export interface EmailLogSummaryResponse {
+  id: string
+  sentAt: string
+  toEmail: string
+  toName: string
+  subject: string
+  type: EmailType
+  success: boolean
+  /** @nullable */
+  errorMessage: string | null
+}
+
+export interface EmailLogPageResponse {
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  total: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  page: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  pageSize: number | string
+  items: EmailLogSummaryResponse[]
+}
+
 export interface Episode {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   number?: number | string
@@ -229,6 +272,10 @@ export interface ResetPasswordRequest {
   newPassword: string
 }
 
+export interface RetryResponse {
+  success: boolean
+}
+
 export interface RevealMoleRequest {
   /** @nullable */
   moleContestantId: string | null
@@ -239,11 +286,24 @@ export interface RevealMoleResponse {
   moleContestantId: string
 }
 
-export type SaveNoteRequestSuspicionLevels = { [key: string]: number | string }
+/**
+ * @nullable
+ */
+export type SaveNoteRequestSuspicionLevels = null | { [key: string]: number | string }
 
 export interface SaveNoteRequest {
-  content: string
+  /** @nullable */
+  content: string | null
+  /** @nullable */
   suspicionLevels: SaveNoteRequestSuspicionLevels
+}
+
+export interface SendReminderRequest {
+  userId: string
+}
+
+export interface SendReminderResponse {
+  sentTo: string
 }
 
 export interface SubmitRankingRequest {
@@ -290,6 +350,17 @@ export type GetMessagesParams = {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   skip?: number | string
+}
+
+export type ListEmailLogsParams = {
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  page?: number | string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  pageSize?: number | string
 }
 
 export type registerResponse200 = {
@@ -1200,6 +1271,116 @@ export const listUsers = async (options?: RequestInit): Promise<listUsersRespons
   return fetcher<listUsersResponse>(getListUsersUrl(), {
     ...options,
     method: 'GET',
+  })
+}
+
+export type listEmailLogsResponse200 = {
+  data: EmailLogPageResponse
+  status: 200
+}
+
+export type listEmailLogsResponseSuccess = listEmailLogsResponse200 & {
+  headers: Headers
+}
+export type listEmailLogsResponse = listEmailLogsResponseSuccess
+
+export const getListEmailLogsUrl = (params?: ListEmailLogsParams) => {
+  const normalizedParams = new URLSearchParams()
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  })
+
+  const stringifiedParams = normalizedParams.toString()
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/emails?${stringifiedParams}`
+    : `/api/admin/emails`
+}
+
+export const listEmailLogs = async (
+  params?: ListEmailLogsParams,
+  options?: RequestInit,
+): Promise<listEmailLogsResponse> => {
+  return fetcher<listEmailLogsResponse>(getListEmailLogsUrl(params), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type getEmailLogResponse200 = {
+  data: EmailLogDetailResponse
+  status: 200
+}
+
+export type getEmailLogResponseSuccess = getEmailLogResponse200 & {
+  headers: Headers
+}
+export type getEmailLogResponse = getEmailLogResponseSuccess
+
+export const getGetEmailLogUrl = (id: string) => {
+  return `/api/admin/emails/${id}`
+}
+
+export const getEmailLog = async (
+  id: string,
+  options?: RequestInit,
+): Promise<getEmailLogResponse> => {
+  return fetcher<getEmailLogResponse>(getGetEmailLogUrl(id), {
+    ...options,
+    method: 'GET',
+  })
+}
+
+export type sendReminderEmailResponse200 = {
+  data: SendReminderResponse
+  status: 200
+}
+
+export type sendReminderEmailResponseSuccess = sendReminderEmailResponse200 & {
+  headers: Headers
+}
+export type sendReminderEmailResponse = sendReminderEmailResponseSuccess
+
+export const getSendReminderEmailUrl = () => {
+  return `/api/admin/emails/send-reminder`
+}
+
+export const sendReminderEmail = async (
+  sendReminderRequest: SendReminderRequest,
+  options?: RequestInit,
+): Promise<sendReminderEmailResponse> => {
+  return fetcher<sendReminderEmailResponse>(getSendReminderEmailUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sendReminderRequest),
+  })
+}
+
+export type retryEmailLogResponse200 = {
+  data: RetryResponse
+  status: 200
+}
+
+export type retryEmailLogResponseSuccess = retryEmailLogResponse200 & {
+  headers: Headers
+}
+export type retryEmailLogResponse = retryEmailLogResponseSuccess
+
+export const getRetryEmailLogUrl = (id: string) => {
+  return `/api/admin/emails/${id}/retry`
+}
+
+export const retryEmailLog = async (
+  id: string,
+  options?: RequestInit,
+): Promise<retryEmailLogResponse> => {
+  return fetcher<retryEmailLogResponse>(getRetryEmailLogUrl(id), {
+    ...options,
+    method: 'POST',
   })
 }
 
