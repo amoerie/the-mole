@@ -43,7 +43,7 @@ public sealed class MailerSendEmailService(
             "Wachtwoord herstellen — Mollenjagers",
             text,
             html,
-            "PasswordReset"
+            EmailType.PasswordReset
         );
     }
 
@@ -137,7 +137,7 @@ public sealed class MailerSendEmailService(
             "Jouw rangschikking voor deze week — Mollenjagers",
             text,
             html,
-            "RankingReminder"
+            EmailType.RankingReminder
         );
     }
 
@@ -147,7 +147,7 @@ public sealed class MailerSendEmailService(
         string subject,
         string textBody,
         string htmlBody,
-        string type
+        EmailType type
     )
     {
         await SendAndLogAsync(toEmail, toName, subject, textBody, htmlBody, type);
@@ -159,7 +159,7 @@ public sealed class MailerSendEmailService(
         string subject,
         string text,
         string html,
-        string type
+        EmailType type
     )
     {
         bool success = false;
@@ -187,7 +187,7 @@ public sealed class MailerSendEmailService(
         string subject,
         string html,
         string text,
-        string type,
+        EmailType type,
         bool success,
         string? errorMessage
     )

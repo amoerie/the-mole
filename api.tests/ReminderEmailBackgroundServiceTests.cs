@@ -1,4 +1,5 @@
 using Api.Data;
+using Api.Models;
 using Api.Services;
 using Api.Tests.Helpers;
 using Microsoft.Data.Sqlite;
@@ -56,16 +57,23 @@ public sealed class ReminderEmailBackgroundServiceTests : IDisposable
     );
     private static readonly DateTimeOffset MondayInWindow = new(2026, 4, 6, 7, 0, 0, TimeSpan.Zero);
 
+    private static readonly GameReminderInfo Game1Info = new(
+        "Game 1",
+        "https://example.com/login?redirect=/game/game-1",
+        DateTimeOffset.UtcNow.AddDays(7),
+        ["Alice", "Bob"]
+    );
+
     private static readonly ReminderRecipient AliceRecipient = new(
         "alice@example.com",
         "Alice",
-        [("Game 1", "https://example.com/login?redirect=/game/game-1")]
+        [Game1Info]
     );
 
     private static readonly ReminderRecipient BobRecipient = new(
         "bob@example.com",
         "Bob",
-        [("Game 1", "https://example.com/login?redirect=/game/game-1")]
+        [Game1Info]
     );
 
     private ReminderEmailBackgroundService CreateService(
@@ -236,7 +244,7 @@ public sealed class ReminderEmailBackgroundServiceTests : IDisposable
         public List<(
             string ToEmail,
             string DisplayName,
-            List<(string GameName, string GameUrl)> Games
+            List<GameReminderInfo> Games
         )> SentReminders { get; } = [];
 
         public Task SendPasswordResetAsync(string toEmail, string displayName, string resetUrl) =>
@@ -245,7 +253,7 @@ public sealed class ReminderEmailBackgroundServiceTests : IDisposable
         public Task SendRankingReminderAsync(
             string toEmail,
             string displayName,
-            IEnumerable<(string GameName, string GameUrl)> games
+            IEnumerable<GameReminderInfo> games
         )
         {
             if (toEmail == throwForEmail)
@@ -254,5 +262,14 @@ public sealed class ReminderEmailBackgroundServiceTests : IDisposable
             SentReminders.Add((toEmail, displayName, games.ToList()));
             return Task.CompletedTask;
         }
+
+        public Task RetryAsync(
+            string toEmail,
+            string toName,
+            string subject,
+            string textBody,
+            string htmlBody,
+            EmailType type
+        ) => Task.CompletedTask;
     }
 }

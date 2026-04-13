@@ -9,7 +9,7 @@ public class EmailLog
     public string Subject { get; set; } = string.Empty;
     public string HtmlBody { get; set; } = string.Empty;
     public string TextBody { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    public EmailType Type { get; set; }
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
 }

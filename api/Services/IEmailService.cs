@@ -1,3 +1,5 @@
+using Api.Models;
+
 namespace Api.Services;
 
 public interface IEmailService
@@ -16,6 +18,6 @@ public interface IEmailService
         string subject,
         string textBody,
         string htmlBody,
-        string type
+        EmailType type
     );
 }

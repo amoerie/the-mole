@@ -22,6 +22,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasKey(s => s.Key);
         });
 
+        modelBuilder.Entity<EmailLog>(entity =>
+        {
+            entity.Property(e => e.Type).HasConversion<string>();
+        });
+
         modelBuilder.Entity<AppUser>(entity =>
         {
             entity.HasIndex(u => u.Email).IsUnique();
