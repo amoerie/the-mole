@@ -47,6 +47,9 @@ import {
   getEmailLog as _getEmailLog,
   retryEmailLog as _retryEmailLog,
   sendReminderEmail as _sendReminderEmail,
+  getNotebook as _getNotebook,
+  saveNote as _saveNote,
+  updateNotebookColor as _updateNotebookColor,
 } from './generated'
 export type {
   EmailLogPageResponse,
@@ -63,6 +66,7 @@ import {
   mapMessage,
   mapMessagesPage,
   mapMyGame,
+  mapNotebook,
   mapRanking,
   mapUserInfo,
 } from './mappers'
@@ -74,8 +78,10 @@ import type {
   GamePlayer,
   MessagesPage,
   LeaderboardEntry,
+  MolboekjeNote,
   MyGame,
   NewContestant,
+  Notebook,
   PlayerRanking,
   Ranking,
   UserInfo,
@@ -89,8 +95,10 @@ export type {
   GamePlayer,
   MessagesPage,
   LeaderboardEntry,
+  MolboekjeNote,
   MyGame,
   NewContestant,
+  Notebook,
   PlayerRanking,
   Ranking,
   UserInfo,
@@ -321,5 +329,24 @@ export const api = {
   async sendReminderEmail(userId: string) {
     const { data } = await _sendReminderEmail({ userId })
     return data!
+  },
+
+  // Notebook
+  async getNotebook(gameId: string): Promise<Notebook> {
+    const { data } = await _getNotebook(gameId)
+    return mapNotebook(data!)
+  },
+
+  async saveNote(
+    gameId: string,
+    episodeNumber: number,
+    content: string,
+    suspicionLevels: Record<string, number>,
+  ): Promise<void> {
+    await _saveNote(gameId, episodeNumber, { content, suspicionLevels })
+  },
+
+  async updateNotebookColor(gameId: string, color: string): Promise<void> {
+    await _updateNotebookColor(gameId, { color })
   },
 }

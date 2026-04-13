@@ -207,6 +207,7 @@ app.MapAdminRoutes();
 app.MapAdminEmailRoutes();
 app.MapDiagnosticsRoutes();
 app.MapConfigRoutes();
+app.MapNotebookRoutes();
 
 if (!app.Environment.IsDevelopment())
     app.MapFallbackToFile("index.html");

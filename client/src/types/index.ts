@@ -98,6 +98,18 @@ export interface MessagesPage {
 
 export type GamePlayer = Player
 
+export interface MolboekjeNote {
+  episodeNumber: number
+  content: string
+  suspicionLevels: Record<string, number>
+  updatedAt: string
+}
+
+export interface Notebook {
+  notebookColor: string | null
+  notes: MolboekjeNote[]
+}
+
 export interface ContestantStat {
   contestantId: string
   name: string
