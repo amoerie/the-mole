@@ -196,6 +196,9 @@ public sealed class MailerSendEmailService(
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Don't store body content for password-reset emails: the HTML contains
+            // the raw reset URL/token, which would otherwise be persisted in plaintext.
+            var storeBody = type != EmailType.PasswordReset;
             db.EmailLogs.Add(
                 new EmailLog
                 {
@@ -203,8 +206,8 @@ public sealed class MailerSendEmailService(
                     ToEmail = toEmail,
                     ToName = toName,
                     Subject = subject,
-                    HtmlBody = html,
-                    TextBody = text,
+                    HtmlBody = storeBody ? html : string.Empty,
+                    TextBody = storeBody ? text : string.Empty,
                     Type = type,
                     Success = success,
                     ErrorMessage = errorMessage,
@@ -231,7 +234,7 @@ public sealed class MailerSendEmailService(
         }
 
         var local = TimeZoneInfo.ConvertTimeFromUtc(deadline.UtcDateTime, tz);
-        return local.ToString("dddd d MMMM 'om' HH:mm", new CultureInfo("nl-NL"));
+        return local.ToString("dddd d MMMM 'om' HH:mm", new CultureInfo("nl-BE"));
     }
 
     private static string BuildEmailHtml(string baseUrl, string bodyContent) =>

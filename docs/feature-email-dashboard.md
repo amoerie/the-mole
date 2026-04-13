@@ -102,7 +102,7 @@ New table persisting every send attempt (success or failure):
 | `Success` | `bool` | `true` if MailerSend accepted |
 | `ErrorMessage` | `string?` | Exception message on failure |
 
-Migration: `20260413000000_AddEmailLogs`
+Migration: `20260413120314_AddEmailLogs`
 
 `AppDbContext` gains `DbSet<EmailLog> EmailLogs`.
 
@@ -162,11 +162,11 @@ Returns the full log entry including `htmlBody` and `textBody`. Returns `404` if
 
 #### `POST /api/admin/emails/{id}/retry`
 
-Re-sends the email using the stored `ToEmail`, `Subject`, `HtmlBody`, `TextBody`. Calls a new `IEmailService.RetryAsync(EmailLog original)` method which POSTs to MailerSend and creates a **new** `EmailLog` row for the retry (the original row is left unchanged). Returns `404` if the log entry is not found.
+Re-sends the email using the stored `ToEmail`, `Subject`, `HtmlBody`, `TextBody`. Calls `IEmailService.RetryAsync(...)` which POSTs to MailerSend and creates a **new** `EmailLog` row for the retry (the original row is left unchanged). Returns `404` if the log entry is not found. Returns `400` for `PasswordReset` emails (tokens expire quickly and bodies are not stored).
 
 Response:
 ```json
-{ "newLogId": "..." }
+{ "success": true }
 ```
 
 #### `POST /api/admin/emails/send-reminder`

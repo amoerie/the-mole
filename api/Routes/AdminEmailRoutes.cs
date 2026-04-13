@@ -23,24 +23,26 @@ public static class AdminEmailRoutes
                     pageSize = Math.Clamp(pageSize, 1, 200);
                     page = Math.Max(1, page);
 
-                    // Load all logs and sort client-side; SQLite does not support
-                    // DateTimeOffset in ORDER BY clauses via EF Core.
-                    var all = await db.EmailLogs.ToListAsync();
-                    var total = all.Count;
-                    var items = all.OrderByDescending(e => e.SentAt)
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .Select(e => new EmailLogSummaryResponse(
-                            e.Id,
-                            e.SentAt,
-                            e.ToEmail,
-                            e.ToName,
-                            e.Subject,
-                            e.Type,
-                            e.Success,
-                            e.ErrorMessage
-                        ))
-                        .ToList();
+                    // Project summary fields only (no HtmlBody/TextBody) to avoid loading
+                    // large bodies for all rows. Sort client-side: SQLite stores DateTimeOffset
+                    // as ISO 8601 text, which sorts correctly as a string, but EF Core's SQLite
+                    // provider cannot translate DateTimeOffset in ORDER BY to SQL.
+                    var total = await db.EmailLogs.CountAsync();
+                    var items = (
+                        await db
+                            .EmailLogs.Select(e => new
+                            {
+                                e.Id,
+                                e.SentAt,
+                                e.ToEmail,
+                                e.ToName,
+                                e.Subject,
+                                e.Type,
+                                e.Success,
+                                e.ErrorMessage,
+                            })
+                            .ToListAsync()
+                    ).OrderByDescending(e => e.SentAt).Skip((page - 1) * pageSize).Take(pageSize).Select(e => new EmailLogSummaryResponse(e.Id, e.SentAt, e.ToEmail, e.ToName, e.Subject, e.Type, e.Success, e.ErrorMessage)).ToList();
 
                     return Results.Ok(new EmailLogPageResponse(total, page, pageSize, items));
                 }
@@ -63,6 +65,9 @@ public static class AdminEmailRoutes
                     if (log == null)
                         return Results.NotFound();
 
+                    // Redact body content for password-reset emails: the HTML contains the
+                    // raw reset URL/token and should not be exposed via this endpoint.
+                    var isPasswordReset = log.Type == EmailType.PasswordReset;
                     return Results.Ok(
                         new EmailLogDetailResponse(
                             log.Id,
@@ -70,8 +75,8 @@ public static class AdminEmailRoutes
                             log.ToEmail,
                             log.ToName,
                             log.Subject,
-                            log.HtmlBody,
-                            log.TextBody,
+                            isPasswordReset ? "[redacted]" : log.HtmlBody,
+                            isPasswordReset ? "[redacted]" : log.TextBody,
                             log.Type,
                             log.Success,
                             log.ErrorMessage
@@ -91,7 +96,8 @@ public static class AdminEmailRoutes
                     IPendingReminderQuery query,
                     IEmailService emailService,
                     IConfiguration config,
-                    SendReminderRequest req
+                    SendReminderRequest req,
+                    CancellationToken ct
                 ) =>
                 {
                     var caller = AuthHelper.GetUserInfo(ctx);
@@ -100,12 +106,15 @@ public static class AdminEmailRoutes
                     if (!caller.Roles.Contains("admin"))
                         return Results.Forbid();
 
-                    var user = await db.AppUsers.FindAsync(req.UserId);
+                    if (string.IsNullOrWhiteSpace(req.UserId))
+                        return Results.BadRequest(new ErrorResponse("UserId is verplicht."));
+
+                    var user = await db.AppUsers.FindAsync([req.UserId], ct);
                     if (user == null)
                         return Results.NotFound(new ErrorResponse("Gebruiker niet gevonden."));
 
                     var baseUrl = (config["BaseUrl"] ?? "").TrimEnd('/');
-                    var recipient = await query.GetRecipientForUserAsync(user.Id, baseUrl, default);
+                    var recipient = await query.GetRecipientForUserAsync(user.Id, baseUrl, ct);
                     if (recipient == null)
                         return Results.BadRequest(
                             new ErrorResponse("Geen open afleveringen gevonden voor deze speler.")
@@ -137,6 +146,15 @@ public static class AdminEmailRoutes
                     var log = await db.EmailLogs.FindAsync(id);
                     if (log == null)
                         return Results.NotFound();
+
+                    // Password-reset tokens expire quickly and contain sensitive reset URLs;
+                    // retrying them is not useful and would re-expose the token.
+                    if (log.Type == EmailType.PasswordReset)
+                        return Results.BadRequest(
+                            new ErrorResponse(
+                                "Wachtwoord-reset e-mails kunnen niet opnieuw worden verstuurd."
+                            )
+                        );
 
                     await emailService.RetryAsync(
                         log.ToEmail,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api, EmailType } from '../api/client'
@@ -122,6 +122,7 @@ export default function AdminEmailsPage() {
     try {
       const res = await api.sendReminderEmail(selectedUserId)
       setSendResult({ ok: true, sentTo: res.sentTo })
+      void loadLogs(1)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Onbekende fout'
       setSendResult({ ok: false, error: message })
@@ -248,7 +249,7 @@ export default function AdminEmailsPage() {
                 </tr>
               )}
               {logs.map((log) => (
-                <>
+                <Fragment key={log.id}>
                   <tr
                     key={log.id}
                     onClick={() => toggleRow(log.id)}
@@ -306,7 +307,7 @@ export default function AdminEmailsPage() {
                     </td>
                   </tr>
                   {expandedId === log.id && (
-                    <tr key={`${log.id}-preview`} className="border-t border-border bg-muted/10">
+                    <tr className="border-t border-border bg-muted/10">
                       <td colSpan={6} className="px-3 py-3">
                         {log.errorMessage && (
                           <p className="mb-2 text-xs text-red-400">Fout: {log.errorMessage}</p>
@@ -316,13 +317,14 @@ export default function AdminEmailsPage() {
                           title={`Preview: ${log.subject}`}
                           className="w-full rounded border border-border bg-white"
                           style={{ height: '400px' }}
-                          sandbox="allow-same-origin"
+                          sandbox=""
+                          referrerPolicy="no-referrer"
                           data-testid="html-preview"
                         />
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
