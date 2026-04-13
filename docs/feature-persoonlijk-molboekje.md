@@ -90,7 +90,7 @@ Toggled via a view-toggle button group in the notebook header.
 ### Notebook color
 
 - Shown as a colored header strip with the player's display name, a color-swatch picker, a view toggle, and a back link.
-- Default: assigned by cycling through the palette using the player's join order, so the first eight players each start with a distinct color.
+- Default: derived deterministically from the player's `userId` by hashing into the palette, so each player gets a stable initial color (multiple players may share a color).
 - Color-swatch picker `PATCH` fires immediately on selection (optimistic update in UI).
 
 ### Contestant detail page: "In jouw molboekje"
@@ -111,9 +111,9 @@ One row per (user, game, episode). Suspicion levels are stored as a JSON diction
 
 | Field | Type | Constraints |
 |---|---|---|
-| `Id` | `Guid` | PK |
-| `UserId` | `string` | FK → AppUser |
-| `GameId` | `Guid` | FK → Game |
+| `Id` | `string` | PK, GUID-formatted string |
+| `UserId` | `string` | References `AppUser` (no DB FK constraint) |
+| `GameId` | `string` | References `Game` (no DB FK constraint) |
 | `EpisodeNumber` | `int` | |
 | `Content` | `string` | max 5000 chars, default `""` |
 | `SuspicionLevels` | `string` (JSON dict) | e.g. `{"abc":4,"xyz":2}`, default `"{}"` |
