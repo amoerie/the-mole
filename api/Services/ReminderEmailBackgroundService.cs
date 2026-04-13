@@ -25,6 +25,19 @@ public sealed partial class ReminderEmailBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Run once immediately on startup: if the process restarts inside the Sunday window
+        // (e.g. after a deployment at 09:45) the first periodic tick would arrive at 10:15
+        // — outside the window — and the reminders would be silently missed.
+        // The persisted-date deduplication check makes this safe against double-sends.
+        try
+        {
+            await TrySendRemindersAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            LogSendError(ex);
+        }
+
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30), timeProvider);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
