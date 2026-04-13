@@ -154,8 +154,6 @@ builder.Services.AddOpenApi(
     }
 );
 
-builder.Services.AddApplicationInsightsTelemetry();
-
 var logBroadcaster = new LogBroadcaster();
 builder.Services.AddSingleton(logBroadcaster);
 builder.Logging.AddProvider(logBroadcaster);
