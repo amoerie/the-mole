@@ -6,9 +6,8 @@ import type { Game, Notebook } from '../types'
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { Skeleton } from '../components/ui/skeleton'
 import { AlertCircle } from 'lucide-react'
-import NotebookCoverHeader, {
-  DEFAULT_COLOR_PALETTE,
-} from '../components/notebook/NotebookCoverHeader'
+import NotebookCoverHeader from '../components/notebook/NotebookCoverHeader'
+import { DEFAULT_COLOR_PALETTE } from '../components/notebook/notebookColors'
 import EpisodeNoteCard from '../components/notebook/EpisodeNoteCard'
 import SuspectTimelinePanel from '../components/notebook/SuspectTimelinePanel'
 
