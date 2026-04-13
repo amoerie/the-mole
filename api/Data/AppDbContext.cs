@@ -6,6 +6,7 @@ namespace Api.Data;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
     public DbSet<Game> Games => Set<Game>();
     public DbSet<Player> Players => Set<Player>();
     public DbSet<Ranking> Rankings => Set<Ranking>();

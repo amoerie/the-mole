@@ -3,9 +3,19 @@ namespace Api.Services;
 public interface IEmailService
 {
     Task SendPasswordResetAsync(string toEmail, string displayName, string resetUrl);
+
     Task SendRankingReminderAsync(
         string toEmail,
         string displayName,
-        IEnumerable<(string GameName, string GameUrl)> games
+        IEnumerable<GameReminderInfo> games
+    );
+
+    Task RetryAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string textBody,
+        string htmlBody,
+        string type
     );
 }
