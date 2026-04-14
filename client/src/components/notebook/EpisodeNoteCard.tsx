@@ -50,23 +50,23 @@ export default function EpisodeNoteCard({
         className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
       />
 
-      {contestants.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium">Verdachtheid</span> — geef elke kandidaat een score van 1
-            tot 5 sterren om bij te houden hoe verdacht je hen vindt.{' '}
-            <span className="text-yellow-500">★</span> = nauwelijks verdacht,{' '}
-            <span className="text-yellow-500">★★★★★</span> = heel verdacht (de Mol!). Klik nogmaals
-            op een ster om de score te wissen.
-          </p>
-          <div className="overflow-x-auto">
-            <div className="flex gap-4 pb-1">
-              {contestants
-                .filter(
-                  (c) =>
-                    !(c.eliminatedInEpisode != null && c.eliminatedInEpisode <= episode.number),
-                )
-                .map((c) => (
+      {(() => {
+        const visibleContestants = contestants.filter(
+          (c) => !(c.eliminatedInEpisode != null && c.eliminatedInEpisode <= episode.number),
+        )
+        if (visibleContestants.length === 0) return null
+        return (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Verdachtheid</span> — geef elke kandidaat een score van
+              1 tot 5 sterren om bij te houden hoe verdacht je hen vindt.{' '}
+              <span className="text-yellow-500">★</span> = nauwelijks verdacht,{' '}
+              <span className="text-yellow-500">★★★★★</span> = heel verdacht (de Mol!). Klik
+              nogmaals op een ster om de score te wissen.
+            </p>
+            <div className="overflow-x-auto">
+              <div className="flex gap-4 pb-1">
+                {visibleContestants.map((c) => (
                   <ContestantSuspicionChip
                     key={c.id}
                     contestant={c}
@@ -74,10 +74,11 @@ export default function EpisodeNoteCard({
                     onChange={(level) => onSuspicionChange(c.id, level)}
                   />
                 ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
