@@ -167,7 +167,7 @@ describe('NotebookPage', () => {
     await waitFor(() => expect(api.updateNotebookColor).toHaveBeenCalledWith('game-1', 'red'))
   })
 
-  it('shows eliminated contestant as greyed out in suspicion row', async () => {
+  it('hides eliminated contestants from the suspicion row', async () => {
     const gameWithEliminated: Game = {
       ...mockGame,
       contestants: [
@@ -179,8 +179,10 @@ describe('NotebookPage', () => {
     vi.mocked(api.getNotebook).mockResolvedValue(emptyNotebook)
     renderPage()
     await screen.findByText('Aflevering 1')
-    const abigailChip = screen.getByText('Abigail').closest('div')
-    expect(abigailChip).toHaveClass('opacity-40')
+    // Abigail was eliminated in episode 1, so she should not appear in the chip row
+    expect(screen.queryByText('Abigail')).not.toBeInTheDocument()
+    // Dries is still active and should remain visible
+    expect(screen.getByText('Dries')).toBeInTheDocument()
   })
 
   it('shows suspect timeline cells with saved levels', async () => {
