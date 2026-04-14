@@ -167,7 +167,7 @@ public sealed class MailerSendEmailService(
 
         try
         {
-            await PostToMailerSendAsync(toEmail, subject, text, html);
+            await PostToMailerSendAsync(toEmail, toName, subject, text, html);
             success = true;
         }
         catch (Exception ex)
@@ -288,6 +288,7 @@ public sealed class MailerSendEmailService(
 
     private async Task PostToMailerSendAsync(
         string toEmail,
+        string toName,
         string subject,
         string text,
         string html
@@ -300,7 +301,7 @@ public sealed class MailerSendEmailService(
         var body = new
         {
             from = new { email = fromEmail, name = fromName },
-            to = new[] { new { email = toEmail } },
+            to = new[] { new { email = toEmail, name = toName } },
             subject,
             text,
             html,
@@ -319,6 +320,12 @@ public sealed class MailerSendEmailService(
         );
 
         var response = await client.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                $"MailerSend returned {(int)response.StatusCode} {response.ReasonPhrase}: {responseBody}"
+            );
+        }
     }
 }
