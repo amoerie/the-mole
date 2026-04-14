@@ -147,6 +147,21 @@ describe('ContestantDetailPage', () => {
     )
   })
 
+  it('extracts a snippet around the first name mention, not the start of the note', async () => {
+    const filler = 'x'.repeat(400)
+    const noteContent = `${filler} Abigail deed iets verdachts. ${filler}`
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getNotebook).mockResolvedValue({
+      notebookColor: null,
+      notes: [{ episodeNumber: 1, content: noteContent, suspicionLevels: {}, updatedAt: '' }],
+    })
+    renderPage('c1')
+    await screen.findByText('In jouw molboekje')
+    expect(screen.getByText(/verdachts/)).toBeInTheDocument()
+    // The start-of-note filler should not be shown
+    expect(screen.queryByText(new RegExp(`^${filler.slice(0, 50)}`))).not.toBeInTheDocument()
+  })
+
   it('omits "In jouw molboekje" section when no notes mention the contestant', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     vi.mocked(api.getNotebook).mockResolvedValue({
