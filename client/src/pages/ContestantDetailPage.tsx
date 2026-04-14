@@ -127,7 +127,7 @@ export default function ContestantDetailPage() {
                 <span className="text-xs font-medium text-muted-foreground">
                   Aflevering {note.episodeNumber}
                 </span>
-                <p className="leading-relaxed line-clamp-4">
+                <p className="leading-relaxed line-clamp-4 whitespace-pre-wrap">
                   {highlightName(note.content.slice(0, 300), firstName)}
                   {note.content.length > 300 && '…'}
                 </p>

@@ -4,7 +4,6 @@ import SuspicionLevelPicker from './SuspicionLevelPicker'
 interface Props {
   contestant: Contestant
   level: number | undefined
-  eliminated: boolean
   onChange: (level: number | undefined) => void
 }
 
@@ -17,16 +16,9 @@ function initials(name: string) {
     .slice(0, 2)
 }
 
-export default function ContestantSuspicionChip({
-  contestant,
-  level,
-  eliminated,
-  onChange,
-}: Props) {
+export default function ContestantSuspicionChip({ contestant, level, onChange }: Props) {
   return (
-    <div
-      className={`flex flex-col items-center gap-1 min-w-[60px] ${eliminated ? 'opacity-40' : ''}`}
-    >
+    <div className="flex flex-col items-center gap-1 flex-shrink-0">
       {contestant.photoUrl ? (
         <img
           src={contestant.photoUrl}
@@ -38,12 +30,10 @@ export default function ContestantSuspicionChip({
           {initials(contestant.name)}
         </div>
       )}
-      <span
-        className={`text-xs text-center leading-tight max-w-[60px] truncate ${eliminated ? 'line-through' : ''}`}
-      >
+      <span className="text-xs text-center leading-tight max-w-[60px] truncate">
         {contestant.name.split(' ')[0]}
       </span>
-      <SuspicionLevelPicker level={level} disabled={eliminated} onChange={onChange} />
+      <SuspicionLevelPicker level={level} onChange={onChange} />
     </div>
   )
 }

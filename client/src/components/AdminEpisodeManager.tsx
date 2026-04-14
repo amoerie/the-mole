@@ -128,20 +128,27 @@ export default function AdminEpisodeManager({
             <Button onClick={handleCreate}>Aflevering toevoegen</Button>
           </div>
           {activeContestants.length > 0 && (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <p className="text-xs text-muted-foreground">Afgevallen kandidaten (optioneel)</p>
-              <div className="flex flex-wrap gap-3">
-                {activeContestants.map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={eliminatedIds.includes(c.id)}
-                      onChange={() => toggleEliminated(c.id)}
-                      className="accent-primary"
-                    />
-                    {c.name}
-                  </label>
-                ))}
+              <div className="flex flex-wrap gap-2">
+                {activeContestants.map((c) => {
+                  const checked = eliminatedIds.includes(c.id)
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleEliminated(c.id)}
+                      aria-pressed={checked}
+                      className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                        checked
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-input hover:bg-muted'
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
