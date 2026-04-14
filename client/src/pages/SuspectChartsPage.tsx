@@ -97,32 +97,44 @@ export default function SuspectChartsPage() {
               <CardTitle className="text-base">Aflevering {episode.episodeNumber}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={episode.stats} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis
-                    domain={[0, episode.stats.length + 0.5]}
-                    reversed
-                    tickCount={episode.stats.length + 1}
-                    tick={{ fontSize: 12 }}
-                    label={{ value: 'Gem. rang', angle: -90, position: 'insideLeft', fontSize: 11 }}
-                  />
-                  <Tooltip
-                    formatter={(value) => [
-                      typeof value === 'number' ? value.toFixed(1) : value,
-                      'Gem. rang',
-                    ]}
-                  />
-                  <Bar dataKey="avgRank" radius={[4, 4, 0, 0]}>
-                    {episode.stats.map((entry, index) => (
-                      <Cell
-                        key={entry.contestantId}
-                        fill={rankColor(episode.stats.length - index, episode.stats.length)}
+              <div className="overflow-x-auto">
+                <div style={{ minWidth: Math.max(320, episode.stats.length * 72) }}>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart
+                      data={episode.stats}
+                      margin={{ top: 4, right: 8, left: -16, bottom: 4 }}
+                    >
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} />
+                      <YAxis
+                        domain={[0, episode.stats.length + 0.5]}
+                        reversed
+                        tickCount={episode.stats.length + 1}
+                        tick={{ fontSize: 12 }}
+                        label={{
+                          value: 'Gem. rang',
+                          angle: -90,
+                          position: 'insideLeft',
+                          fontSize: 11,
+                        }}
                       />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                      <Tooltip
+                        formatter={(value) => [
+                          typeof value === 'number' ? value.toFixed(1) : value,
+                          'Gem. rang',
+                        ]}
+                      />
+                      <Bar dataKey="avgRank" radius={[4, 4, 0, 0]}>
+                        {episode.stats.map((entry, index) => (
+                          <Cell
+                            key={entry.contestantId}
+                            fill={rankColor(episode.stats.length - index, episode.stats.length)}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
               <p className="mt-1 text-xs text-muted-foreground text-center">
                 Lagere rang = verdachter
               </p>
