@@ -99,6 +99,24 @@ describe('NotebookPage', () => {
     expect(screen.queryByText('Aflevering 3')).not.toBeInTheDocument()
   })
 
+  it('shows the air date (deadline minus 7 days) next to each episode heading', async () => {
+    const deadline = new Date('2026-04-05T20:00:00Z').toISOString()
+    const expectedAirDate = new Date('2026-03-29T20:00:00Z').toLocaleDateString('nl-BE', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const gameWithKnownDeadline: Game = {
+      ...mockGame,
+      episodes: [{ number: 1, deadline, eliminatedContestantIds: [] }],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(gameWithKnownDeadline)
+    vi.mocked(api.getNotebook).mockResolvedValue(emptyNotebook)
+    renderPage()
+    await screen.findByText('Aflevering 1')
+    expect(screen.getByText(expectedAirDate)).toBeInTheDocument()
+  })
+
   it('renders note content from API response', async () => {
     vi.mocked(api.getGame).mockResolvedValue(mockGame)
     vi.mocked(api.getNotebook).mockResolvedValue({

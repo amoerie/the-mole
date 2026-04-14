@@ -10,12 +10,10 @@ interface Props {
   onSuspicionChange: (contestantId: string, level: number | undefined) => void
 }
 
-function formatDeadline(iso: string) {
-  return new Date(iso).toLocaleDateString('nl-BE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+function airDateFromDeadline(deadlineIso: string) {
+  const d = new Date(deadlineIso)
+  d.setDate(d.getDate() - 7)
+  return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function EpisodeNoteCard({
@@ -31,7 +29,7 @@ export default function EpisodeNoteCard({
         <h2 className="font-semibold text-sm">
           Aflevering {episode.number}
           <span className="ml-2 font-normal text-muted-foreground text-xs">
-            {formatDeadline(episode.deadline)}
+            {airDateFromDeadline(episode.deadline)}
           </span>
         </h2>
         {noteState.savingState === 'saving' && (
