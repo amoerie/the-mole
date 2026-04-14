@@ -51,20 +51,30 @@ export default function EpisodeNoteCard({
       />
 
       {contestants.length > 0 && (
-        <div className="overflow-x-auto">
-          <div className="flex gap-4 pb-1">
-            {contestants
-              .filter(
-                (c) => !(c.eliminatedInEpisode != null && c.eliminatedInEpisode <= episode.number),
-              )
-              .map((c) => (
-                <ContestantSuspicionChip
-                  key={c.id}
-                  contestant={c}
-                  level={noteState.suspicionLevels[c.id]}
-                  onChange={(level) => onSuspicionChange(c.id, level)}
-                />
-              ))}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Verdachtheid</span> — geef elke kandidaat een score van 1
+            tot 5 sterren om bij te houden hoe verdacht je hen vindt.{' '}
+            <span className="text-yellow-500">★</span> = nauwelijks verdacht,{' '}
+            <span className="text-yellow-500">★★★★★</span> = heel verdacht (de Mol!). Klik nogmaals
+            op een ster om de score te wissen.
+          </p>
+          <div className="overflow-x-auto">
+            <div className="flex gap-4 pb-1">
+              {contestants
+                .filter(
+                  (c) =>
+                    !(c.eliminatedInEpisode != null && c.eliminatedInEpisode <= episode.number),
+                )
+                .map((c) => (
+                  <ContestantSuspicionChip
+                    key={c.id}
+                    contestant={c}
+                    level={noteState.suspicionLevels[c.id]}
+                    onChange={(level) => onSuspicionChange(c.id, level)}
+                  />
+                ))}
+            </div>
           </div>
         </div>
       )}
