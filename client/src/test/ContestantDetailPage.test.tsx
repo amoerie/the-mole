@@ -147,6 +147,34 @@ describe('ContestantDetailPage', () => {
     )
   })
 
+  it('shows notes sorted by episode number descending (most recent first)', async () => {
+    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+    vi.mocked(api.getNotebook).mockResolvedValue({
+      notebookColor: null,
+      notes: [
+        { episodeNumber: 1, content: 'Abigail was quiet.', suspicionLevels: {}, updatedAt: '' },
+        {
+          episodeNumber: 3,
+          content: 'Abigail acted suspicious.',
+          suspicionLevels: {},
+          updatedAt: '',
+        },
+        {
+          episodeNumber: 2,
+          content: 'Abigail helped the group.',
+          suspicionLevels: {},
+          updatedAt: '',
+        },
+      ],
+    })
+    renderPage('c1')
+    await screen.findByText('In jouw molboekje')
+    const labels = screen.getAllByText(/Aflevering \d/)
+    expect(labels[0]).toHaveTextContent('Aflevering 3')
+    expect(labels[1]).toHaveTextContent('Aflevering 2')
+    expect(labels[2]).toHaveTextContent('Aflevering 1')
+  })
+
   it('extracts a snippet around the first name mention, not the start of the note', async () => {
     const filler = 'x'.repeat(400)
     const noteContent = `${filler} Abigail deed iets verdachts. ${filler}`

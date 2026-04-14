@@ -122,7 +122,9 @@ export default function ContestantDetailPage() {
 
       {(() => {
         const firstName = contestant.name.split(/\s+/)[0].toLowerCase()
-        const matches = notebookNotes.filter((n) => n.content.toLowerCase().includes(firstName))
+        const matches = notebookNotes
+          .filter((n) => n.content.toLowerCase().includes(firstName))
+          .sort((a, b) => b.episodeNumber - a.episodeNumber)
         if (matches.length === 0) return null
         return (
           <div className="flex flex-col gap-3">
