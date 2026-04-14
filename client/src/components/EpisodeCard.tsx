@@ -60,7 +60,9 @@ export default function EpisodeCard({
   }
 
   return (
-    <Card>
+    <Card
+      className={`transition-all duration-300 ${saveStatus === 'saved' ? 'ring-2 ring-green-500' : ''}`}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle>Aflevering {episode.number}</CardTitle>
@@ -80,17 +82,25 @@ export default function EpisodeCard({
           onChange={handleChange}
           disabled={isDeadlinePassed}
         />
-        <div className="flex items-center gap-2 text-sm h-5">
+        <div
+          className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-all duration-300 ${
+            saveStatus === 'saving'
+              ? 'bg-muted/60 text-muted-foreground'
+              : saveStatus === 'saved'
+                ? 'bg-green-500/10 text-green-600 dark:text-green-400 font-medium'
+                : 'opacity-0 py-0 h-0 overflow-hidden'
+          }`}
+        >
           {saveStatus === 'saving' && (
             <>
-              <Loader2 className="size-4 animate-spin text-muted-foreground" />
-              <span className="text-muted-foreground">Opslaan...</span>
+              <Loader2 className="size-4 animate-spin shrink-0" />
+              <span>Opslaan...</span>
             </>
           )}
           {saveStatus === 'saved' && (
             <>
-              <CheckCircle2 className="size-4 text-green-500" />
-              <span className="text-green-500">
+              <CheckCircle2 className="size-4 shrink-0" />
+              <span>
                 {hasSubmitted ? 'Rangschikking bijgewerkt.' : 'Rangschikking opgeslagen.'}
               </span>
             </>
