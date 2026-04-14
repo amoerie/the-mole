@@ -52,20 +52,19 @@ export default function EpisodeNoteCard({
 
       {contestants.length > 0 && (
         <div className="overflow-x-auto">
-          <div className="flex gap-3 pb-1">
-            {contestants.map((c) => {
-              const eliminated =
-                c.eliminatedInEpisode != null && c.eliminatedInEpisode <= episode.number
-              return (
+          <div className="flex gap-4 pb-1">
+            {contestants
+              .filter(
+                (c) => !(c.eliminatedInEpisode != null && c.eliminatedInEpisode <= episode.number),
+              )
+              .map((c) => (
                 <ContestantSuspicionChip
                   key={c.id}
                   contestant={c}
                   level={noteState.suspicionLevels[c.id]}
-                  eliminated={eliminated}
                   onChange={(level) => onSuspicionChange(c.id, level)}
                 />
-              )
-            })}
+              ))}
           </div>
         </div>
       )}
