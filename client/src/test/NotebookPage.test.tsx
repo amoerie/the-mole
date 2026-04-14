@@ -20,7 +20,6 @@ import { api } from '../api/client'
 const mockUser: UserInfo = { userId: 'user-1', displayName: 'Alex', roles: ['authenticated'] }
 
 const yesterday = new Date(Date.now() - 86400000).toISOString()
-const tomorrow = new Date(Date.now() + 86400000).toISOString()
 
 const mockGame: Game = {
   id: 'game-1',
