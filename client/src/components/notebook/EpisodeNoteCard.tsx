@@ -10,12 +10,10 @@ interface Props {
   onSuspicionChange: (contestantId: string, level: number | undefined) => void
 }
 
-function formatDeadline(iso: string) {
-  return new Date(iso).toLocaleDateString('nl-BE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+function airDateFromDeadline(deadlineIso: string) {
+  const d = new Date(deadlineIso)
+  d.setDate(d.getDate() - 7)
+  return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function EpisodeNoteCard({
@@ -31,7 +29,7 @@ export default function EpisodeNoteCard({
         <h2 className="font-semibold text-sm">
           Aflevering {episode.number}
           <span className="ml-2 font-normal text-muted-foreground text-xs">
-            {formatDeadline(episode.deadline)}
+            {airDateFromDeadline(episode.deadline)}
           </span>
         </h2>
         {noteState.savingState === 'saving' && (
@@ -57,13 +55,6 @@ export default function EpisodeNoteCard({
         if (visibleContestants.length === 0) return null
         return (
           <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Verdachtheid</span> — geef elke kandidaat een score van
-              1 tot 5 sterren om bij te houden hoe verdacht je hen vindt.{' '}
-              <span className="text-yellow-500">★</span> = nauwelijks verdacht,{' '}
-              <span className="text-yellow-500">★★★★★</span> = heel verdacht (de Mol!). Klik
-              nogmaals op een ster om de score te wissen.
-            </p>
             <div className="overflow-x-auto">
               <div className="flex gap-4 pb-1">
                 {visibleContestants.map((c) => (

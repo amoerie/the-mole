@@ -61,6 +61,14 @@ export default function ContestantDetailPage() {
 
   const contestant = game.contestants.find((c) => c.id === contestantId)
 
+  function extractSnippet(text: string, firstName: string, context = 150): string {
+    const matchIndex = text.toLowerCase().indexOf(firstName.toLowerCase())
+    if (matchIndex === -1) return text.slice(0, context * 2)
+    const start = Math.max(0, matchIndex - context)
+    const end = Math.min(text.length, matchIndex + firstName.length + context)
+    return (start > 0 ? '…' : '') + text.slice(start, end) + (end < text.length ? '…' : '')
+  }
+
   function highlightName(text: string, firstName: string) {
     const pattern = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const regex = new RegExp(`(${pattern})`, 'i')
@@ -114,7 +122,9 @@ export default function ContestantDetailPage() {
 
       {(() => {
         const firstName = contestant.name.split(/\s+/)[0].toLowerCase()
-        const matches = notebookNotes.filter((n) => n.content.toLowerCase().includes(firstName))
+        const matches = notebookNotes
+          .filter((n) => n.content.toLowerCase().includes(firstName))
+          .sort((a, b) => b.episodeNumber - a.episodeNumber)
         if (matches.length === 0) return null
         return (
           <div className="flex flex-col gap-3">
@@ -127,9 +137,8 @@ export default function ContestantDetailPage() {
                 <span className="text-xs font-medium text-muted-foreground">
                   Aflevering {note.episodeNumber}
                 </span>
-                <p className="leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                  {highlightName(note.content.slice(0, 300), firstName)}
-                  {note.content.length > 300 && '…'}
+                <p className="leading-relaxed whitespace-pre-wrap">
+                  {highlightName(extractSnippet(note.content, firstName), firstName)}
                 </p>
                 <Link
                   to={`/game/${gameId}/molboekje`}

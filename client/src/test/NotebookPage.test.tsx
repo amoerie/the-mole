@@ -20,7 +20,6 @@ import { api } from '../api/client'
 const mockUser: UserInfo = { userId: 'user-1', displayName: 'Alex', roles: ['authenticated'] }
 
 const yesterday = new Date(Date.now() - 86400000).toISOString()
-const tomorrow = new Date(Date.now() + 86400000).toISOString()
 
 const mockGame: Game = {
   id: 'game-1',
@@ -31,10 +30,7 @@ const mockGame: Game = {
     { id: 'c1', name: 'Abigail de Vries', age: 33, photoUrl: '' },
     { id: 'c2', name: 'Dries Janssen', age: 30, photoUrl: '' },
   ],
-  episodes: [
-    { number: 1, deadline: yesterday, eliminatedContestantIds: [] },
-    { number: 2, deadline: tomorrow, eliminatedContestantIds: [] },
-  ],
+  episodes: [{ number: 1, deadline: yesterday, eliminatedContestantIds: [] }],
   moleContestantId: undefined,
 }
 
@@ -77,12 +73,71 @@ describe('NotebookPage', () => {
     expect(await screen.findByText('Netwerkfout')).toBeInTheDocument()
   })
 
-  it('renders only past episodes (deadline passed), not future ones', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+  it('shows aired episodes and hides episodes that have not yet aired', async () => {
+    // An episode has aired when deadline - 7 days < now.
+    // Ep1: deadline = yesterday → airDate = 8 days ago < now → shown.
+    // Ep2: deadline = 6 days from now → airDate = yesterday < now → shown.
+    // Ep3: deadline = 8 days from now → airDate = tomorrow > now → hidden.
+    const threeEpisodeGame: Game = {
+      ...mockGame,
+      episodes: [
+        { number: 1, deadline: yesterday, eliminatedContestantIds: [] },
+        {
+          number: 2,
+          deadline: new Date(Date.now() + 6 * 86400000).toISOString(),
+          eliminatedContestantIds: [],
+        },
+        {
+          number: 3,
+          deadline: new Date(Date.now() + 8 * 86400000).toISOString(),
+          eliminatedContestantIds: [],
+        },
+      ],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(threeEpisodeGame)
     vi.mocked(api.getNotebook).mockResolvedValue(emptyNotebook)
     renderPage()
     await screen.findByText('Aflevering 1')
-    expect(screen.queryByText('Aflevering 2')).not.toBeInTheDocument()
+    expect(screen.getByText('Aflevering 2')).toBeInTheDocument()
+    expect(screen.queryByText('Aflevering 3')).not.toBeInTheDocument()
+    // The "Verdachtheid" explanation should appear exactly once above the list
+    expect(screen.getAllByText(/Verdachtheid/)).toHaveLength(1)
+  })
+
+  it('shows episode 1 based on its air date (deadline - 7 days), not its deadline', async () => {
+    // Ep1 has a future deadline but aired 2 days ago (deadline = 5 days from now).
+    const gameWithFutureDeadline: Game = {
+      ...mockGame,
+      episodes: [
+        {
+          number: 1,
+          deadline: new Date(Date.now() + 5 * 86400000).toISOString(),
+          eliminatedContestantIds: [],
+        },
+      ],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(gameWithFutureDeadline)
+    vi.mocked(api.getNotebook).mockResolvedValue(emptyNotebook)
+    renderPage()
+    expect(await screen.findByText('Aflevering 1')).toBeInTheDocument()
+  })
+
+  it('shows the air date (deadline minus 7 days) next to each episode heading', async () => {
+    const deadline = new Date('2026-04-05T20:00:00Z').toISOString()
+    const expectedAirDate = new Date('2026-03-29T20:00:00Z').toLocaleDateString('nl-BE', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const gameWithKnownDeadline: Game = {
+      ...mockGame,
+      episodes: [{ number: 1, deadline, eliminatedContestantIds: [] }],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(gameWithKnownDeadline)
+    vi.mocked(api.getNotebook).mockResolvedValue(emptyNotebook)
+    renderPage()
+    await screen.findByText('Aflevering 1')
+    expect(screen.getByText(expectedAirDate)).toBeInTheDocument()
   })
 
   it('renders note content from API response', async () => {
