@@ -17,15 +17,18 @@ export interface NoteState {
   savingState: 'idle' | 'saving' | 'saved'
 }
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+function hasAired(ep: { deadline: string }, now: Date): boolean {
+  return new Date(ep.deadline).getTime() - WEEK_MS < now.getTime()
+}
+
 function buildInitialNotes(game: Game, notebook: Notebook): Map<number, NoteState> {
   const map = new Map<number, NoteState>()
   const now = new Date()
-  const sortedEpisodes = [...game.episodes].sort((a, b) => a.number - b.number)
 
-  for (let i = 0; i < sortedEpisodes.length; i++) {
-    const ep = sortedEpisodes[i]
-    const referenceDeadline = i === 0 ? ep.deadline : sortedEpisodes[i - 1].deadline
-    if (new Date(referenceDeadline) >= now) continue
+  for (const ep of game.episodes) {
+    if (!hasAired(ep, now)) continue
     map.set(ep.number, { content: '', suspicionLevels: {}, savingState: 'idle' })
   }
 
@@ -135,8 +138,12 @@ export default function NotebookPage() {
   function handleContentChange(episodeNumber: number, content: string) {
     setNotes((prev) => {
       const next = new Map(prev)
-      const entry = next.get(episodeNumber)
-      if (entry) next.set(episodeNumber, { ...entry, content })
+      const entry = next.get(episodeNumber) ?? {
+        content: '',
+        suspicionLevels: {},
+        savingState: 'idle' as const,
+      }
+      next.set(episodeNumber, { ...entry, content })
       return next
     })
 
@@ -157,8 +164,11 @@ export default function NotebookPage() {
   ) {
     setNotes((prev) => {
       const next = new Map(prev)
-      const entry = next.get(episodeNumber)
-      if (!entry) return prev
+      const entry = next.get(episodeNumber) ?? {
+        content: '',
+        suspicionLevels: {},
+        savingState: 'idle' as const,
+      }
       const updatedLevels = { ...entry.suspicionLevels }
       if (level === undefined) {
         delete updatedLevels[contestantId]
@@ -209,13 +219,9 @@ export default function NotebookPage() {
   if (!game) return null
 
   const now = new Date()
-  const sortedEpisodes = [...game.episodes].sort((a, b) => a.number - b.number)
-  const pastEpisodes = sortedEpisodes
-    .filter((ep, i) => {
-      const referenceDeadline = i === 0 ? ep.deadline : sortedEpisodes[i - 1].deadline
-      return new Date(referenceDeadline) < now
-    })
-    .reverse()
+  const pastEpisodes = [...game.episodes]
+    .filter((ep) => hasAired(ep, now))
+    .sort((a, b) => b.number - a.number)
 
   const effectiveColor = notebookColor ?? defaultColor(user?.userId ?? '')
 
