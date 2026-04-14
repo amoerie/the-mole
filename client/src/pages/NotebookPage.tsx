@@ -20,9 +20,12 @@ export interface NoteState {
 function buildInitialNotes(game: Game, notebook: Notebook): Map<number, NoteState> {
   const map = new Map<number, NoteState>()
   const now = new Date()
+  const sortedEpisodes = [...game.episodes].sort((a, b) => a.number - b.number)
 
-  for (const ep of game.episodes) {
-    if (new Date(ep.deadline) >= now) continue
+  for (let i = 0; i < sortedEpisodes.length; i++) {
+    const ep = sortedEpisodes[i]
+    const referenceDeadline = i === 0 ? ep.deadline : sortedEpisodes[i - 1].deadline
+    if (new Date(referenceDeadline) >= now) continue
     map.set(ep.number, { content: '', suspicionLevels: {}, savingState: 'idle' })
   }
 
@@ -206,9 +209,13 @@ export default function NotebookPage() {
   if (!game) return null
 
   const now = new Date()
-  const pastEpisodes = [...game.episodes]
-    .filter((ep) => new Date(ep.deadline) < now)
-    .sort((a, b) => b.number - a.number)
+  const sortedEpisodes = [...game.episodes].sort((a, b) => a.number - b.number)
+  const pastEpisodes = sortedEpisodes
+    .filter((ep, i) => {
+      const referenceDeadline = i === 0 ? ep.deadline : sortedEpisodes[i - 1].deadline
+      return new Date(referenceDeadline) < now
+    })
+    .reverse()
 
   const effectiveColor = notebookColor ?? defaultColor(user?.userId ?? '')
 
@@ -228,6 +235,15 @@ export default function NotebookPage() {
           {pastEpisodes.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
               Nog geen afleveringen afgelopen.
+            </p>
+          )}
+          {pastEpisodes.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Verdachtheid</span> — geef elke kandidaat een score van
+              1 tot 5 sterren om bij te houden hoe verdacht je hen vindt.{' '}
+              <span className="text-yellow-500">★</span> = nauwelijks verdacht,{' '}
+              <span className="text-yellow-500">★★★★★</span> = heel verdacht (de Mol!). Klik
+              nogmaals op een ster om de score te wissen.
             </p>
           )}
           {pastEpisodes.map((ep) => (

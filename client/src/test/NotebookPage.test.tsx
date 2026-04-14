@@ -31,10 +31,7 @@ const mockGame: Game = {
     { id: 'c1', name: 'Abigail de Vries', age: 33, photoUrl: '' },
     { id: 'c2', name: 'Dries Janssen', age: 30, photoUrl: '' },
   ],
-  episodes: [
-    { number: 1, deadline: yesterday, eliminatedContestantIds: [] },
-    { number: 2, deadline: tomorrow, eliminatedContestantIds: [] },
-  ],
+  episodes: [{ number: 1, deadline: yesterday, eliminatedContestantIds: [] }],
   moleContestantId: undefined,
 }
 
@@ -77,12 +74,29 @@ describe('NotebookPage', () => {
     expect(await screen.findByText('Netwerkfout')).toBeInTheDocument()
   })
 
-  it('renders only past episodes (deadline passed), not future ones', async () => {
-    vi.mocked(api.getGame).mockResolvedValue(mockGame)
+  it('shows aired episodes and hides episodes that have not yet aired', async () => {
+    // Episode N airs when the previous episode's deadline passes.
+    // Ep1 (i=0): own deadline = yesterday → shown.
+    // Ep2 (i=1): prev deadline = yesterday < now → shown (aired yesterday).
+    // Ep3 (i=2): prev deadline = tomorrow > now → hidden (not aired yet).
+    const threeEpisodeGame: Game = {
+      ...mockGame,
+      episodes: [
+        { number: 1, deadline: yesterday, eliminatedContestantIds: [] },
+        { number: 2, deadline: tomorrow, eliminatedContestantIds: [] },
+        {
+          number: 3,
+          deadline: new Date(Date.now() + 2 * 86400000).toISOString(),
+          eliminatedContestantIds: [],
+        },
+      ],
+    }
+    vi.mocked(api.getGame).mockResolvedValue(threeEpisodeGame)
     vi.mocked(api.getNotebook).mockResolvedValue(emptyNotebook)
     renderPage()
     await screen.findByText('Aflevering 1')
-    expect(screen.queryByText('Aflevering 2')).not.toBeInTheDocument()
+    expect(screen.getByText('Aflevering 2')).toBeInTheDocument()
+    expect(screen.queryByText('Aflevering 3')).not.toBeInTheDocument()
   })
 
   it('renders note content from API response', async () => {
