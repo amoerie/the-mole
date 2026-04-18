@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="8.*" />
+    <PackageReference Include="coverlet.collector" Version="10.*" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication" Version="2.*" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.*" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.*" />
